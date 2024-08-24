@@ -1,4 +1,4 @@
-import type { DataFactory, DatasetCore } from "@rdfjs/types";
+import type { DataFactory, DatasetCore, NamedNode } from "@rdfjs/types";
 import { MutableResource } from "./MutableResource.js";
 import type { Resource } from "./Resource.js";
 import { ResourceSet } from "./ResourceSet.js";
@@ -18,6 +18,21 @@ export class MutableResourceSet extends ResourceSet {
   }) {
     super({ dataset });
     this.dataFactory = dataFactory;
+  }
+
+  mutableNamedResource({
+    identifier,
+    mutateGraph,
+  }: {
+    identifier: NamedNode;
+    mutateGraph: MutableResource.MutateGraph;
+  }): MutableResource<NamedNode> {
+    return new MutableResource<NamedNode>({
+      dataFactory: this.dataFactory,
+      dataset: this.dataset,
+      identifier,
+      mutateGraph,
+    });
   }
 
   mutableResource({
