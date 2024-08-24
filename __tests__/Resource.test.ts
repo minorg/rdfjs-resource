@@ -125,6 +125,14 @@ describe("Resource", () => {
     ).toHaveLength(2);
   });
 
+  it("should get IRI values", ({ expect }) => {
+    const values = [...mutableResource.values(predicate)].flatMap((value) =>
+      value.toIri().toList(),
+    );
+    expect(values).toHaveLength(1);
+    expect(values[0].equals(objects["namedNode"])).toStrictEqual(true);
+  });
+
   it("should get literal values", ({ expect }) => {
     expect(
       [...mutableResource.values(predicate)].flatMap((value) =>
