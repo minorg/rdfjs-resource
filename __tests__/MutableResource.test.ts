@@ -46,6 +46,26 @@ describe("MutableResource", () => {
     expect(dataset.size).toStrictEqual(1);
   });
 
+  it("should add a List value", () => {
+    resource.addList(predicate, [
+      objects["stringLiteral"],
+      objects["intLiteral"],
+    ]);
+    expect([...resource.values(predicate)]).toHaveLength(1);
+    const list = resource
+      .value(predicate)
+      .chain((value) => value.toList().toMaybe())
+      .map((values) => values.flatMap((value) => value.toLiteral().toList()))
+      .orDefault([]);
+    expect(list).toHaveLength(2);
+    expect(
+      list.some((element) => element.equals(objects["stringLiteral"])),
+    ).toStrictEqual(true);
+    expect(
+      list.some((element) => element.equals(objects["intLiteral"])),
+    ).toStrictEqual(true);
+  });
+
   it("should delete a value", () => {
     resource.add(predicate, objects["stringLiteral"]);
     resource.add(predicate, objects["intLiteral"]);
