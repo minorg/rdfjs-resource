@@ -20,7 +20,7 @@ npm i rdfjs-resource
 const resource = new Resource({ dataset: theDataset, identifier: theNode });
 ```
 
-### Retrieve a value (object) of the resource
+### Retrieve a value (object) of the `Resource`
 
 ```
 import { rdf } from "@tpluscode/rdf-ns-builders";
@@ -32,7 +32,7 @@ const value = resource.value(rdf.type).toNumber().orDefault(0);
 
 See the `Resource.test.ts` for additional usage.
 
-### Mutable Resources
+### `MutableResource`
 
 `Resource` instances are immutable. To create a mutable resource, you have to supply an [RDF/JS DataFactory](https://rdf.js.org/data-model-spec/) as well as a graph identifier (`BlankNode | DefaultGraph | NamedNode`) to add/delete quads to/from in the supplied `DatasetCore`.
 
@@ -49,7 +49,7 @@ const mutableResource = new MutableResource({
 mutableResource.add(rdf.type, rdf.Resource);
 ```
 
-### ResourceSets
+### `ResourceSet`
 
 For convenience, you can wrap a `DatasetCore` in a `ResourceSet`, then instantiate `Resource`s from that:
 
@@ -58,7 +58,7 @@ const resourceSet = new ResourceSet({ dataset });
 resourceSet.resource(identifier).value(rdf.type);
 ```
 
-### Named resources
+### Named `Resource`
 
 `Resource` and `MutableResource` take a type parameter for the `identifier` specified in the resource's constructor. The parameter defaults to `BlankNode | NamedNode`.
 
