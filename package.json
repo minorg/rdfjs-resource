@@ -11,6 +11,7 @@
     "@biomejs/biome": "1.8.3",
     "@tsconfig/strictest": "^2.0.5",
     "@types/n3": "^1.16.5",
+    "@vitest/coverage-v8": "^2.0.5",
     "n3": "^1.20.4",
     "rimraf": "^6.0.1",
     "typescript": "~5.5",
