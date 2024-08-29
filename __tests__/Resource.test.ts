@@ -62,7 +62,7 @@ describe("Resource", () => {
 
   it("should get a value (filtered)", ({ expect }) => {
     const value = mutableResource
-      .value(predicate, (value) => value.isIri())
+      .value(predicate, { filter: (value) => value.isIri() })
       .extract();
     expect(value?.isIri()).toBe(true);
   });
@@ -93,7 +93,7 @@ describe("Resource", () => {
   it("should get a boolean value", ({ expect }) => {
     expect(
       mutableResource
-        .value(predicate, (value) => value.isBoolean())
+        .value(predicate, { filter: (value) => value.isBoolean() })
         .chain((value) => value.toBoolean())
         .orDefault(false),
     ).toStrictEqual(true);
@@ -102,7 +102,7 @@ describe("Resource", () => {
   it("should get a number value", ({ expect }) => {
     expect(
       mutableResource
-        .value(predicate, (value) => value.isNumber())
+        .value(predicate, { filter: (value) => value.isNumber() })
         .chain((value) => value.toNumber())
         .orDefault(-1),
     ).toStrictEqual(1);
@@ -111,7 +111,7 @@ describe("Resource", () => {
   it("should get a string value", ({ expect }) => {
     expect(
       mutableResource
-        .value(predicate, (value) => value.isString())
+        .value(predicate, { filter: (value) => value.isString() })
         .chain((value) => value.toString())
         .orDefault("test"),
     ).toStrictEqual(objects["stringLiteral"].value);

@@ -1,3 +1,4 @@
+import TermSet from "@rdfjs/term-set";
 import type {
   BlankNode,
   DataFactory,
@@ -71,9 +72,11 @@ export class Resource<
    */
   value(
     property: NamedNode,
-    filter?: (value: Resource.Value) => boolean,
+    options?: {
+      filter?: (value: Resource.Value) => boolean;
+    },
   ): Maybe<Resource.Value> {
-    const filter_ = filter ?? defaultValueFilter;
+    const filter_ = options?.filter ?? defaultValueFilter;
     for (const value of this.values(property)) {
       if (filter_(value)) {
         return Maybe.of(value);
@@ -87,9 +90,11 @@ export class Resource<
    */
   valueOf(
     property: NamedNode,
-    filter?: (subject: Resource.ValueOf) => boolean,
+    options?: {
+      filter?: (subject: Resource.ValueOf) => boolean;
+    },
   ): Maybe<Resource.ValueOf> {
-    const filter_ = filter ?? defaultValueOfFilter;
+    const filter_ = options?.filter ?? defaultValueOfFilter;
     for (const valueOf_ of this.valuesOf(property)) {
       if (filter_(valueOf_)) {
         return Just(valueOf_);
@@ -101,7 +106,14 @@ export class Resource<
   /**
    * Get all values of dataset statements (this.identifier, property, value).
    */
-  *values(property: NamedNode): Generator<Resource.Value> {
+  *values(
+    property: NamedNode,
+    options?: { unique?: boolean },
+  ): Generator<Resource.Value> {
+    const uniqueObjects = options?.unique
+      ? new TermSet<BlankNode | Literal | NamedNode>()
+      : undefined;
+
     for (const quad of this.dataset.match(
       this.identifier,
       property,
@@ -112,7 +124,15 @@ export class Resource<
         case "BlankNode":
         case "Literal":
         case "NamedNode":
-          yield new Resource.Value(quad.object, this);
+          if (uniqueObjects) {
+            if (uniqueObjects.has(quad.object)) {
+              continue;
+            }
+            yield new Resource.Value(quad.object, this);
+            uniqueObjects.add(quad.object);
+          } else {
+            yield new Resource.Value(quad.object, this);
+          }
           break;
       }
     }
@@ -121,7 +141,13 @@ export class Resource<
   /**
    * Get the first subject of dataset statements (subject, property, this.identifier).
    */
-  *valuesOf(property: NamedNode): Generator<Resource.ValueOf> {
+  *valuesOf(
+    property: NamedNode,
+    options?: { unique: true },
+  ): Generator<Resource.ValueOf> {
+    const uniqueSubjects = options?.unique
+      ? new TermSet<BlankNode | NamedNode>()
+      : undefined;
     for (const quad of this.dataset.match(
       null,
       property,
@@ -131,7 +157,15 @@ export class Resource<
       switch (quad.subject.termType) {
         case "BlankNode":
         case "NamedNode":
-          yield new Resource.ValueOf(this, quad.subject);
+          if (uniqueSubjects) {
+            if (uniqueSubjects.has(quad.subject)) {
+              continue;
+            }
+            yield new Resource.ValueOf(this, quad.subject);
+            uniqueSubjects.add(quad.subject);
+          } else {
+            yield new Resource.ValueOf(this, quad.subject);
+          }
           break;
       }
     }
