@@ -47,11 +47,6 @@ export class MutableResource<
     return this;
   }
 
-  addMaybe(predicate: NamedNode, value: Maybe<Value>): this {
-    value.ifJust((value) => this.add(predicate, value));
-    return this;
-  }
-
   addList(
     predicate: NamedNode,
     valuesList: Iterable<Value>,
@@ -74,6 +69,11 @@ export class MutableResource<
       );
     }
     return this.add(predicate, listIdentifier);
+  }
+
+  addMaybe(predicate: NamedNode, value: Maybe<Value>): this {
+    value.ifJust((value) => this.add(predicate, value));
+    return this;
   }
 
   delete(predicate: NamedNode, value?: Value): this {

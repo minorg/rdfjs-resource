@@ -288,10 +288,6 @@ export namespace Resource {
       return this.object.termType === "NamedNode" ? Just(this.object) : Nothing;
     }
 
-    toLiteral(): Maybe<Literal> {
-      return this.object.termType === "Literal" ? Just(this.object) : Nothing;
-    }
-
     toList(): Either<Error, readonly Resource.Value[]> {
       const object = this.object;
       switch (object.termType) {
@@ -309,6 +305,10 @@ export namespace Resource {
         default:
           return Left(new Error("object is not an identifier"));
       }
+    }
+
+    toLiteral(): Maybe<Literal> {
+      return this.object.termType === "Literal" ? Just(this.object) : Nothing;
     }
 
     toNamedResource(): Maybe<Resource<NamedNode>> {
