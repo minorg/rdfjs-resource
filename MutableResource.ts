@@ -90,6 +90,8 @@ export class MutableResource<
     items: Iterable<Value>,
     options?: MutableResource.AddListOptions,
   ): this {
+    const addSubListResourceValues =
+      options?.addSubListResourceValues ?? (() => {});
     const mintSubListIdentifier =
       options?.mintSubListIdentifier ?? (() => this.dataFactory.blankNode());
 
@@ -104,6 +106,7 @@ export class MutableResource<
           identifier: mintSubListIdentifier(item, itemIndex),
           mutateGraph: this.mutateGraph,
         });
+        addSubListResourceValues(newHead);
         currentHead.add(rdf.rest, newHead.identifier);
         currentHead = newHead;
       }
