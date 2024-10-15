@@ -1,13 +1,15 @@
 import type { DatasetCore, Quad, Quad_Object, Variable } from "@rdfjs/types";
-import { xsd } from "@tpluscode/rdf-ns-builders";
+import { rdf, xsd } from "@tpluscode/rdf-ns-builders";
 import { DataFactory, Store } from "n3";
 import { Maybe } from "purify-ts";
 import { beforeEach, describe, expect, it } from "vitest";
-import { MutableResource } from "..";
+import { type MutableResource, MutableResourceSet } from "..";
+import { getRdfList } from "../getRdfList";
 
 describe("MutableResource", () => {
   let dataset: DatasetCore;
   let resource: MutableResource;
+  let resourceSet: MutableResourceSet;
 
   const objects: Record<string, Exclude<Quad_Object, Quad | Variable>> = {
     blankNode: DataFactory.blankNode(),
@@ -21,9 +23,11 @@ describe("MutableResource", () => {
 
   beforeEach(() => {
     dataset = new Store();
-    resource = new MutableResource({
+    resourceSet = new MutableResourceSet({
       dataFactory: DataFactory,
       dataset,
+    });
+    resource = resourceSet.mutableNamedResource({
       identifier: DataFactory.namedNode("http://example.com/subject"),
       mutateGraph: DataFactory.defaultGraph(),
     });
@@ -97,4 +101,57 @@ describe("MutableResource", () => {
     expect(values).toHaveLength(1);
     expect(values[0].equals(objects["intLiteral"])).toBe(true);
   });
+
+  for (const terms of [
+    [],
+    [DataFactory.literal("test")],
+    [DataFactory.literal("test"), DataFactory.literal("test")],
+    [
+      DataFactory.literal("test"),
+      DataFactory.literal("test"),
+      DataFactory.literal("test"),
+    ],
+    [
+      DataFactory.literal("test"),
+      DataFactory.literal("test"),
+      DataFactory.literal("test"),
+      DataFactory.literal("test"),
+    ],
+  ]) {
+    it(`should create and read a list of ${terms.length} terms`, ({
+      expect,
+    }) => {
+      const listResource = resource.addList(predicate, terms, {
+        createSubListResource: (_, itemIndex) =>
+          resourceSet.mutableNamedResource({
+            identifier: DataFactory.namedNode(
+              `http://example.com/list${itemIndex.toString()}`,
+            ),
+            mutateGraph: DataFactory.defaultGraph(),
+          }),
+      });
+      if (terms.length === 0) {
+        expect(listResource.identifier.equals(rdf.nil)).toStrictEqual(true);
+      } else {
+        expect(dataset.size).not.toEqual(0);
+      }
+      // Should only have NamedNode identifiers for the pieces of the list
+      const datasetQuads = [...dataset.match(null, null, null, null)];
+      expect(
+        datasetQuads.every(
+          (quad) =>
+            quad.subject.termType === "NamedNode" &&
+            (quad.object.termType === "NamedNode" ||
+              quad.object.termType === "Literal"),
+        ),
+      );
+      const deserializedTerms = [
+        ...getRdfList({ dataset, node: listResource.identifier }),
+      ];
+      expect(deserializedTerms).toHaveLength(terms.length);
+      terms.forEach((term, termI) => {
+        expect(term.equals(deserializedTerms[termI])).toStrictEqual(true);
+      });
+    });
+  }
 });

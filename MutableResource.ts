@@ -1,5 +1,4 @@
 import type {
-  BlankNode,
   DataFactory,
   NamedNode,
   Quad,
@@ -10,7 +9,6 @@ import type {
 import { rdf } from "@tpluscode/rdf-ns-builders";
 import type { Maybe } from "purify-ts";
 import { Resource } from "./Resource.js";
-import { createRdfList } from "./createRdfList.js";
 
 type Value = Exclude<Quad_Object, Quad | Variable>;
 
@@ -47,28 +45,80 @@ export class MutableResource<
     return this;
   }
 
+  /**
+   * Create a new list, add items to it, and attach it to this resource via predicate in a
+   * (this, predicate, newList) statement.
+   *
+   * Returns the list resource.
+   */
   addList(
     predicate: NamedNode,
-    valuesList: Iterable<Value>,
+    items: Iterable<Value>,
+    options?: MutableResource.AddListOptions,
+  ): MutableResource {
+    const itemsArray = [...items];
+    if (itemsArray.length === 0) {
+      return new MutableResource({
+        dataFactory: this.dataFactory,
+        dataset: this.dataset,
+        identifier: rdf.nil,
+        mutateGraph: this.mutateGraph,
+      });
+    }
+
+    const createSubListResource =
+      options?.createSubListResource ??
+      (() =>
+        new MutableResource({
+          dataFactory: this.dataFactory,
+          dataset: this.dataset,
+          identifier: this.dataFactory.blankNode(),
+          mutateGraph: this.mutateGraph,
+        }));
+
+    const listResource = createSubListResource(itemsArray[0], 0);
+    listResource.addListItems(itemsArray, { createSubListResource });
+
+    this.add(predicate, listResource.identifier);
+
+    return listResource;
+  }
+
+  /**
+   * Add rdf:first and rdf:rest predicates to the current MutableResource.
+   */
+  addListItems(
+    items: Iterable<Value>,
     options?: MutableResource.AddListOptions,
   ): this {
-    const listIdentifier = createRdfList({
-      dataFactory: this.dataFactory,
-      dataset: this.dataset,
-      generateIdentifier: options?.generateIdentifier,
-      items: valuesList,
-    });
-    if (options?.rdfType) {
-      this.dataset.add(
-        this.dataFactory.quad(
-          listIdentifier,
-          rdf.type,
-          options.rdfType,
-          this.mutateGraph,
-        ),
-      );
+    const createSubListResource =
+      options?.createSubListResource ??
+      (() =>
+        new MutableResource({
+          dataFactory: this.dataFactory,
+          dataset: this.dataset,
+          identifier: this.dataFactory.blankNode(),
+          mutateGraph: this.mutateGraph,
+        }));
+
+    let currentHead: MutableResource = this;
+    let itemIndex = 0;
+    for (const item of items) {
+      if (itemIndex > 0) {
+        // If currentHead !== this, then create a new head and point the current head's rdf:rest at it
+        const newHead = createSubListResource(item, itemIndex);
+        currentHead.add(rdf.rest, newHead.identifier);
+        currentHead = newHead;
+      }
+      currentHead.add(rdf.first, item);
+      itemIndex++;
     }
-    return this.add(predicate, listIdentifier);
+    if (itemIndex > 0) {
+      // If there were any items there was an rdf:first on the current head
+      // Close that head by adding an rdf:rest rdf:nil
+      currentHead.add(rdf.rest, rdf.nil);
+    }
+    return this;
   }
 
   addMaybe(predicate: NamedNode, value: Maybe<Value>): this {
@@ -98,11 +148,7 @@ export class MutableResource<
 
 export namespace MutableResource {
   export interface AddListOptions {
-    generateIdentifier?: (
-      item: Value,
-      itemIndex: number,
-    ) => BlankNode | NamedNode;
-    rdfType?: NamedNode;
+    createSubListResource?: (item: Value, itemIndex: number) => MutableResource;
   }
 
   export type MutateGraph = Exclude<Quad_Graph, Variable>;
