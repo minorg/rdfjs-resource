@@ -10,9 +10,9 @@ import type {
   Quad_Subject,
   Variable,
 } from "@rdfjs/types";
-import { Either, Just, Left, Maybe, Nothing } from "purify-ts";
+import { rdf } from "@tpluscode/rdf-ns-builders";
+import { type Either, Left, Maybe, Right } from "purify-ts";
 import { fromRdf } from "rdf-literal";
-import { getRdfList } from "./getRdfList.js";
 import { isRdfInstanceOf } from "./isRdfInstanceOf.js";
 
 function defaultValueOfFilter(_valueOf: Resource.ValueOf): boolean {
@@ -57,13 +57,83 @@ export class Resource<
    * Consider the resource itself as an RDF list.
    */
   toList(): Either<Error, readonly Resource.Value[]> {
-    return Either.encase(() =>
-      [
-        ...getRdfList({
-          dataset: this.dataset,
-          node: this.identifier,
-        }),
-      ].map((value) => new Resource.Value(value, this)),
+    if (this.identifier.equals(rdf.nil)) {
+      return Right([]);
+    }
+
+    const firstObjects = [
+      ...new TermSet(
+        [...this.dataset.match(this.identifier, rdf.first, null)].map(
+          (quad) => quad.object,
+        ),
+      ),
+    ];
+    if (firstObjects.length === 0) {
+      return Left(
+        new RangeError(
+          `RDF list ${this.identifier.value} has no rdf:first quad`,
+        ),
+      );
+    }
+    if (firstObjects.length > 1) {
+      return Left(
+        new RangeError(
+          `RDF list ${this.identifier.value} has multiple rdf:first objects: ${JSON.stringify(firstObjects.map((object) => object.value))}`,
+        ),
+      );
+    }
+    const firstObject = firstObjects[0];
+    switch (firstObject.termType) {
+      case "BlankNode":
+      case "Literal":
+      case "NamedNode":
+        break;
+      default:
+        return Left(
+          new RangeError(
+            `rdf:first from ${this.identifier.value} must point to a blank or named node or a literal, not ${firstObject.termType}`,
+          ),
+        );
+    }
+
+    const restObjects = [
+      ...new TermSet(
+        [...this.dataset.match(this.identifier, rdf.rest, null)].map(
+          (quad) => quad.object,
+        ),
+      ),
+    ];
+    if (restObjects.length === 0) {
+      return Left(
+        new RangeError(
+          `RDF list ${this.identifier.value} has no rdf:rest quad`,
+        ),
+      );
+    }
+    if (restObjects.length > 1) {
+      return Left(
+        new RangeError(
+          `RDF list ${this.identifier.value} has multiple rdf:rest objects: ${JSON.stringify(restObjects.map((object) => object.value))}`,
+        ),
+      );
+    }
+    const restObject = restObjects[0];
+    switch (restObject.termType) {
+      case "BlankNode":
+      case "NamedNode":
+        break;
+      default:
+        return Left(
+          new RangeError(
+            `rdf:rest from ${this.identifier.value} must point to a blank or named node, not ${restObject.termType}`,
+          ),
+        );
+    }
+
+    return Right([new Resource.Value(firstObject, this)]).chain((items) =>
+      new Resource({ dataset: this.dataset, identifier: restObject })
+        .toList()
+        .map((restItems) => items.concat(restItems)),
     );
   }
 
@@ -97,10 +167,10 @@ export class Resource<
     const filter_ = options?.filter ?? defaultValueOfFilter;
     for (const valueOf_ of this.valuesOf(property)) {
       if (filter_(valueOf_)) {
-        return Just(valueOf_);
+        return Maybe.of(valueOf_);
       }
     }
-    return Nothing;
+    return Maybe.empty();
   }
 
   /**
@@ -264,13 +334,13 @@ export namespace Resource {
 
     toBoolean(): Maybe<boolean> {
       return this.toPrimitive().chain((primitive) =>
-        typeof primitive === "boolean" ? Just(primitive) : Nothing,
+        typeof primitive === "boolean" ? Maybe.of(primitive) : Maybe.empty(),
       );
     }
 
     toDate(): Maybe<Date> {
       return this.toPrimitive().chain((primitive) =>
-        primitive instanceof Date ? Just(primitive) : Nothing,
+        primitive instanceof Date ? Maybe.of(primitive) : Maybe.empty(),
       );
     }
 
@@ -278,37 +348,28 @@ export namespace Resource {
       switch (this.object.termType) {
         case "BlankNode":
         case "NamedNode":
-          return Just(this.object);
+          return Maybe.of(this.object);
         default:
-          return Nothing;
+          return Maybe.empty();
       }
     }
 
     toIri(): Maybe<NamedNode> {
-      return this.object.termType === "NamedNode" ? Just(this.object) : Nothing;
+      return this.object.termType === "NamedNode"
+        ? Maybe.of(this.object)
+        : Maybe.empty();
     }
 
     toList(): Either<Error, readonly Resource.Value[]> {
-      const object = this.object;
-      switch (object.termType) {
-        case "BlankNode":
-        case "NamedNode": {
-          return Either.encase(() => {
-            return [
-              ...getRdfList({
-                dataset: this.subjectResource.dataset,
-                node: object,
-              }),
-            ].map((value) => new Value(value, this.subjectResource));
-          });
-        }
-        default:
-          return Left(new Error("object is not an identifier"));
-      }
+      return this.toResource()
+        .toEither(new Error("value is not a resource"))
+        .chain((resource) => resource.toList());
     }
 
     toLiteral(): Maybe<Literal> {
-      return this.object.termType === "Literal" ? Just(this.object) : Nothing;
+      return this.object.termType === "Literal"
+        ? Maybe.of(this.object)
+        : Maybe.empty();
     }
 
     toNamedResource(): Maybe<Resource<NamedNode>> {
@@ -323,19 +384,19 @@ export namespace Resource {
 
     toNumber(): Maybe<number> {
       return this.toPrimitive().chain((primitive) =>
-        typeof primitive === "number" ? Just(primitive) : Nothing,
+        typeof primitive === "number" ? Maybe.of(primitive) : Maybe.empty(),
       );
     }
 
     toPrimitive(): Maybe<boolean | Date | number | string> {
       if (this.object.termType !== "Literal") {
-        return Nothing;
+        return Maybe.empty();
       }
 
       try {
-        return Just(fromRdf(this.object, true));
+        return Maybe.of(fromRdf(this.object, true));
       } catch {
-        return Nothing;
+        return Maybe.empty();
       }
     }
 
@@ -348,7 +409,9 @@ export namespace Resource {
 
     toString(): Maybe<string> {
       return this.toPrimitive().chain((primitive) =>
-        typeof primitive === "string" ? Just(primitive as string) : Nothing,
+        typeof primitive === "string"
+          ? Maybe.of(primitive as string)
+          : Maybe.empty(),
       );
     }
 
@@ -373,8 +436,8 @@ export namespace Resource {
 
     toIri(): Maybe<NamedNode> {
       return this.subject.termType === "NamedNode"
-        ? Just(this.subject)
-        : Nothing;
+        ? Maybe.of(this.subject)
+        : Maybe.empty();
     }
 
     toNamedResource(): Maybe<Resource<NamedNode>> {

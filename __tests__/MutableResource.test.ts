@@ -4,7 +4,6 @@ import { DataFactory, Store } from "n3";
 import { Maybe } from "purify-ts";
 import { beforeEach, describe, expect, it } from "vitest";
 import { type MutableResource, MutableResourceSet } from "..";
-import { getRdfList } from "../getRdfList";
 
 describe("MutableResource", () => {
   let dataset: DatasetCore;
@@ -146,7 +145,10 @@ describe("MutableResource", () => {
         ),
       );
       const deserializedTerms = [
-        ...getRdfList({ dataset, node: listResource.identifier }),
+        ...listResource
+          .toList()
+          .unsafeCoerce()
+          .map((value) => value.toTerm()),
       ];
       expect(deserializedTerms).toHaveLength(terms.length);
       terms.forEach((term, termI) => {

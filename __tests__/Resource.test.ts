@@ -1,8 +1,15 @@
-import type { Quad, Quad_Object, Variable } from "@rdfjs/types";
+import type {
+  BlankNode,
+  Literal,
+  NamedNode,
+  Quad,
+  Quad_Object,
+  Variable,
+} from "@rdfjs/types";
 import { schema, xsd } from "@tpluscode/rdf-ns-builders";
-import N3, { DataFactory, Store } from "n3";
+import N3, { DataFactory, Parser, Store } from "n3";
 import { beforeAll, describe, it } from "vitest";
-import { MutableResource, type Resource, ResourceSet } from "..";
+import { MutableResource, Resource, ResourceSet } from "..";
 import { houseMdDataset } from "./houseMdDataset";
 
 describe("Resource", () => {
@@ -25,12 +32,13 @@ describe("Resource", () => {
   };
 
   const predicate = DataFactory.namedNode("http://example.com/predicate");
+  const subject = DataFactory.namedNode("http://example.com/subject");
 
   beforeAll(() => {
     mutableResource = new MutableResource({
       dataFactory: DataFactory,
       dataset: new Store(),
-      identifier: DataFactory.namedNode("http://example.com/subject"),
+      identifier: subject,
       mutateGraph: DataFactory.defaultGraph(),
     });
     for (const object of Object.values(objects)) {
@@ -201,5 +209,50 @@ describe("Resource", () => {
         valuesOf[0].toIdentifier().equals(mutableResource.identifier),
       ).toBe(true);
     }
+  });
+
+  const parseAndGetRdfList = (
+    ttl: string,
+  ): readonly (BlankNode | Literal | NamedNode)[] => {
+    const dataset = new Store();
+    dataset.addQuads(new Parser({ format: "Turtle" }).parse(ttl));
+    return new Resource({
+      dataset,
+      identifier: [...dataset.match(subject, predicate, null, null)][0]
+        .object as BlankNode | NamedNode,
+    })
+      .toList()
+      .unsafeCoerce()
+      .map((value) => value.toTerm());
+  };
+
+  it("should read an empty list", ({ expect }) => {
+    expect(parseAndGetRdfList(`<${subject.value}> <${predicate.value}> ( ) .`))
+      .to.be.empty;
+  });
+
+  it("should read a list with one literal", ({ expect }) => {
+    const list = parseAndGetRdfList(
+      `<${subject.value}> <${predicate.value}> ( "test" ) .`,
+    );
+    expect(list).to.have.length(1);
+    expect(list[0].value).to.eq("test");
+  });
+
+  it("should read a list with two literals", ({ expect }) => {
+    const list = parseAndGetRdfList(
+      `<${subject.value}> <${predicate.value}> ( "test" "test2" ) .`,
+    );
+    expect(list).to.have.length(2);
+    expect(list[0].value).to.eq("test");
+    expect(list[1].value).to.eq("test2");
+  });
+
+  it("should read a list with blank nodes", ({ expect }) => {
+    expect(
+      parseAndGetRdfList(
+        `<${subject.value}> <${predicate.value}> ( [ ] [ ] ) .`,
+      ),
+    ).to.have.length(2);
   });
 });
