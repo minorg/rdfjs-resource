@@ -121,13 +121,10 @@ describe("MutableResource", () => {
       expect,
     }) => {
       const listResource = resource.addList(predicate, terms, {
-        createSubListResource: (_, itemIndex) =>
-          resourceSet.mutableNamedResource({
-            identifier: DataFactory.namedNode(
-              `http://example.com/list${itemIndex.toString()}`,
-            ),
-            mutateGraph: DataFactory.defaultGraph(),
-          }),
+        mintSubListIdentifier: (_, itemIndex) =>
+          DataFactory.namedNode(
+            `http://example.com/list${itemIndex.toString()}`,
+          ),
       });
       if (terms.length === 0) {
         expect(listResource.identifier.equals(rdf.nil)).toStrictEqual(true);

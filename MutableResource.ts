@@ -1,4 +1,5 @@
 import type {
+  BlankNode,
   DataFactory,
   NamedNode,
   Quad,
@@ -66,18 +67,16 @@ export class MutableResource<
       });
     }
 
-    const createSubListResource =
-      options?.createSubListResource ??
-      (() =>
-        new MutableResource({
-          dataFactory: this.dataFactory,
-          dataset: this.dataset,
-          identifier: this.dataFactory.blankNode(),
-          mutateGraph: this.mutateGraph,
-        }));
+    const mintSubListIdentifier =
+      options?.mintSubListIdentifier ?? (() => this.dataFactory.blankNode());
 
-    const listResource = createSubListResource(itemsArray[0], 0);
-    listResource.addListItems(itemsArray, { createSubListResource });
+    const listResource = new MutableResource({
+      dataFactory: this.dataFactory,
+      dataset: this.dataset,
+      identifier: mintSubListIdentifier(itemsArray[0], 0),
+      mutateGraph: this.mutateGraph,
+    });
+    listResource.addListItems(itemsArray, { mintSubListIdentifier });
 
     this.add(predicate, listResource.identifier);
 
@@ -91,22 +90,20 @@ export class MutableResource<
     items: Iterable<Value>,
     options?: MutableResource.AddListOptions,
   ): this {
-    const createSubListResource =
-      options?.createSubListResource ??
-      (() =>
-        new MutableResource({
-          dataFactory: this.dataFactory,
-          dataset: this.dataset,
-          identifier: this.dataFactory.blankNode(),
-          mutateGraph: this.mutateGraph,
-        }));
+    const mintSubListIdentifier =
+      options?.mintSubListIdentifier ?? (() => this.dataFactory.blankNode());
 
     let currentHead: MutableResource = this;
     let itemIndex = 0;
     for (const item of items) {
       if (itemIndex > 0) {
         // If currentHead !== this, then create a new head and point the current head's rdf:rest at it
-        const newHead = createSubListResource(item, itemIndex);
+        const newHead = new MutableResource({
+          dataFactory: this.dataFactory,
+          dataset: this.dataset,
+          identifier: mintSubListIdentifier(item, itemIndex),
+          mutateGraph: this.mutateGraph,
+        });
         currentHead.add(rdf.rest, newHead.identifier);
         currentHead = newHead;
       }
@@ -148,7 +145,11 @@ export class MutableResource<
 
 export namespace MutableResource {
   export interface AddListOptions {
-    createSubListResource?: (item: Value, itemIndex: number) => MutableResource;
+    addSubListResourceValues?: (subListResource: MutableResource) => void;
+    mintSubListIdentifier?: (
+      item: Value,
+      itemIndex: number,
+    ) => BlankNode | NamedNode;
   }
 
   export type MutateGraph = Exclude<Quad_Graph, Variable>;
