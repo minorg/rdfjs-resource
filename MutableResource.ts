@@ -9,9 +9,15 @@ import type {
 } from "@rdfjs/types";
 import { rdf } from "@tpluscode/rdf-ns-builders";
 import type { Maybe } from "purify-ts";
+import { toRdf } from "rdf-literal";
 import { Resource } from "./Resource.js";
 
-type Value = Exclude<Quad_Object, Quad | Variable>;
+type Value =
+  | Exclude<Quad_Object, Quad | Variable>
+  | boolean
+  | Date
+  | number
+  | string;
 
 /**
  * Resource subclass with operations to mutate the underlying dataset.
@@ -39,7 +45,7 @@ export class MutableResource<
       this.dataFactory.quad(
         this.identifier,
         predicate,
-        value,
+        this.valueToTerm(value),
         this.mutateGraph,
       ),
     );
@@ -131,7 +137,7 @@ export class MutableResource<
       ...this.dataset.match(
         this.identifier,
         predicate,
-        value,
+        typeof value !== "undefined" ? this.valueToTerm(value) : undefined,
         this.mutateGraph,
       ),
     ]) {
@@ -143,6 +149,20 @@ export class MutableResource<
   set(predicate: NamedNode, value: Value): this {
     this.delete(predicate);
     return this.add(predicate, value);
+  }
+
+  private valueToTerm(value: Value): Exclude<Quad_Object, Quad | Variable> {
+    switch (typeof value) {
+      case "boolean":
+      case "number":
+      case "string":
+        return toRdf(value, { dataFactory: this.dataFactory });
+      case "object":
+        if (value instanceof Date) {
+          return toRdf(value, { dataFactory: this.dataFactory });
+        }
+        return value;
+    }
   }
 }
 
