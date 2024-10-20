@@ -7,7 +7,7 @@ import { ResourceSet } from "./ResourceSet.js";
  * A ResourceSet wraps an RDF/JS dataset with convenient resource factory methods.
  */
 export class MutableResourceSet extends ResourceSet {
-  protected readonly dataFactory: DataFactory;
+  readonly dataFactory: DataFactory;
 
   constructor({
     dataFactory,
