@@ -11,7 +11,7 @@ import type {
   Variable,
 } from "@rdfjs/types";
 import { rdf } from "@tpluscode/rdf-ns-builders";
-import { type Either, Left, Maybe, Right } from "purify-ts";
+import { type Either, Left, Right } from "purify-ts";
 import { fromRdf } from "rdf-literal";
 import { isRdfInstanceOf } from "./isRdfInstanceOf.js";
 
@@ -56,7 +56,7 @@ export class Resource<
   /**
    * Consider the resource itself as an RDF list.
    */
-  toList(): Either<Error, readonly Resource.Value[]> {
+  toList(): Either<Resource.ValueError, readonly Resource.Value[]> {
     if (this.identifier.equals(rdf.nil)) {
       return Right([]);
     }
@@ -70,16 +70,19 @@ export class Resource<
     ];
     if (firstObjects.length === 0) {
       return Left(
-        new RangeError(
-          `RDF list ${this.identifier.value} has no rdf:first quad`,
-        ),
+        new Resource.MissingValueError({
+          focusResource: this,
+          predicate: rdf.first,
+        }),
       );
     }
     if (firstObjects.length > 1) {
       return Left(
-        new RangeError(
-          `RDF list ${this.identifier.value} has multiple rdf:first objects: ${JSON.stringify(firstObjects.map((object) => object.value))}`,
-        ),
+        new Resource.MultipleValueError({
+          focusResource: this,
+          predicate: rdf.first,
+          values: firstObjects,
+        }),
       );
     }
     const firstObject = firstObjects[0];
@@ -90,9 +93,12 @@ export class Resource<
         break;
       default:
         return Left(
-          new RangeError(
-            `rdf:first from ${this.identifier.value} must point to a blank or named node or a literal, not ${firstObject.termType}`,
-          ),
+          new Resource.MistypedValueError({
+            actualValue: firstObject,
+            expectedValueType: "BlankNode | NamedNode",
+            focusResource: this,
+            predicate: rdf.first,
+          }),
         );
     }
 
@@ -105,16 +111,19 @@ export class Resource<
     ];
     if (restObjects.length === 0) {
       return Left(
-        new RangeError(
-          `RDF list ${this.identifier.value} has no rdf:rest quad`,
-        ),
+        new Resource.MissingValueError({
+          focusResource: this,
+          predicate: rdf.rest,
+        }),
       );
     }
     if (restObjects.length > 1) {
       return Left(
-        new RangeError(
-          `RDF list ${this.identifier.value} has multiple rdf:rest objects: ${JSON.stringify(restObjects.map((object) => object.value))}`,
-        ),
+        new Resource.MultipleValueError({
+          focusResource: this,
+          predicate: rdf.rest,
+          values: restObjects,
+        }),
       );
     }
     const restObject = restObjects[0];
@@ -124,60 +133,74 @@ export class Resource<
         break;
       default:
         return Left(
-          new RangeError(
-            `rdf:rest from ${this.identifier.value} must point to a blank or named node, not ${restObject.termType}`,
-          ),
+          new Resource.MistypedValueError({
+            actualValue: restObject,
+            expectedValueType: "BlankNode | NamedNode",
+            focusResource: this,
+            predicate: rdf.rest,
+          }),
         );
     }
 
-    return Right([new Resource.Value(firstObject, this)]).chain((items) =>
-      new Resource({ dataset: this.dataset, identifier: restObject })
-        .toList()
-        .map((restItems) => items.concat(restItems)),
+    return Right([new Resource.Value(this, rdf.first, firstObject)]).chain(
+      (items) =>
+        new Resource({ dataset: this.dataset, identifier: restObject })
+          .toList()
+          .map((restItems) => items.concat(restItems)),
     );
   }
 
   /**
-   * Get the first matching value of dataset statements (this.identifier, property, value).
+   * Get the first matching value of dataset statements (this.identifier, predicate, value).
    */
   value(
-    property: NamedNode,
+    predicate: NamedNode,
     options?: {
       filter?: (value: Resource.Value) => boolean;
     },
-  ): Maybe<Resource.Value> {
+  ): Either<Resource.ValueError, Resource.Value> {
     const filter_ = options?.filter ?? defaultValueFilter;
-    for (const value of this.values(property)) {
+    for (const value of this.values(predicate)) {
       if (filter_(value)) {
-        return Maybe.of(value);
+        return Right(value);
       }
     }
-    return Maybe.empty();
+    return Left(
+      new Resource.MissingValueError({
+        focusResource: this,
+        predicate,
+      }),
+    );
   }
 
   /**
-   * Get the first matching subject of dataset statements (subject, property, this.identifier).
+   * Get the first matching subject of dataset statements (subject, predicate, this.identifier).
    */
   valueOf(
-    property: NamedNode,
+    predicate: NamedNode,
     options?: {
       filter?: (subject: Resource.ValueOf) => boolean;
     },
-  ): Maybe<Resource.ValueOf> {
+  ): Either<Resource.ValueError, Resource.ValueOf> {
     const filter_ = options?.filter ?? defaultValueOfFilter;
-    for (const valueOf_ of this.valuesOf(property)) {
+    for (const valueOf_ of this.valuesOf(predicate)) {
       if (filter_(valueOf_)) {
-        return Maybe.of(valueOf_);
+        return Right(valueOf_);
       }
     }
-    return Maybe.empty();
+    return Left(
+      new Resource.MissingValueError({
+        focusResource: this,
+        predicate,
+      }),
+    );
   }
 
   /**
-   * Get all values of dataset statements (this.identifier, property, value).
+   * Get all values of dataset statements (this.identifier, predicate, value).
    */
   *values(
-    property: NamedNode,
+    predicate: NamedNode,
     options?: { unique?: boolean },
   ): Generator<Resource.Value> {
     const uniqueObjects = options?.unique
@@ -186,7 +209,7 @@ export class Resource<
 
     for (const quad of this.dataset.match(
       this.identifier,
-      property,
+      predicate,
       null,
       null,
     )) {
@@ -198,10 +221,10 @@ export class Resource<
             if (uniqueObjects.has(quad.object)) {
               continue;
             }
-            yield new Resource.Value(quad.object, this);
+            yield new Resource.Value(this, predicate, quad.object);
             uniqueObjects.add(quad.object);
           } else {
-            yield new Resource.Value(quad.object, this);
+            yield new Resource.Value(this, predicate, quad.object);
           }
           break;
       }
@@ -209,10 +232,10 @@ export class Resource<
   }
 
   /**
-   * Get the first subject of dataset statements (subject, property, this.identifier).
+   * Get the first subject of dataset statements (subject, predicate, this.identifier).
    */
   *valuesOf(
-    property: NamedNode,
+    predicate: NamedNode,
     options?: { unique: true },
   ): Generator<Resource.ValueOf> {
     const uniqueSubjects = options?.unique
@@ -220,7 +243,7 @@ export class Resource<
       : undefined;
     for (const quad of this.dataset.match(
       null,
-      property,
+      predicate,
       this.identifier,
       null,
     )) {
@@ -231,10 +254,10 @@ export class Resource<
             if (uniqueSubjects.has(quad.subject)) {
               continue;
             }
-            yield new Resource.ValueOf(this, quad.subject);
+            yield new Resource.ValueOf(quad.subject, predicate, this);
             uniqueSubjects.add(quad.subject);
           } else {
-            yield new Resource.ValueOf(this, quad.subject);
+            yield new Resource.ValueOf(quad.subject, predicate, this);
           }
           break;
       }
@@ -286,16 +309,17 @@ export namespace Resource {
 
   export class Value {
     constructor(
+      private readonly subject: Resource,
+      private readonly predicate: NamedNode,
       private readonly object: Exclude<Quad_Object, Quad | Variable>,
-      private readonly subjectResource: Resource,
     ) {}
 
     isBoolean(): boolean {
-      return this.toBoolean().isJust();
+      return this.toBoolean().isRight();
     }
 
     isDate(): boolean {
-      return this.toDate().isJust();
+      return this.toDate().isRight();
     }
 
     isIdentifier(): boolean {
@@ -321,109 +345,222 @@ export namespace Resource {
     }
 
     isNumber(): boolean {
-      return this.toNumber().isJust();
+      return this.toNumber().isRight();
     }
 
     isPrimitive(): boolean {
-      return this.toPrimitive().isJust();
+      return this.toPrimitive().isRight();
     }
 
     isString(): boolean {
-      return this.toString().isJust();
+      return this.toString().isRight();
     }
 
-    toBoolean(): Maybe<boolean> {
+    toBoolean(): Either<Resource.MistypedValueError, boolean> {
       return this.toPrimitive().chain((primitive) =>
-        typeof primitive === "boolean" ? Maybe.of(primitive) : Maybe.empty(),
+        typeof primitive === "boolean"
+          ? Right(primitive)
+          : Left(this.newMistypedValueError("boolean")),
       );
     }
 
-    toDate(): Maybe<Date> {
+    toDate(): Either<Resource.MistypedValueError, Date> {
       return this.toPrimitive().chain((primitive) =>
-        primitive instanceof Date ? Maybe.of(primitive) : Maybe.empty(),
+        primitive instanceof Date
+          ? Right(primitive)
+          : Left(this.newMistypedValueError("Date")),
       );
     }
 
-    toIdentifier(): Maybe<Resource.Identifier> {
+    toIdentifier(): Either<Resource.MistypedValueError, Resource.Identifier> {
       switch (this.object.termType) {
         case "BlankNode":
         case "NamedNode":
-          return Maybe.of(this.object);
+          return Right(this.object);
         default:
-          return Maybe.empty();
+          return Left(this.newMistypedValueError("BlankNode|NamedNode"));
       }
     }
 
-    toIri(): Maybe<NamedNode> {
+    toIri(): Either<Resource.MistypedValueError, NamedNode> {
       return this.object.termType === "NamedNode"
-        ? Maybe.of(this.object)
-        : Maybe.empty();
+        ? Right(this.object)
+        : Left(this.newMistypedValueError("NamedNode"));
     }
 
-    toList(): Either<Error, readonly Resource.Value[]> {
-      return this.toResource()
-        .toEither(new Error("value is not a resource"))
-        .chain((resource) => resource.toList());
+    toList(): Either<Resource.ValueError, readonly Resource.Value[]> {
+      return this.toResource().chain((resource) => resource.toList());
     }
 
-    toLiteral(): Maybe<Literal> {
+    toLiteral(): Either<Resource.MistypedValueError, Literal> {
       return this.object.termType === "Literal"
-        ? Maybe.of(this.object)
-        : Maybe.empty();
+        ? Right(this.object)
+        : Left(this.newMistypedValueError("Literal"));
     }
 
-    toNamedResource(): Maybe<Resource<NamedNode>> {
+    toNamedResource(): Either<
+      Resource.MistypedValueError,
+      Resource<NamedNode>
+    > {
       return this.toIri().map(
         (identifier) =>
           new Resource<NamedNode>({
-            dataset: this.subjectResource.dataset,
+            dataset: this.subject.dataset,
             identifier,
           }),
       );
     }
 
-    toNumber(): Maybe<number> {
+    toNumber(): Either<Resource.MistypedValueError, number> {
       return this.toPrimitive().chain((primitive) =>
-        typeof primitive === "number" ? Maybe.of(primitive) : Maybe.empty(),
+        typeof primitive === "number"
+          ? Right(primitive)
+          : Left(this.newMistypedValueError("number")),
       );
     }
 
-    toPrimitive(): Maybe<boolean | Date | number | string> {
+    toPrimitive(): Either<
+      Resource.MistypedValueError,
+      boolean | Date | number | string
+    > {
       if (this.object.termType !== "Literal") {
-        return Maybe.empty();
+        return Left(
+          new Resource.MistypedValueError({
+            actualValue: this.object,
+            expectedValueType: "Literal",
+            focusResource: this.subject,
+            predicate: this.predicate,
+          }),
+        );
       }
 
       try {
-        return Maybe.of(fromRdf(this.object, true));
+        return Right(fromRdf(this.object, true));
       } catch {
-        return Maybe.empty();
+        return Left(
+          new Resource.MistypedValueError({
+            actualValue: this.object,
+            expectedValueType: "primitive",
+            focusResource: this.subject,
+            predicate: this.predicate,
+          }),
+        );
       }
     }
 
-    toResource(): Maybe<Resource> {
+    toResource(): Either<Resource.MistypedValueError, Resource> {
       return this.toIdentifier().map(
         (identifier) =>
-          new Resource({ dataset: this.subjectResource.dataset, identifier }),
+          new Resource({ dataset: this.subject.dataset, identifier }),
       );
     }
 
-    toString(): Maybe<string> {
+    toString(): Either<Resource.MistypedValueError, string> {
       return this.toPrimitive().chain((primitive) =>
         typeof primitive === "string"
-          ? Maybe.of(primitive as string)
-          : Maybe.empty(),
+          ? Right(primitive as string)
+          : Left(this.newMistypedValueError("string")),
       );
     }
 
     toTerm(): Exclude<Quad_Object, Quad | Variable> {
       return this.object;
     }
+
+    private newMistypedValueError(
+      expectedValueType: string,
+    ): Resource.MistypedValueError {
+      return new Resource.MistypedValueError({
+        actualValue: this.object,
+        expectedValueType,
+        focusResource: this.subject,
+        predicate: this.predicate,
+      });
+    }
+  }
+
+  export class ValueError extends Error {
+    readonly focusResource: Resource;
+    readonly predicate: NamedNode;
+
+    constructor({
+      focusResource,
+      message,
+      predicate,
+    }: { focusResource: Resource; message: string; predicate: NamedNode }) {
+      super(message);
+      this.focusResource = focusResource;
+      this.predicate = predicate;
+    }
+  }
+
+  export class MissingValueError extends ValueError {
+    constructor({
+      focusResource,
+      predicate,
+    }: {
+      focusResource: Resource;
+      predicate: NamedNode;
+    }) {
+      super({
+        focusResource,
+        message: `${Identifier.toString(focusResource.identifier)} missing ${predicate.value}`,
+        predicate,
+      });
+    }
+  }
+
+  export class MistypedValueError extends ValueError {
+    readonly actualValue: Exclude<Quad_Object, "Variable">;
+    readonly expectedValueType: string;
+
+    constructor({
+      actualValue,
+      expectedValueType,
+      focusResource,
+      predicate,
+    }: {
+      actualValue: Exclude<Quad_Object, "Variable">;
+      expectedValueType: string;
+      focusResource: Resource;
+      predicate: NamedNode;
+    }) {
+      super({
+        focusResource,
+        message: `expected ${Identifier.toString(focusResource.identifier)} ${predicate.value} to be a ${expectedValueType}, was ${actualValue.termType}`,
+        predicate,
+      });
+      this.actualValue = actualValue;
+      this.expectedValueType = expectedValueType;
+    }
+  }
+
+  export class MultipleValueError extends ValueError {
+    readonly values: readonly Exclude<Quad_Object, "Variable">[];
+
+    constructor({
+      focusResource,
+      predicate,
+      values,
+    }: {
+      focusResource: Resource;
+      predicate: NamedNode;
+      values: readonly Exclude<Quad_Object, "Variable">[];
+    }) {
+      super({
+        focusResource,
+        message: `${Identifier.toString(focusResource.identifier)} has multiple ${predicate.value} values: ${JSON.stringify(values.map((object) => object.value))}`,
+        predicate,
+      });
+      this.values = values;
+    }
   }
 
   export class ValueOf {
     constructor(
-      private readonly objectResource: Resource,
       private readonly subject: Exclude<Quad_Subject, Quad | Variable>,
+      private readonly predicate: NamedNode,
+      private readonly object: Resource,
     ) {}
 
     isIri(): boolean {
@@ -434,17 +571,20 @@ export namespace Resource {
       return this.subject;
     }
 
-    toIri(): Maybe<NamedNode> {
+    toIri(): Either<Resource.MistypedValueError, NamedNode> {
       return this.subject.termType === "NamedNode"
-        ? Maybe.of(this.subject)
-        : Maybe.empty();
+        ? Right(this.subject)
+        : Left(this.newMistypedValueError("NamedNode"));
     }
 
-    toNamedResource(): Maybe<Resource<NamedNode>> {
+    toNamedResource(): Either<
+      Resource.MistypedValueError,
+      Resource<NamedNode>
+    > {
       return this.toIri().map(
         (identifier) =>
           new Resource<NamedNode>({
-            dataset: this.objectResource.dataset,
+            dataset: this.object.dataset,
             identifier,
           }),
       );
@@ -452,13 +592,24 @@ export namespace Resource {
 
     toResource(): Resource {
       return new Resource({
-        dataset: this.objectResource.dataset,
+        dataset: this.object.dataset,
         identifier: this.subject,
       });
     }
 
     toTerm(): Exclude<Quad_Subject, Quad | Variable> {
       return this.subject;
+    }
+
+    private newMistypedValueError(
+      expectedValueType: string,
+    ): Resource.MistypedValueError {
+      return new Resource.MistypedValueError({
+        actualValue: this.subject,
+        expectedValueType,
+        focusResource: this.object,
+        predicate: this.predicate,
+      });
     }
   }
 }
