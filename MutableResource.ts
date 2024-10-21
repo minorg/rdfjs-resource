@@ -12,7 +12,7 @@ import type { Maybe } from "purify-ts";
 import { toRdf } from "rdf-literal";
 import { Resource } from "./Resource.js";
 
-type Value =
+type AddableValue =
   | Exclude<Quad_Object, Quad | Variable>
   | boolean
   | Date
@@ -40,12 +40,12 @@ export class MutableResource<
     this.mutateGraph = mutateGraph;
   }
 
-  add(predicate: NamedNode, value: Value): this {
+  add(predicate: NamedNode, value: AddableValue): this {
     this.dataset.add(
       this.dataFactory.quad(
         this.identifier,
         predicate,
-        this.valueToTerm(value),
+        this.addableValueToTerm(value),
         this.mutateGraph,
       ),
     );
@@ -60,7 +60,7 @@ export class MutableResource<
    */
   addList(
     predicate: NamedNode,
-    items: Iterable<Value>,
+    items: Iterable<AddableValue>,
     options?: MutableResource.AddListOptions,
   ): MutableResource {
     const itemsArray = [...items];
@@ -93,7 +93,7 @@ export class MutableResource<
    * Add rdf:first and rdf:rest predicates to the current MutableResource.
    */
   addListItems(
-    items: Iterable<Value>,
+    items: Iterable<AddableValue>,
     options?: MutableResource.AddListOptions,
   ): this {
     const addSubListResourceValues =
@@ -127,17 +127,19 @@ export class MutableResource<
     return this;
   }
 
-  addMaybe(predicate: NamedNode, value: Maybe<Value>): this {
+  addMaybe(predicate: NamedNode, value: Maybe<AddableValue>): this {
     value.ifJust((value) => this.add(predicate, value));
     return this;
   }
 
-  delete(predicate: NamedNode, value?: Value): this {
+  delete(predicate: NamedNode, value?: AddableValue): this {
     for (const quad of [
       ...this.dataset.match(
         this.identifier,
         predicate,
-        typeof value !== "undefined" ? this.valueToTerm(value) : undefined,
+        typeof value !== "undefined"
+          ? this.addableValueToTerm(value)
+          : undefined,
         this.mutateGraph,
       ),
     ]) {
@@ -146,12 +148,14 @@ export class MutableResource<
     return this;
   }
 
-  set(predicate: NamedNode, value: Value): this {
+  set(predicate: NamedNode, value: AddableValue): this {
     this.delete(predicate);
     return this.add(predicate, value);
   }
 
-  private valueToTerm(value: Value): Exclude<Quad_Object, Quad | Variable> {
+  private addableValueToTerm(
+    value: AddableValue,
+  ): Exclude<Quad_Object, Quad | Variable> {
     switch (typeof value) {
       case "boolean":
       case "number":
@@ -170,7 +174,7 @@ export namespace MutableResource {
   export interface AddListOptions {
     addSubListResourceValues?: (subListResource: MutableResource) => void;
     mintSubListIdentifier?: (
-      item: Value,
+      item: AddableValue,
       itemIndex: number,
     ) => BlankNode | NamedNode;
   }
