@@ -57,8 +57,10 @@ describe("MutableResource", () => {
     expect([...resource.values(predicate)]).toHaveLength(1);
     const list = resource
       .value(predicate)
-      .chain((value) => value.toList().toMaybe())
-      .map((values) => values.flatMap((value) => value.toLiteral().toList()))
+      .chain((value) => value.toList())
+      .map((values) =>
+        values.flatMap((value) => value.toLiteral().toMaybe().toList()),
+      )
       .orDefault([]);
     expect(list).toHaveLength(2);
     expect(

@@ -54,6 +54,7 @@ describe("Resource", () => {
     expect(
       mutableResource
         .value(DataFactory.namedNode("http://example.com/nonexistent"))
+        .toMaybe()
         .extract(),
     ).toBeUndefined();
   });
@@ -64,6 +65,7 @@ describe("Resource", () => {
         .filter((value) => value.isIri())
         .at(0)
         ?.toIri()
+        .toMaybe()
         .extract()?.value,
     ).toStrictEqual(objects["namedNode"].value);
   });
@@ -71,6 +73,7 @@ describe("Resource", () => {
   it("should get a value (filtered)", ({ expect }) => {
     const value = mutableResource
       .value(predicate, { filter: (value) => value.isIri() })
+      .toMaybe()
       .extract();
     expect(value?.isIri()).toBe(true);
   });
@@ -87,7 +90,7 @@ describe("Resource", () => {
 
   it("should get identifier values", ({ expect }) => {
     const values = [...mutableResource.values(predicate)].flatMap((value) =>
-      value.toIdentifier().toList(),
+      value.toIdentifier().toMaybe().toList(),
     );
     expect(values).toHaveLength(2);
     expect(
@@ -128,14 +131,14 @@ describe("Resource", () => {
   it("should get Date values", ({ expect }) => {
     expect(
       [...mutableResource.values(predicate)].flatMap((value) =>
-        value.toDate().toList(),
+        value.toDate().toMaybe().toList(),
       ),
     ).toHaveLength(2);
   });
 
   it("should get IRI values", ({ expect }) => {
     const values = [...mutableResource.values(predicate)].flatMap((value) =>
-      value.toIri().toList(),
+      value.toIri().toMaybe().toList(),
     );
     expect(values).toHaveLength(1);
     expect(values[0].equals(objects["namedNode"])).toStrictEqual(true);
@@ -144,14 +147,14 @@ describe("Resource", () => {
   it("should get literal values", ({ expect }) => {
     expect(
       [...mutableResource.values(predicate)].flatMap((value) =>
-        value.toLiteral().toList(),
+        value.toLiteral().toMaybe().toList(),
       ),
     ).toHaveLength(5);
   });
 
   it("should get primitive values", ({ expect }) => {
     const primitives = [...mutableResource.values(predicate)].flatMap((value) =>
-      value.toPrimitive().toList(),
+      value.toPrimitive().toMaybe().toList(),
     );
     expect(primitives).toHaveLength(5);
     expect(
@@ -170,7 +173,7 @@ describe("Resource", () => {
 
   it("should get resource values", ({ expect }) => {
     const values = [...mutableResource.values(predicate)].flatMap((value) =>
-      value.toResource().toList(),
+      value.toResource().toMaybe().toList(),
     );
     expect(values).toHaveLength(2);
     expect(
@@ -183,7 +186,7 @@ describe("Resource", () => {
 
   it("should get a valueOf", ({ expect }) => {
     const resourceValues = [...mutableResource.values(predicate)].flatMap(
-      (value) => value.toResource().toList(),
+      (value) => value.toResource().toMaybe().toList(),
     );
     expect(resourceValues).toHaveLength(2);
     for (const resourceValue of resourceValues) {
@@ -199,7 +202,7 @@ describe("Resource", () => {
 
   it("should get a valuesOf", ({ expect }) => {
     const resourceValues = [...mutableResource.values(predicate)].flatMap(
-      (value) => value.toResource().toList(),
+      (value) => value.toResource().toMaybe().toList(),
     );
     expect(resourceValues).toHaveLength(2);
     for (const resourceValue of resourceValues) {
