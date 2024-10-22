@@ -19,9 +19,6 @@
     "typescript": "~5.6",
     "vitest": "^2.0.5"
   },
-  "engines": {
-    "node": ">=20"
-  },
   "main": "index.js",
   "files": ["*.d.ts", "*.js"],
   "license": "Apache-2.0",
