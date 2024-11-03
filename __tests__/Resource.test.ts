@@ -6,9 +6,9 @@ import type {
   Quad_Object,
   Variable,
 } from "@rdfjs/types";
-import { schema, xsd } from "@tpluscode/rdf-ns-builders";
+import { rdf, rdfs, schema, skos, xsd } from "@tpluscode/rdf-ns-builders";
 import N3, { DataFactory, Parser, Store } from "n3";
-import { beforeAll, describe, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { MutableResource, Resource, ResourceSet } from "..";
 import { houseMdDataset } from "./houseMdDataset";
 
@@ -48,6 +48,93 @@ describe("Resource", () => {
 
   it("should check instance of with rdf:type", ({ expect }) => {
     expect(immutableResource.isInstanceOf(schema.Person)).toStrictEqual(true);
+  });
+
+  describe("isInstanceOf", () => {
+    const dataset = new Store();
+    const class_ = skos.Concept;
+    const classInstance = new MutableResource({
+      dataFactory: DataFactory,
+      dataset,
+      identifier: DataFactory.blankNode(),
+      mutateGraph: DataFactory.defaultGraph(),
+    });
+    classInstance.add(rdf.type, class_);
+    const subClass = DataFactory.namedNode(
+      "http://example.com/ConceptSubclass",
+    );
+    const subClassInstance = new MutableResource({
+      dataFactory: DataFactory,
+      dataset,
+      identifier: DataFactory.blankNode(),
+      mutateGraph: DataFactory.defaultGraph(),
+    });
+    subClassInstance.add(rdf.type, subClass);
+    dataset.addQuad(DataFactory.quad(subClass, rdfs.subClassOf, class_));
+
+    it("should find a class instance", () => {
+      expect(classInstance.isInstanceOf(class_)).toStrictEqual(true);
+    });
+
+    it("should find a subclass instance if excludeSubclasses is false", () => {
+      expect(
+        subClassInstance.isInstanceOf(class_, { excludeSubclasses: false }),
+      ).toStrictEqual(true);
+    });
+
+    it("should not find a subclass instance if excludeSubclasses is true", () => {
+      expect(
+        subClassInstance.isInstanceOf(class_, { excludeSubclasses: true }),
+      ).toStrictEqual(false);
+    });
+
+    it("should handle the negative case", () => {
+      expect(
+        new Resource({
+          dataset,
+          identifier: DataFactory.blankNode(),
+        }).isInstanceOf(class_),
+      ).toStrictEqual(false);
+    });
+  });
+
+  it("isSubClassOf (positive case)", () => {
+    const dataset = new Store();
+    const class_ = skos.Concept;
+    const subClass = new MutableResource<NamedNode>({
+      dataFactory: DataFactory,
+      dataset,
+      identifier: DataFactory.namedNode("http://example.com/subClass"),
+      mutateGraph: DataFactory.defaultGraph(),
+    });
+    subClass.add(rdfs.subClassOf, class_);
+    const subSubClass = new MutableResource<NamedNode>({
+      dataFactory: DataFactory,
+      dataset,
+      identifier: DataFactory.namedNode("http://example.com/subSubClass"),
+      mutateGraph: DataFactory.defaultGraph(),
+    });
+    subSubClass.add(rdfs.subClassOf, subClass.identifier);
+    expect(subSubClass.isSubClassOf(class_)).toStrictEqual(true);
+  });
+
+  it("isSubClassOf (negative case)", () => {
+    const dataset = new Store();
+    const class1 = skos.Concept;
+    const class2 = new MutableResource<NamedNode>({
+      dataFactory: DataFactory,
+      dataset,
+      identifier: DataFactory.namedNode("http://example.com/subClass"),
+      mutateGraph: DataFactory.defaultGraph(),
+    });
+    const subClass = new MutableResource<NamedNode>({
+      dataFactory: DataFactory,
+      dataset,
+      identifier: DataFactory.namedNode("http://example.com/subSubClass"),
+      mutateGraph: DataFactory.defaultGraph(),
+    });
+    subClass.add(rdfs.subClassOf, class2.identifier);
+    expect(subClass.isSubClassOf(class1)).toStrictEqual(false);
   });
 
   it("should get a value (missing)", ({ expect }) => {
