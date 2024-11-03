@@ -10,10 +10,9 @@ import type {
   Quad_Subject,
   Variable,
 } from "@rdfjs/types";
-import { rdf } from "@tpluscode/rdf-ns-builders";
+import { rdf, rdfs } from "@tpluscode/rdf-ns-builders";
 import { type Either, Left, Right } from "purify-ts";
 import { fromRdf } from "rdf-literal";
-import { isRdfInstanceOf } from "./isRdfInstanceOf.js";
 
 function defaultValueOfFilter(_valueOf: Resource.ValueOf): boolean {
   return true;
@@ -51,12 +50,65 @@ export class Resource<
       subClassOfPredicate?: NamedNode;
     },
   ): boolean {
-    return isRdfInstanceOf({
+    return isInstanceOfRecursive({
       class_,
       dataset: this.dataset,
       instance: this.identifier,
-      ...options,
+      visitedClasses: new TermSet<NamedNode>(),
     });
+
+    function isInstanceOfRecursive({
+      class_,
+      dataset,
+      instance,
+      visitedClasses,
+    }: {
+      class_: NamedNode;
+      dataset: DatasetCore;
+      instance: BlankNode | NamedNode;
+      visitedClasses: TermSet<NamedNode>;
+    }): boolean {
+      for (const _ of dataset.match(
+        instance,
+        options?.instanceOfPredicate ?? rdf.type,
+        class_,
+      )) {
+        return true;
+      }
+
+      visitedClasses.add(class_);
+
+      if (options?.excludeSubclasses) {
+        return false;
+      }
+
+      // Recurse into class's sub-classes that haven't been visited yet.
+      for (const quad of dataset.match(
+        null,
+        options?.subClassOfPredicate ?? rdfs.subClassOf,
+        class_,
+        null,
+      )) {
+        if (quad.subject.termType !== "NamedNode") {
+          continue;
+        }
+        if (visitedClasses.has(quad.subject)) {
+          continue;
+        }
+        if (
+          isInstanceOfRecursive({
+            class_: quad.subject,
+            dataset,
+            instance,
+            visitedClasses,
+          })
+        ) {
+          return true;
+        }
+      }
+
+      return false;
+    }
   }
 
   /**

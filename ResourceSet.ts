@@ -62,16 +62,19 @@ export class ResourceSet {
     options?: Parameters<ResourceSet["instancesOf"]>[1],
   ): Generator<BlankNode | NamedNode> {
     yield* instanceIdentifiersRecursive({
+      class_,
       dataset: this.dataset,
       visitedClasses: new TermSet<NamedNode>(),
       yieldedInstanceIdentifiers: new TermSet<BlankNode | NamedNode>(),
     });
 
     function* instanceIdentifiersRecursive({
+      class_,
       dataset,
       visitedClasses,
       yieldedInstanceIdentifiers,
     }: {
+      class_: NamedNode;
       dataset: DatasetCore;
       visitedClasses: TermSet<NamedNode>;
       yieldedInstanceIdentifiers: TermSet<BlankNode | NamedNode>;
@@ -116,6 +119,7 @@ export class ResourceSet {
           continue;
         }
         yield* instanceIdentifiersRecursive({
+          class_: quad.subject,
           dataset,
           visitedClasses,
           yieldedInstanceIdentifiers,
