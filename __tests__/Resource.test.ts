@@ -50,7 +50,7 @@ describe("Resource", () => {
     expect(immutableResource.isInstanceOf(schema.Person)).toStrictEqual(true);
   });
 
-  describe("instanceOf", () => {
+  describe("isInstanceOf", () => {
     const dataset = new Store();
     const class_ = skos.Concept;
     const classInstance = new MutableResource({
@@ -96,6 +96,45 @@ describe("Resource", () => {
         }).isInstanceOf(class_),
       ).toStrictEqual(false);
     });
+  });
+
+  it("isSubClassOf (positive case)", () => {
+    const dataset = new Store();
+    const class_ = skos.Concept;
+    const subClass = new MutableResource<NamedNode>({
+      dataFactory: DataFactory,
+      dataset,
+      identifier: DataFactory.namedNode("http://example.com/subClass"),
+      mutateGraph: DataFactory.defaultGraph(),
+    });
+    subClass.add(rdfs.subClassOf, class_);
+    const subSubClass = new MutableResource<NamedNode>({
+      dataFactory: DataFactory,
+      dataset,
+      identifier: DataFactory.namedNode("http://example.com/subSubClass"),
+      mutateGraph: DataFactory.defaultGraph(),
+    });
+    subSubClass.add(rdfs.subClassOf, subClass.identifier);
+    expect(subSubClass.isSubClassOf(class_)).toStrictEqual(true);
+  });
+
+  it("isSubClassOf (negative case)", () => {
+    const dataset = new Store();
+    const class1 = skos.Concept;
+    const class2 = new MutableResource<NamedNode>({
+      dataFactory: DataFactory,
+      dataset,
+      identifier: DataFactory.namedNode("http://example.com/subClass"),
+      mutateGraph: DataFactory.defaultGraph(),
+    });
+    const subClass = new MutableResource<NamedNode>({
+      dataFactory: DataFactory,
+      dataset,
+      identifier: DataFactory.namedNode("http://example.com/subSubClass"),
+      mutateGraph: DataFactory.defaultGraph(),
+    });
+    subClass.add(rdfs.subClassOf, class2.identifier);
+    expect(subClass.isSubClassOf(class1)).toStrictEqual(false);
   });
 
   it("should get a value (missing)", ({ expect }) => {

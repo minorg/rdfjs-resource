@@ -111,6 +111,69 @@ export class Resource<
     }
   }
 
+  isSubClassOf(
+    class_: NamedNode,
+    options?: {
+      subClassOfPredicate?: NamedNode;
+    },
+  ): boolean {
+    return isSubClassOfRecursive({
+      class_,
+      dataset: this.dataset,
+      thisIdentifier: this.identifier,
+      visitedClasses: new TermSet<NamedNode>(),
+    });
+
+    function isSubClassOfRecursive({
+      class_,
+      dataset,
+      thisIdentifier,
+      visitedClasses,
+    }: {
+      class_: NamedNode;
+      dataset: DatasetCore;
+      thisIdentifier: BlankNode | NamedNode;
+      visitedClasses: TermSet<NamedNode>;
+    }): boolean {
+      for (const _ of dataset.match(
+        thisIdentifier,
+        options?.subClassOfPredicate ?? rdfs.subClassOf,
+        class_,
+      )) {
+        return true;
+      }
+
+      visitedClasses.add(class_);
+
+      // Recurse into class's sub-classes that haven't been visited yet.
+      for (const quad of dataset.match(
+        null,
+        options?.subClassOfPredicate ?? rdfs.subClassOf,
+        class_,
+        null,
+      )) {
+        if (quad.subject.termType !== "NamedNode") {
+          continue;
+        }
+        if (visitedClasses.has(quad.subject)) {
+          continue;
+        }
+        if (
+          isSubClassOfRecursive({
+            class_: quad.subject,
+            dataset,
+            thisIdentifier,
+            visitedClasses,
+          })
+        ) {
+          return true;
+        }
+      }
+
+      return false;
+    }
+  }
+
   /**
    * Consider the resource itself as an RDF list.
    */
