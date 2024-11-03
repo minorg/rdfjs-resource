@@ -1,6 +1,10 @@
-import type { DatasetCore, NamedNode } from "@rdfjs/types";
+import type {
+  DatasetCore,
+  NamedNode,
+  Quad_Graph,
+  Variable,
+} from "@rdfjs/types";
 import { Resource } from "./Resource.js";
-import type { GetRdfInstanceQuadsParameters } from "./getRdfInstanceQuads.js";
 import { getRdfInstances } from "./getRdfInstances.js";
 
 /**
@@ -15,7 +19,12 @@ export class ResourceSet {
 
   *instancesOf(
     class_: NamedNode,
-    options?: ResourceSet.InstancesOfOptions,
+    options?: {
+      excludeSubclasses?: boolean;
+      graph?: Exclude<Quad_Graph, Variable> | null;
+      instanceOfPredicate?: NamedNode;
+      subClassOfPredicate?: NamedNode;
+    },
   ): Generator<Resource> {
     for (const identifier of getRdfInstances({
       class_,
@@ -28,7 +37,7 @@ export class ResourceSet {
 
   *namedInstancesOf(
     class_: NamedNode,
-    options?: ResourceSet.InstancesOfOptions,
+    options?: Parameters<ResourceSet["instancesOf"]>[1],
   ): Generator<Resource<NamedNode>> {
     for (const identifier of getRdfInstances({
       class_,
@@ -53,11 +62,4 @@ export class ResourceSet {
       identifier,
     });
   }
-}
-
-export namespace ResourceSet {
-  export type InstancesOfOptions = Omit<
-    GetRdfInstanceQuadsParameters,
-    "class_" | "dataset"
-  >;
 }

@@ -34,7 +34,10 @@ export class MutableResource<
     dataFactory,
     mutateGraph,
     ...resourceParameters
-  }: MutableResource.Parameters<IdentifierT, MutateGraphT>) {
+  }: {
+    dataFactory: DataFactory;
+    mutateGraph: MutateGraphT;
+  } & ConstructorParameters<typeof Resource<IdentifierT>>[0]) {
     super(resourceParameters);
     this.dataFactory = dataFactory;
     this.mutateGraph = mutateGraph;
@@ -61,7 +64,7 @@ export class MutableResource<
   addList(
     predicate: NamedNode,
     items: Iterable<AddableValue>,
-    options?: MutableResource.AddListOptions,
+    options?: Parameters<MutableResource["addListItems"]>[1],
   ): MutableResource {
     const itemsArray = [...items];
     if (itemsArray.length === 0) {
@@ -94,7 +97,13 @@ export class MutableResource<
    */
   addListItems(
     items: Iterable<AddableValue>,
-    options?: MutableResource.AddListOptions,
+    options?: {
+      addSubListResourceValues?: (subListResource: MutableResource) => void;
+      mintSubListIdentifier?: (
+        item: AddableValue,
+        itemIndex: number,
+      ) => BlankNode | NamedNode;
+    },
   ): this {
     const addSubListResourceValues =
       options?.addSubListResourceValues ?? (() => {});
@@ -171,21 +180,5 @@ export class MutableResource<
 }
 
 export namespace MutableResource {
-  export interface AddListOptions {
-    addSubListResourceValues?: (subListResource: MutableResource) => void;
-    mintSubListIdentifier?: (
-      item: AddableValue,
-      itemIndex: number,
-    ) => BlankNode | NamedNode;
-  }
-
   export type MutateGraph = Exclude<Quad_Graph, Variable>;
-
-  export interface Parameters<
-    IdentifierT extends Resource.Identifier,
-    MutateGraphT extends MutateGraph,
-  > extends Resource.Parameters<IdentifierT> {
-    dataFactory: DataFactory;
-    mutateGraph: MutateGraphT;
-  }
 }

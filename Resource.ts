@@ -32,7 +32,13 @@ export class Resource<
   readonly dataset: DatasetCore;
   readonly identifier: IdentifierT;
 
-  constructor({ dataset, identifier }: Resource.Parameters<IdentifierT>) {
+  constructor({
+    dataset,
+    identifier,
+  }: {
+    dataset: DatasetCore;
+    identifier: IdentifierT;
+  }) {
     this.dataset = dataset;
     this.identifier = identifier;
   }
@@ -300,11 +306,6 @@ export namespace Resource {
           return `<${identifier.value}>`;
       }
     }
-  }
-
-  export interface Parameters<IdentifierT extends Identifier> {
-    dataset: DatasetCore;
-    identifier: IdentifierT;
   }
 
   export class Value {
