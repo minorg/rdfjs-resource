@@ -1,11 +1,13 @@
+import TermSet from "@rdfjs/term-set";
 import type {
+  BlankNode,
   DatasetCore,
   NamedNode,
   Quad_Graph,
   Variable,
 } from "@rdfjs/types";
+import { rdf, rdfs } from "@tpluscode/rdf-ns-builders";
 import { Resource } from "./Resource.js";
-import { getRdfInstances } from "./getRdfInstances.js";
 
 /**
  * A ResourceSet wraps an RDF/JS dataset with convenient resource factory methods.
@@ -26,11 +28,7 @@ export class ResourceSet {
       subClassOfPredicate?: NamedNode;
     },
   ): Generator<Resource> {
-    for (const identifier of getRdfInstances({
-      class_,
-      dataset: this.dataset,
-      ...options,
-    })) {
+    for (const identifier of this.instanceIdentifiers(class_, options)) {
       yield this.resource(identifier);
     }
   }
@@ -39,11 +37,7 @@ export class ResourceSet {
     class_: NamedNode,
     options?: Parameters<ResourceSet["instancesOf"]>[1],
   ): Generator<Resource<NamedNode>> {
-    for (const identifier of getRdfInstances({
-      class_,
-      dataset: this.dataset,
-      ...options,
-    })) {
+    for (const identifier of this.instanceIdentifiers(class_, options)) {
       if (identifier.termType === "NamedNode")
         yield this.namedResource(identifier);
     }
@@ -61,5 +55,72 @@ export class ResourceSet {
       dataset: this.dataset,
       identifier,
     });
+  }
+
+  private *instanceIdentifiers(
+    class_: NamedNode,
+    options?: Parameters<ResourceSet["instancesOf"]>[1],
+  ): Generator<BlankNode | NamedNode> {
+    yield* instanceIdentifiersRecursive({
+      dataset: this.dataset,
+      visitedClasses: new TermSet<NamedNode>(),
+      yieldedInstanceIdentifiers: new TermSet<BlankNode | NamedNode>(),
+    });
+
+    function* instanceIdentifiersRecursive({
+      dataset,
+      visitedClasses,
+      yieldedInstanceIdentifiers,
+    }: {
+      dataset: DatasetCore;
+      visitedClasses: TermSet<NamedNode>;
+      yieldedInstanceIdentifiers: TermSet<BlankNode | NamedNode>;
+    }): Generator<BlankNode | NamedNode> {
+      // Get instanceQuads of the class
+      for (const quad of dataset.match(
+        null,
+        options?.instanceOfPredicate ?? rdf.type,
+        class_,
+        options?.graph,
+      )) {
+        switch (quad.subject.termType) {
+          case "BlankNode":
+          case "NamedNode":
+            if (!yieldedInstanceIdentifiers.has(quad.subject)) {
+              yield quad.subject;
+              yieldedInstanceIdentifiers.add(quad.subject);
+            }
+            break;
+          default:
+            break;
+        }
+      }
+
+      visitedClasses.add(class_);
+
+      if (options?.excludeSubclasses) {
+        return;
+      }
+
+      // Recurse into class's sub-classes that haven't been visited yet.
+      for (const quad of dataset.match(
+        null,
+        options?.subClassOfPredicate ?? rdfs.subClassOf,
+        class_,
+        options?.graph,
+      )) {
+        if (quad.subject.termType !== "NamedNode") {
+          continue;
+        }
+        if (visitedClasses.has(quad.subject)) {
+          continue;
+        }
+        yield* instanceIdentifiersRecursive({
+          dataset,
+          visitedClasses,
+          yieldedInstanceIdentifiers,
+        });
+      }
+    }
   }
 }
