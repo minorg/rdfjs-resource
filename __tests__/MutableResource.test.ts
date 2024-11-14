@@ -41,11 +41,19 @@ describe("MutableResource", () => {
     expect(values[0].equals(objects["stringLiteral"])).toBe(true);
   });
 
+  it("should add an array value", () => {
+    expect(dataset.size).toStrictEqual(0);
+    resource.add(predicate, []);
+    expect(dataset.size).toStrictEqual(0);
+    resource.add(predicate, [objects["stringLiteral"], objects["intLiteral"]]);
+    expect(dataset.size).toStrictEqual(2);
+  });
+
   it("should add a Maybe value", () => {
     expect(dataset.size).toStrictEqual(0);
-    resource.addMaybe(predicate, Maybe.empty());
+    resource.add(predicate, Maybe.empty());
     expect(dataset.size).toStrictEqual(0);
-    resource.addMaybe(predicate, Maybe.of(objects["stringLiteral"]));
+    resource.add(predicate, Maybe.of(objects["stringLiteral"]));
     expect(dataset.size).toStrictEqual(1);
   });
 

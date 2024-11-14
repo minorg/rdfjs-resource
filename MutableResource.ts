@@ -1,19 +1,20 @@
 import type {
   BlankNode,
   DataFactory,
+  Literal,
   NamedNode,
-  Quad,
   Quad_Graph,
-  Quad_Object,
   Variable,
 } from "@rdfjs/types";
 import { rdf } from "@tpluscode/rdf-ns-builders";
-import type { Maybe } from "purify-ts";
+import { Maybe } from "purify-ts";
 import { toRdf } from "rdf-literal";
 import { Resource } from "./Resource.js";
 
 type AddableValue =
-  | Exclude<Quad_Object, Quad | Variable>
+  | BlankNode
+  | Literal
+  | NamedNode
   | boolean
   | Date
   | number
@@ -43,15 +44,20 @@ export class MutableResource<
     this.mutateGraph = mutateGraph;
   }
 
-  add(predicate: NamedNode, value: AddableValue): this {
-    this.dataset.add(
-      this.dataFactory.quad(
-        this.identifier,
-        predicate,
-        this.addableValueToTerm(value),
-        this.mutateGraph,
-      ),
-    );
+  add(
+    predicate: NamedNode,
+    value: AddableValue | readonly AddableValue[] | Maybe<AddableValue>,
+  ): this {
+    for (const term of this.addableValuesToTerms(value)) {
+      this.dataset.add(
+        this.dataFactory.quad(
+          this.identifier,
+          predicate,
+          term,
+          this.mutateGraph,
+        ),
+      );
+    }
     return this;
   }
 
@@ -136,35 +142,49 @@ export class MutableResource<
     return this;
   }
 
-  addMaybe(predicate: NamedNode, value: Maybe<AddableValue>): this {
-    value.ifJust((value) => this.add(predicate, value));
-    return this;
-  }
-
-  delete(predicate: NamedNode, value?: AddableValue): this {
-    for (const quad of [
-      ...this.dataset.match(
-        this.identifier,
-        predicate,
-        typeof value !== "undefined"
-          ? this.addableValueToTerm(value)
-          : undefined,
-        this.mutateGraph,
-      ),
-    ]) {
-      this.dataset.delete(quad);
+  delete(
+    predicate: NamedNode,
+    value?: AddableValue | readonly AddableValue[],
+  ): this {
+    if (typeof value === "undefined") {
+      for (const quad of [
+        ...this.dataset.match(
+          this.identifier,
+          predicate,
+          null,
+          this.mutateGraph,
+        ),
+      ]) {
+        this.dataset.delete(quad);
+      }
+    } else {
+      for (const term of this.addableValuesToTerms(value)) {
+        for (const quad of [
+          ...this.dataset.match(
+            this.identifier,
+            predicate,
+            term,
+            this.mutateGraph,
+          ),
+        ]) {
+          this.dataset.delete(quad);
+        }
+      }
     }
     return this;
   }
 
-  set(predicate: NamedNode, value: AddableValue): this {
+  set(
+    predicate: NamedNode,
+    value: AddableValue | readonly AddableValue[],
+  ): this {
     this.delete(predicate);
     return this.add(predicate, value);
   }
 
   private addableValueToTerm(
     value: AddableValue,
-  ): Exclude<Quad_Object, Quad | Variable> {
+  ): BlankNode | Literal | NamedNode {
     switch (typeof value) {
       case "boolean":
       case "number":
@@ -176,6 +196,21 @@ export class MutableResource<
         }
         return value;
     }
+  }
+
+  private addableValuesToTerms(
+    value: AddableValue | readonly AddableValue[] | Maybe<AddableValue>,
+  ): readonly (BlankNode | Literal | NamedNode)[] {
+    if (Array.isArray(value)) {
+      return value.map((subValue) => this.addableValueToTerm(subValue));
+    }
+    if (Maybe.isMaybe(value)) {
+      return value
+        .map((subValue) => this.addableValueToTerm(subValue))
+        .toList();
+    }
+    // TypeScript doesn't pick up that we've handled the array case above, so we have to cast here.
+    return [this.addableValueToTerm(value as AddableValue)];
   }
 }
 
