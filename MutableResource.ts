@@ -44,9 +44,22 @@ export class MutableResource<
     this.mutateGraph = mutateGraph;
   }
 
+  /**
+   * Add zero or more values to this resource.
+   *
+   * If value is Maybe and Just, add (p, value).
+   * If value is Maybe and Nothing, do nothing.
+   * If value is an array, add all the values separately.
+   * If value is undefined, do nothing.
+   * Else add (p, value).
+   */
   add(
     predicate: NamedNode,
-    value: AddableValue | readonly AddableValue[] | Maybe<AddableValue>,
+    value:
+      | AddableValue
+      | readonly AddableValue[]
+      | Maybe<AddableValue>
+      | undefined,
   ): this {
     for (const term of this.addableValuesToTerms(value)) {
       this.dataset.add(
@@ -142,6 +155,13 @@ export class MutableResource<
     return this;
   }
 
+  /**
+   * Delete zero or more values from this resource.
+   *
+   * If value is undefined, delete all values of p.
+   * If value is an array, delete (p, arrayValue) for each value in the array.
+   * Else delete (p, value).
+   */
   delete(
     predicate: NamedNode,
     value?: AddableValue | readonly AddableValue[],
@@ -174,6 +194,9 @@ export class MutableResource<
     return this;
   }
 
+  /**
+   * Delete all existing values of p and then add the specified values.
+   */
   set(
     predicate: NamedNode,
     value: AddableValue | readonly AddableValue[],
@@ -199,8 +222,15 @@ export class MutableResource<
   }
 
   private addableValuesToTerms(
-    value: AddableValue | readonly AddableValue[] | Maybe<AddableValue>,
+    value:
+      | AddableValue
+      | readonly AddableValue[]
+      | Maybe<AddableValue>
+      | undefined,
   ): readonly (BlankNode | Literal | NamedNode)[] {
+    if (typeof value === "undefined") {
+      return [];
+    }
     if (Array.isArray(value)) {
       return value.map((subValue) => this.addableValueToTerm(subValue));
     }

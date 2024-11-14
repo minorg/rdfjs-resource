@@ -57,6 +57,12 @@ describe("MutableResource", () => {
     expect(dataset.size).toStrictEqual(1);
   });
 
+  it("should add an undefined value", () => {
+    expect(dataset.size).toStrictEqual(0);
+    resource.add(predicate, undefined);
+    expect(dataset.size).toStrictEqual(0);
+  });
+
   it("should add a List value", () => {
     resource.addList(predicate, [
       objects["stringLiteral"],
