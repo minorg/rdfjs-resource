@@ -715,7 +715,7 @@ export namespace Resource {
         valueI++;
       }
       return new ArrayValues({
-        array,
+        objects: array,
         predicate: this.predicate,
         subject: this.subject,
       });
@@ -760,6 +760,30 @@ export namespace Resource {
 
     abstract [Symbol.iterator](): Iterator<ValueOf>;
 
+    filter(
+      predicate: (valueOf_: ValueOf, index: number) => boolean,
+    ): Resource.ValuesOf {
+      const array: Resource.ValueOf[] = [];
+      let valueI = 0;
+      for (const valueOf_ of this) {
+        if (predicate(valueOf_, valueI)) {
+          array.push(valueOf_);
+        }
+        valueI++;
+      }
+      return new ArrayValuesOf({
+        object: this.object,
+        predicate: this.predicate,
+        subjects: array,
+      });
+    }
+
+    flatMap<U>(
+      callback: (value: ValueOf, index: number) => U | ReadonlyArray<U>,
+    ): readonly U[] {
+      return this.toArray().flatMap(callback);
+    }
+
     head(): Either<ValueError, ValueOf> {
       for (const valueOf_ of this) {
         return Right(valueOf_);
@@ -771,6 +795,12 @@ export namespace Resource {
         }),
       );
     }
+
+    map<U>(callback: (value: ValueOf, index: number) => U): readonly U[] {
+      return this.toArray().map(callback);
+    }
+
+    abstract toArray(): readonly ValueOf[];
   }
 }
 
@@ -778,23 +808,55 @@ export namespace Resource {
  * Private implementation of Resource.Values that iterates over an array.
  */
 class ArrayValues extends Resource.Values {
-  private readonly array: readonly Resource.Value[];
+  private readonly objects: readonly Resource.Value[];
 
   constructor({
-    array,
+    objects,
     predicate,
     subject,
-  }: { array: Resource.Value[]; predicate: NamedNode; subject: Resource }) {
+  }: {
+    objects: readonly Resource.Value[];
+    predicate: NamedNode;
+    subject: Resource;
+  }) {
     super({ predicate, subject });
-    this.array = array;
+    this.objects = objects;
   }
 
   override [Symbol.iterator](): Iterator<Resource.Value> {
-    return this.array[Symbol.iterator]();
+    return this.objects[Symbol.iterator]();
   }
 
   override toArray(): readonly Resource.Value[] {
-    return this.array;
+    return this.objects;
+  }
+}
+
+/**
+ * Private implementation of Resource.ValuesOf that iterates over an array.
+ */
+class ArrayValuesOf extends Resource.ValuesOf {
+  private readonly subjects: readonly Resource.ValueOf[];
+
+  constructor({
+    object,
+    predicate,
+    subjects,
+  }: {
+    predicate: NamedNode;
+    object: Resource;
+    subjects: readonly Resource.ValueOf[];
+  }) {
+    super({ object, predicate });
+    this.subjects = subjects;
+  }
+
+  override [Symbol.iterator](): Iterator<Resource.ValueOf> {
+    return this.subjects[Symbol.iterator]();
+  }
+
+  override toArray(): readonly Resource.ValueOf[] {
+    return this.subjects;
   }
 }
 
@@ -926,6 +988,10 @@ class DatasetValuesOf extends Resource.ValuesOf {
           });
       }
     }
+  }
+
+  override toArray(): readonly Resource.ValueOf[] {
+    return [...this];
   }
 }
 
