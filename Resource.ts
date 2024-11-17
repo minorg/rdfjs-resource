@@ -713,6 +713,12 @@ export namespace Resource {
       });
     }
 
+    flatMap<U>(
+      callback: (value: Value, index: number) => U | ReadonlyArray<U>,
+    ): readonly U[] {
+      return [...this].flatMap(callback);
+    }
+
     head(): Either<ValueError, Value> {
       for (const value of this) {
         return Right(value);
@@ -723,6 +729,10 @@ export namespace Resource {
           predicate: this.predicate,
         }),
       );
+    }
+
+    map<U>(callback: (value: Value, index: number) => U): readonly U[] {
+      return [...this].map(callback);
     }
   }
 
