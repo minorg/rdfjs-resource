@@ -14,14 +14,6 @@ import { rdf, rdfs } from "@tpluscode/rdf-ns-builders";
 import { type Either, Left, Right } from "purify-ts";
 import { fromRdf } from "rdf-literal";
 
-function defaultValueOfFilter(_valueOf: Resource.ValueOf): boolean {
-  return true;
-}
-
-function defaultValueFilter(_value: Resource.Value): boolean {
-  return true;
-}
-
 /**
  * A Resource abstraction over subjects or objects in an RDF/JS dataset.
  */
@@ -263,126 +255,59 @@ export class Resource<
         );
     }
 
-    return Right([new Resource.Value(this, rdf.first, firstObject)]).chain(
-      (items) =>
-        new Resource({ dataset: this.dataset, identifier: restObject })
-          .toList()
-          .map((restItems) => items.concat(restItems)),
+    return Right([
+      new Resource.Value({
+        subject: this,
+        predicate: rdf.first,
+        object: firstObject,
+      }),
+    ]).chain((items) =>
+      new Resource({ dataset: this.dataset, identifier: restObject })
+        .toList()
+        .map((restItems) => items.concat(restItems)),
     );
   }
 
   /**
    * Get the first matching value of dataset statements (this.identifier, predicate, value).
    */
-  value(
-    predicate: NamedNode,
-    options?: {
-      filter?: (value: Resource.Value) => boolean;
-    },
-  ): Either<Resource.ValueError, Resource.Value> {
-    const filter_ = options?.filter ?? defaultValueFilter;
-    for (const value of this.values(predicate)) {
-      if (filter_(value)) {
-        return Right(value);
-      }
-    }
-    return Left(
-      new Resource.MissingValueError({
-        focusResource: this,
-        predicate,
-      }),
-    );
+  value(predicate: NamedNode): Either<Resource.ValueError, Resource.Value> {
+    return this.values(predicate).head();
   }
 
   /**
    * Get the first matching subject of dataset statements (subject, predicate, this.identifier).
    */
-  valueOf(
-    predicate: NamedNode,
-    options?: {
-      filter?: (subject: Resource.ValueOf) => boolean;
-    },
-  ): Either<Resource.ValueError, Resource.ValueOf> {
-    const filter_ = options?.filter ?? defaultValueOfFilter;
-    for (const valueOf_ of this.valuesOf(predicate)) {
-      if (filter_(valueOf_)) {
-        return Right(valueOf_);
-      }
-    }
-    return Left(
-      new Resource.MissingValueError({
-        focusResource: this,
-        predicate,
-      }),
-    );
+  valueOf(predicate: NamedNode): Either<Resource.ValueError, Resource.ValueOf> {
+    return this.valuesOf(predicate).head();
   }
 
   /**
    * Get all values of dataset statements (this.identifier, predicate, value).
    */
-  *values(
+  values(
     predicate: NamedNode,
     options?: { unique?: boolean },
-  ): Generator<Resource.Value> {
-    const uniqueObjects = options?.unique
-      ? new TermSet<BlankNode | Literal | NamedNode>()
-      : undefined;
-
-    for (const quad of this.dataset.match(
-      this.identifier,
+  ): Resource.Values {
+    return new DatasetValues({
+      subject: this,
       predicate,
-      null,
-      null,
-    )) {
-      switch (quad.object.termType) {
-        case "BlankNode":
-        case "Literal":
-        case "NamedNode":
-          if (uniqueObjects) {
-            if (uniqueObjects.has(quad.object)) {
-              continue;
-            }
-            yield new Resource.Value(this, predicate, quad.object);
-            uniqueObjects.add(quad.object);
-          } else {
-            yield new Resource.Value(this, predicate, quad.object);
-          }
-          break;
-      }
-    }
+      unique: !!options?.unique,
+    });
   }
 
   /**
-   * Get the first subject of dataset statements (subject, predicate, this.identifier).
+   * Get the subject of dataset statements (subject, predicate, this.identifier).
    */
-  *valuesOf(
+  valuesOf(
     predicate: NamedNode,
     options?: { unique: true },
-  ): Generator<Resource.ValueOf> {
-    const uniqueSubjects = options?.unique
-      ? new TermSet<BlankNode | NamedNode>()
-      : undefined;
-    for (const quad of this.dataset.match(
-      null,
+  ): Resource.ValuesOf {
+    return new DatasetValuesOf({
+      object: this,
       predicate,
-      this.identifier,
-      null,
-    )) {
-      switch (quad.subject.termType) {
-        case "BlankNode":
-        case "NamedNode":
-          if (uniqueSubjects) {
-            if (uniqueSubjects.has(quad.subject)) {
-              continue;
-            }
-            yield new Resource.ValueOf(quad.subject, predicate, this);
-            uniqueSubjects.add(quad.subject);
-          } else {
-            yield new Resource.ValueOf(quad.subject, predicate, this);
-          }
-          break;
-      }
-    }
+      unique: !!options?.unique,
+    });
   }
 }
 
@@ -424,11 +349,23 @@ export namespace Resource {
   }
 
   export class Value {
-    constructor(
-      private readonly subject: Resource,
-      private readonly predicate: NamedNode,
-      private readonly object: Exclude<Quad_Object, Quad | Variable>,
-    ) {}
+    private readonly object: BlankNode | Literal | NamedNode;
+    private readonly predicate: NamedNode;
+    private readonly subject: Resource;
+
+    constructor({
+      object,
+      predicate,
+      subject,
+    }: {
+      object: BlankNode | Literal | NamedNode;
+      predicate: NamedNode;
+      subject: Resource;
+    }) {
+      this.object = object;
+      this.predicate = predicate;
+      this.subject = subject;
+    }
 
     isBoolean(): boolean {
       return this.toBoolean().isRight();
@@ -579,8 +516,16 @@ export namespace Resource {
       );
     }
 
-    toTerm(): Exclude<Quad_Object, Quad | Variable> {
+    toTerm(): BlankNode | Literal | NamedNode {
       return this.object;
+    }
+
+    toValues(): Values {
+      return new SingletonValues({
+        object: this,
+        predicate: this.predicate,
+        subject: this.subject,
+      });
     }
 
     private newMistypedValueError(
@@ -673,11 +618,23 @@ export namespace Resource {
   }
 
   export class ValueOf {
-    constructor(
-      private readonly subject: Exclude<Quad_Subject, Quad | Variable>,
-      private readonly predicate: NamedNode,
-      private readonly object: Resource,
-    ) {}
+    private readonly object: Resource;
+    private readonly predicate: NamedNode;
+    private readonly subject: BlankNode | NamedNode;
+
+    constructor({
+      object,
+      predicate,
+      subject,
+    }: {
+      object: Resource;
+      predicate: NamedNode;
+      subject: BlankNode | NamedNode;
+    }) {
+      this.object = object;
+      this.predicate = predicate;
+      this.subject = subject;
+    }
 
     isIri(): boolean {
       return this.subject.termType === "NamedNode";
@@ -727,5 +684,337 @@ export namespace Resource {
         predicate: this.predicate,
       });
     }
+  }
+
+  export abstract class Values implements Iterable<Value> {
+    protected readonly predicate: NamedNode;
+    protected readonly subject: Resource;
+
+    protected constructor({
+      predicate,
+      subject,
+    }: {
+      predicate: NamedNode;
+      subject: Resource;
+    }) {
+      this.predicate = predicate;
+      this.subject = subject;
+    }
+
+    abstract [Symbol.iterator](): Iterator<Value>;
+
+    filter(
+      predicate: (value: Value, index: number) => boolean,
+    ): Resource.Values {
+      const array: Resource.Value[] = [];
+      let valueI = 0;
+      for (const value of this) {
+        if (predicate(value, valueI)) {
+          array.push(value);
+        }
+        valueI++;
+      }
+      return new ArrayValues({
+        objects: array,
+        predicate: this.predicate,
+        subject: this.subject,
+      });
+    }
+
+    flatMap<U>(
+      callback: (value: Value, index: number) => U | ReadonlyArray<U>,
+    ): readonly U[] {
+      return this.toArray().flatMap(callback);
+    }
+
+    head(): Either<ValueError, Value> {
+      for (const value of this) {
+        return Right(value);
+      }
+      return Left(
+        new MissingValueError({
+          focusResource: this.subject,
+          predicate: this.predicate,
+        }),
+      );
+    }
+
+    map<U>(callback: (value: Value, index: number) => U): readonly U[] {
+      return this.toArray().map(callback);
+    }
+
+    abstract toArray(): readonly Value[];
+  }
+
+  export abstract class ValuesOf implements Iterable<ValueOf> {
+    protected readonly object: Resource;
+    protected readonly predicate: NamedNode;
+
+    protected constructor({
+      object,
+      predicate,
+    }: { object: Resource; predicate: NamedNode }) {
+      this.object = object;
+      this.predicate = predicate;
+    }
+
+    abstract [Symbol.iterator](): Iterator<ValueOf>;
+
+    filter(
+      predicate: (valueOf_: ValueOf, index: number) => boolean,
+    ): Resource.ValuesOf {
+      const array: Resource.ValueOf[] = [];
+      let valueI = 0;
+      for (const valueOf_ of this) {
+        if (predicate(valueOf_, valueI)) {
+          array.push(valueOf_);
+        }
+        valueI++;
+      }
+      return new ArrayValuesOf({
+        object: this.object,
+        predicate: this.predicate,
+        subjects: array,
+      });
+    }
+
+    flatMap<U>(
+      callback: (value: ValueOf, index: number) => U | ReadonlyArray<U>,
+    ): readonly U[] {
+      return this.toArray().flatMap(callback);
+    }
+
+    head(): Either<ValueError, ValueOf> {
+      for (const valueOf_ of this) {
+        return Right(valueOf_);
+      }
+      return Left(
+        new MissingValueError({
+          focusResource: this.object,
+          predicate: this.predicate,
+        }),
+      );
+    }
+
+    map<U>(callback: (value: ValueOf, index: number) => U): readonly U[] {
+      return this.toArray().map(callback);
+    }
+
+    abstract toArray(): readonly ValueOf[];
+  }
+}
+
+/**
+ * Private implementation of Resource.Values that iterates over an array.
+ */
+class ArrayValues extends Resource.Values {
+  private readonly objects: readonly Resource.Value[];
+
+  constructor({
+    objects,
+    predicate,
+    subject,
+  }: {
+    objects: readonly Resource.Value[];
+    predicate: NamedNode;
+    subject: Resource;
+  }) {
+    super({ predicate, subject });
+    this.objects = objects;
+  }
+
+  override [Symbol.iterator](): Iterator<Resource.Value> {
+    return this.objects[Symbol.iterator]();
+  }
+
+  override toArray(): readonly Resource.Value[] {
+    return this.objects;
+  }
+}
+
+/**
+ * Private implementation of Resource.ValuesOf that iterates over an array.
+ */
+class ArrayValuesOf extends Resource.ValuesOf {
+  private readonly subjects: readonly Resource.ValueOf[];
+
+  constructor({
+    object,
+    predicate,
+    subjects,
+  }: {
+    predicate: NamedNode;
+    object: Resource;
+    subjects: readonly Resource.ValueOf[];
+  }) {
+    super({ object, predicate });
+    this.subjects = subjects;
+  }
+
+  override [Symbol.iterator](): Iterator<Resource.ValueOf> {
+    return this.subjects[Symbol.iterator]();
+  }
+
+  override toArray(): readonly Resource.ValueOf[] {
+    return this.subjects;
+  }
+}
+
+/**
+ * Private implementation of Resource.Values that iterates over a DatasetCore.
+ */
+class DatasetValues extends Resource.Values {
+  private readonly unique: boolean;
+
+  constructor({
+    predicate,
+    subject,
+    unique,
+  }: { predicate: NamedNode; subject: Resource; unique: boolean }) {
+    super({ predicate, subject });
+    this.unique = unique;
+  }
+
+  override *[Symbol.iterator](): Iterator<Resource.Value> {
+    if (this.unique) {
+      const objects = new TermSet<BlankNode | Literal | NamedNode>();
+      for (const quad of this.subject.dataset.match(
+        this.subject.identifier,
+        this.predicate,
+        null,
+        null,
+      )) {
+        switch (quad.object.termType) {
+          case "BlankNode":
+          case "Literal":
+          case "NamedNode":
+            if (objects.has(quad.object)) {
+              continue;
+            }
+            yield new Resource.Value({
+              object: quad.object,
+              predicate: this.predicate,
+              subject: this.subject,
+            });
+            objects.add(quad.object);
+            break;
+        }
+      }
+    }
+
+    for (const quad of this.subject.dataset.match(
+      this.subject.identifier,
+      this.predicate,
+      null,
+      null,
+    )) {
+      switch (quad.object.termType) {
+        case "BlankNode":
+        case "Literal":
+        case "NamedNode":
+          yield new Resource.Value({
+            object: quad.object,
+            predicate: this.predicate,
+            subject: this.subject,
+          });
+          break;
+      }
+    }
+  }
+
+  override toArray(): readonly Resource.Value[] {
+    return [...this];
+  }
+}
+
+/**
+ * Private implementation of Resource.ValuesOf that iterates over a DatasetCore.
+ */
+class DatasetValuesOf extends Resource.ValuesOf {
+  private readonly unique: boolean;
+
+  constructor({
+    object,
+    predicate,
+    unique,
+  }: {
+    object: Resource;
+    predicate: NamedNode;
+    unique: boolean;
+  }) {
+    super({ object, predicate });
+    this.unique = unique;
+  }
+
+  override *[Symbol.iterator](): Iterator<Resource.ValueOf> {
+    if (this.unique) {
+      const subjects = new TermSet<BlankNode | NamedNode>();
+      for (const quad of this.object.dataset.match(
+        null,
+        this.predicate,
+        this.object.identifier,
+        null,
+      )) {
+        switch (quad.subject.termType) {
+          case "BlankNode":
+          case "NamedNode":
+            if (subjects.has(quad.subject)) {
+              continue;
+            }
+            yield new Resource.ValueOf({
+              object: this.object,
+              predicate: this.predicate,
+              subject: quad.subject,
+            });
+            subjects.add(quad.subject);
+            break;
+        }
+      }
+    }
+
+    for (const quad of this.object.dataset.match(
+      null,
+      this.predicate,
+      this.object.identifier,
+      null,
+    )) {
+      switch (quad.subject.termType) {
+        case "BlankNode":
+        case "NamedNode":
+          yield new Resource.ValueOf({
+            object: this.object,
+            predicate: this.predicate,
+            subject: quad.subject,
+          });
+      }
+    }
+  }
+
+  override toArray(): readonly Resource.ValueOf[] {
+    return [...this];
+  }
+}
+
+/**
+ * Private implementation of Resource.Values that iterates over a single value.
+ */
+class SingletonValues extends Resource.Values {
+  private readonly object: Resource.Value;
+
+  constructor({
+    object,
+    predicate,
+    subject,
+  }: { object: Resource.Value; predicate: NamedNode; subject: Resource }) {
+    super({ predicate, subject });
+    this.object = object;
+  }
+
+  override *[Symbol.iterator](): Iterator<Resource.Value> {
+    yield this.object;
+  }
+
+  override toArray(): readonly Resource.Value[] {
+    return [this.object];
   }
 }
