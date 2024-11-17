@@ -520,6 +520,14 @@ export namespace Resource {
       return this.object;
     }
 
+    toValues(): Values {
+      return new ArrayValues({
+        array: [this],
+        predicate: this.predicate,
+        subject: this.subject,
+      });
+    }
+
     private newMistypedValueError(
       expectedValueType: string,
     ): Resource.MistypedValueError {
