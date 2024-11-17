@@ -900,6 +900,7 @@ class DatasetValues extends Resource.Values {
             break;
         }
       }
+      return;
     }
 
     for (const quad of this.subject.dataset.match(
@@ -970,6 +971,7 @@ class DatasetValuesOf extends Resource.ValuesOf {
             break;
         }
       }
+      return;
     }
 
     for (const quad of this.object.dataset.match(
