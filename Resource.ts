@@ -716,7 +716,7 @@ export namespace Resource {
     flatMap<U>(
       callback: (value: Value, index: number) => U | ReadonlyArray<U>,
     ): readonly U[] {
-      return [...this].flatMap(callback);
+      return this.toArray().flatMap(callback);
     }
 
     head(): Either<ValueError, Value> {
@@ -732,8 +732,10 @@ export namespace Resource {
     }
 
     map<U>(callback: (value: Value, index: number) => U): readonly U[] {
-      return [...this].map(callback);
+      return this.toArray().map(callback);
     }
+
+    abstract toArray(): readonly Value[];
   }
 
   export abstract class ValuesOf implements Iterable<ValueOf> {
@@ -781,6 +783,10 @@ class ArrayValues extends Resource.Values {
 
   override [Symbol.iterator](): Iterator<Resource.Value> {
     return this.array[Symbol.iterator]();
+  }
+
+  override toArray(): readonly Resource.Value[] {
+    return this.array;
   }
 }
 
@@ -844,6 +850,10 @@ class DatasetValues extends Resource.Values {
           break;
       }
     }
+  }
+
+  override toArray(): readonly Resource.Value[] {
+    return [...this];
   }
 }
 
