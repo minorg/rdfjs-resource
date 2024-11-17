@@ -521,8 +521,8 @@ export namespace Resource {
     }
 
     toValues(): Values {
-      return new ArrayValues({
-        array: [this],
+      return new SingletonValues({
+        object: this,
         predicate: this.predicate,
         subject: this.subject,
       });
@@ -778,7 +778,7 @@ export namespace Resource {
  * Private implementation of Resource.Values that iterates over an array.
  */
 class ArrayValues extends Resource.Values {
-  private array: readonly Resource.Value[];
+  private readonly array: readonly Resource.Value[];
 
   constructor({
     array,
@@ -926,5 +926,29 @@ class DatasetValuesOf extends Resource.ValuesOf {
           });
       }
     }
+  }
+}
+
+/**
+ * Private implementation of Resource.Values that iterates over a single value.
+ */
+class SingletonValues extends Resource.Values {
+  private readonly object: Resource.Value;
+
+  constructor({
+    object,
+    predicate,
+    subject,
+  }: { object: Resource.Value; predicate: NamedNode; subject: Resource }) {
+    super({ predicate, subject });
+    this.object = object;
+  }
+
+  override *[Symbol.iterator](): Iterator<Resource.Value> {
+    yield this.object;
+  }
+
+  override toArray(): readonly Resource.Value[] {
+    return [this.object];
   }
 }
