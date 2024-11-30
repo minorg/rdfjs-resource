@@ -9,8 +9,10 @@ import type {
 import { rdf, rdfs, schema, skos, xsd } from "@tpluscode/rdf-ns-builders";
 import N3, { DataFactory, Parser, Store } from "n3";
 import { beforeAll, describe, expect, it } from "vitest";
-import { MutableResource, Resource, ResourceSet } from "..";
-import { houseMdDataset } from "./houseMdDataset";
+import { MutableResource } from "../MutableResource.js";
+import { Resource } from "../Resource.js";
+import { ResourceSet } from "../ResourceSet.js";
+import { houseMdDataset } from "./houseMdDataset.js";
 
 describe("Resource", () => {
   const immutableResourceSet = new ResourceSet({ dataset: houseMdDataset });

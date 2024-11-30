@@ -3,7 +3,8 @@ import { rdf, xsd } from "@tpluscode/rdf-ns-builders";
 import { DataFactory, Store } from "n3";
 import { Maybe } from "purify-ts";
 import { beforeEach, describe, expect, it } from "vitest";
-import { type MutableResource, MutableResourceSet } from "..";
+import type { MutableResource } from "../MutableResource.js";
+import { MutableResourceSet } from "../MutableResourceSet.js";
 
 describe("MutableResource", () => {
   let dataset: DatasetCore;
