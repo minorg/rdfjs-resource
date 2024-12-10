@@ -11,7 +11,7 @@ import type {
   Variable,
 } from "@rdfjs/types";
 import { rdf, rdfs } from "@tpluscode/rdf-ns-builders";
-import { type Either, Left, Right } from "purify-ts";
+import { Either, Left } from "purify-ts";
 import { fromRdf } from "rdf-literal";
 
 /**
@@ -171,7 +171,7 @@ export class Resource<
    */
   toList(): Either<Resource.ValueError, readonly Resource.Value[]> {
     if (this.identifier.equals(rdf.nil)) {
-      return Right([]);
+      return Either.of([]);
     }
 
     const firstObjects = [
@@ -255,7 +255,7 @@ export class Resource<
         );
     }
 
-    return Right([
+    return Either.of<Resource.ValueError, readonly Resource.Value[]>([
       new Resource.Value({
         subject: this,
         predicate: rdf.first,
@@ -412,7 +412,7 @@ export namespace Resource {
     toBoolean(): Either<Resource.MistypedValueError, boolean> {
       return this.toPrimitive().chain((primitive) =>
         typeof primitive === "boolean"
-          ? Right(primitive)
+          ? Either.of(primitive)
           : Left(this.newMistypedValueError("boolean")),
       );
     }
@@ -420,7 +420,7 @@ export namespace Resource {
     toDate(): Either<Resource.MistypedValueError, Date> {
       return this.toPrimitive().chain((primitive) =>
         primitive instanceof Date
-          ? Right(primitive)
+          ? Either.of(primitive)
           : Left(this.newMistypedValueError("Date")),
       );
     }
@@ -429,7 +429,7 @@ export namespace Resource {
       switch (this.object.termType) {
         case "BlankNode":
         case "NamedNode":
-          return Right(this.object);
+          return Either.of(this.object);
         default:
           return Left(this.newMistypedValueError("BlankNode|NamedNode"));
       }
@@ -437,7 +437,7 @@ export namespace Resource {
 
     toIri(): Either<Resource.MistypedValueError, NamedNode> {
       return this.object.termType === "NamedNode"
-        ? Right(this.object)
+        ? Either.of(this.object)
         : Left(this.newMistypedValueError("NamedNode"));
     }
 
@@ -447,7 +447,7 @@ export namespace Resource {
 
     toLiteral(): Either<Resource.MistypedValueError, Literal> {
       return this.object.termType === "Literal"
-        ? Right(this.object)
+        ? Either.of(this.object)
         : Left(this.newMistypedValueError("Literal"));
     }
 
@@ -467,7 +467,7 @@ export namespace Resource {
     toNumber(): Either<Resource.MistypedValueError, number> {
       return this.toPrimitive().chain((primitive) =>
         typeof primitive === "number"
-          ? Right(primitive)
+          ? Either.of(primitive)
           : Left(this.newMistypedValueError("number")),
       );
     }
@@ -488,7 +488,7 @@ export namespace Resource {
       }
 
       try {
-        return Right(fromRdf(this.object, true));
+        return Either.of(fromRdf(this.object, true));
       } catch {
         return Left(
           new Resource.MistypedValueError({
@@ -511,7 +511,7 @@ export namespace Resource {
     toString(): Either<Resource.MistypedValueError, string> {
       return this.toPrimitive().chain((primitive) =>
         typeof primitive === "string"
-          ? Right(primitive as string)
+          ? Either.of(primitive as string)
           : Left(this.newMistypedValueError("string")),
       );
     }
@@ -646,7 +646,7 @@ export namespace Resource {
 
     toIri(): Either<Resource.MistypedValueError, NamedNode> {
       return this.subject.termType === "NamedNode"
-        ? Right(this.subject)
+        ? Either.of(this.subject)
         : Left(this.newMistypedValueError("NamedNode"));
     }
 
@@ -721,6 +721,24 @@ export namespace Resource {
       });
     }
 
+    find(
+      predicate: (value: Value, index: number) => boolean,
+    ): Either<MissingValueError, Value> {
+      let valueI = 0;
+      for (const value of this) {
+        if (predicate(value, valueI)) {
+          return Either.of(value);
+        }
+        valueI++;
+      }
+      return Left(
+        new MissingValueError({
+          focusResource: this.subject,
+          predicate: this.predicate,
+        }),
+      );
+    }
+
     flatMap<U>(
       callback: (value: Value, index: number) => U | ReadonlyArray<U>,
     ): readonly U[] {
@@ -729,7 +747,7 @@ export namespace Resource {
 
     head(): Either<ValueError, Value> {
       for (const value of this) {
-        return Right(value);
+        return Either.of(value);
       }
       return Left(
         new MissingValueError({
@@ -786,7 +804,7 @@ export namespace Resource {
 
     head(): Either<ValueError, ValueOf> {
       for (const valueOf_ of this) {
-        return Right(valueOf_);
+        return Either.of(valueOf_);
       }
       return Left(
         new MissingValueError({
