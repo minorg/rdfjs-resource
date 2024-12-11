@@ -1,4 +1,4 @@
-import type { DatasetCore, Quad, Quad_Object, Variable } from "@rdfjs/types";
+import type { DatasetCore } from "@rdfjs/types";
 import { rdf, xsd } from "@tpluscode/rdf-ns-builders";
 import { DataFactory, Store } from "n3";
 import { Maybe } from "purify-ts";
@@ -11,7 +11,7 @@ describe("MutableResource", () => {
   let resource: MutableResource;
   let resourceSet: MutableResourceSet;
 
-  const objects: Record<string, Exclude<Quad_Object, Quad | Variable>> = {
+  const objects = {
     blankNode: DataFactory.blankNode(),
     booleanLiteral: DataFactory.literal(1, xsd.boolean),
     intLiteral: DataFactory.literal(1),
@@ -62,6 +62,15 @@ describe("MutableResource", () => {
     expect(dataset.size).toStrictEqual(0);
     resource.add(predicate, undefined);
     expect(dataset.size).toStrictEqual(0);
+  });
+
+  it("should add a Resource value", () => {
+    expect(dataset.size).toStrictEqual(0);
+    resource.add(predicate, resourceSet.resource(objects["namedNode"]));
+    expect(dataset.size).toStrictEqual(1);
+    expect([...dataset][0].object.equals(objects["namedNode"])).toStrictEqual(
+      true,
+    );
   });
 
   it("should add a List value", () => {

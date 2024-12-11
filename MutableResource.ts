@@ -18,6 +18,7 @@ type AddableValue =
   | boolean
   | Date
   | number
+  | Resource
   | string;
 
 /**
@@ -216,6 +217,9 @@ export class MutableResource<
       case "object":
         if (value instanceof Date) {
           return toRdf(value, { dataFactory: this.dataFactory });
+        }
+        if (value instanceof Resource) {
+          return value.identifier;
         }
         return value;
     }
