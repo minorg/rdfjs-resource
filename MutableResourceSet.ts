@@ -37,7 +37,7 @@ export class MutableResourceSet extends ResourceSet {
   mutableResource(
     identifier: Resource.Identifier,
     options?: {
-      mutateGraph: MutableResource.MutateGraph;
+      mutateGraph?: MutableResource.MutateGraph;
     },
   ): MutableResource {
     return new MutableResource({
