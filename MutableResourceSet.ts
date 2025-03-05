@@ -20,33 +20,31 @@ export class MutableResourceSet extends ResourceSet {
     this.dataFactory = dataFactory;
   }
 
-  mutableNamedResource({
-    identifier,
-    mutateGraph,
-  }: {
-    identifier: NamedNode;
-    mutateGraph: MutableResource.MutateGraph;
-  }): MutableResource<NamedNode> {
+  mutableNamedResource(
+    identifier: NamedNode,
+    options?: {
+      mutateGraph?: MutableResource.MutateGraph;
+    },
+  ): MutableResource<NamedNode> {
     return new MutableResource<NamedNode>({
       dataFactory: this.dataFactory,
       dataset: this.dataset,
       identifier,
-      mutateGraph,
+      mutateGraph: options?.mutateGraph,
     });
   }
 
-  mutableResource({
-    identifier,
-    mutateGraph,
-  }: {
-    identifier: Resource.Identifier;
-    mutateGraph: MutableResource.MutateGraph;
-  }): MutableResource {
+  mutableResource(
+    identifier: Resource.Identifier,
+    options?: {
+      mutateGraph: MutableResource.MutateGraph;
+    },
+  ): MutableResource {
     return new MutableResource({
       dataFactory: this.dataFactory,
       dataset: this.dataset,
       identifier,
-      mutateGraph,
+      mutateGraph: options?.mutateGraph,
     });
   }
 }

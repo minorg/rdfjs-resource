@@ -26,11 +26,9 @@ type AddableValue =
  */
 export class MutableResource<
   IdentifierT extends Resource.Identifier = Resource.Identifier,
-  MutateGraphT extends
-    MutableResource.MutateGraph = MutableResource.MutateGraph,
 > extends Resource<IdentifierT> {
   readonly dataFactory: DataFactory;
-  readonly mutateGraph: MutateGraphT;
+  readonly mutateGraph: MutableResource.MutateGraph;
 
   constructor({
     dataFactory,
@@ -38,11 +36,11 @@ export class MutableResource<
     ...resourceParameters
   }: {
     dataFactory: DataFactory;
-    mutateGraph: MutateGraphT;
+    mutateGraph?: MutableResource.MutateGraph;
   } & ConstructorParameters<typeof Resource<IdentifierT>>[0]) {
     super(resourceParameters);
     this.dataFactory = dataFactory;
-    this.mutateGraph = mutateGraph;
+    this.mutateGraph = mutateGraph ?? dataFactory.defaultGraph();
   }
 
   /**

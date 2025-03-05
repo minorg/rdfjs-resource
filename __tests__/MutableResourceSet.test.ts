@@ -1,8 +1,8 @@
 import { schema } from "@tpluscode/rdf-ns-builders";
 import N3 from "n3";
 import { beforeEach, describe, it } from "vitest";
-import { MutableResourceSet } from "../MutableResourceSet";
-import { houseMdDataset } from "./houseMdDataset";
+import { MutableResourceSet } from "../MutableResourceSet.js";
+import { houseMdDataset } from "./houseMdDataset.js";
 
 describe("MutableResourceSet", () => {
   let mutableResourceSet: MutableResourceSet;
@@ -15,12 +15,11 @@ describe("MutableResourceSet", () => {
   });
 
   it("should get a mutable named instance of a Person", ({ expect }) => {
-    const person = mutableResourceSet.mutableNamedResource({
-      identifier: N3.DataFactory.namedNode(
+    const person = mutableResourceSet.mutableNamedResource(
+      N3.DataFactory.namedNode(
         "https://housemd.rdf-ext.org/person/allison-cameron",
       ),
-      mutateGraph: N3.DataFactory.defaultGraph(),
-    });
+    );
     expect(
       person
         .value(schema.encodingFormat)

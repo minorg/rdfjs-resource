@@ -27,10 +27,9 @@ describe("MutableResource", () => {
       dataFactory: DataFactory,
       dataset,
     });
-    resource = resourceSet.mutableNamedResource({
-      identifier: DataFactory.namedNode("http://example.com/subject"),
-      mutateGraph: DataFactory.defaultGraph(),
-    });
+    resource = resourceSet.mutableNamedResource(
+      DataFactory.namedNode("http://example.com/subject"),
+    );
   });
 
   it("should add a value", () => {
