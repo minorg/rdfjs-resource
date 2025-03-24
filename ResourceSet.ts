@@ -6,8 +6,8 @@ import type {
   Quad_Graph,
   Variable,
 } from "@rdfjs/types";
-import { rdf, rdfs } from "@tpluscode/rdf-ns-builders";
 import { Resource } from "./Resource.js";
+import { rdf, rdfs } from "./vocabularies.js";
 
 /**
  * A ResourceSet wraps an RDF/JS dataset with convenient resource factory methods.

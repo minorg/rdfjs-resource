@@ -6,10 +6,10 @@ import type {
   Quad_Graph,
   Variable,
 } from "@rdfjs/types";
-import { rdf } from "@tpluscode/rdf-ns-builders";
 import { Maybe } from "purify-ts";
 import { toRdf } from "rdf-literal";
 import { Resource } from "./Resource.js";
+import { rdf } from "./vocabularies.js";
 
 type AddableValue =
   | BlankNode
