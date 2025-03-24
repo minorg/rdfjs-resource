@@ -2,7 +2,6 @@
   "dependencies": {
     "@rdfjs/term-set": "^2.0.3",
     "@rdfjs/types": "^1.1.2",
-    "@tpluscode/rdf-ns-builders": "^4.3.0",
     "@types/rdfjs__term-set": "^2.0.9",
     "purify-ts": "~2.1.0",
     "rdf-literal": "^1.3.2"
@@ -10,6 +9,7 @@
   "description": "Resource abstraction over RDF/JS Datasets",
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
+    "@tpluscode/rdf-ns-builders": "^4.3.0",
     "@tsconfig/strictest": "^2.0.5",
     "@types/n3": "^1.21.1",
     "@vitest/coverage-v8": "^2.0.5",

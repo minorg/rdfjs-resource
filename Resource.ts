@@ -8,11 +8,28 @@ import type {
   Quad,
   Quad_Object,
   Quad_Subject,
+  Term,
   Variable,
 } from "@rdfjs/types";
-import { rdf, rdfs } from "@tpluscode/rdf-ns-builders";
 import { Either, Left } from "purify-ts";
 import { fromRdf } from "rdf-literal";
+
+const namedNode = <ValueT extends string>(
+  value: ValueT,
+): NamedNode<ValueT> => ({
+  equals: (other: Term) =>
+    other.termType === "NamedNode" && other.value === value,
+  termType: "NamedNode",
+  value,
+});
+
+const rdfFirst = namedNode("http://www.w3.org/1999/02/22-rdf-syntax-ns#first");
+const rdfNil = namedNode("http://www.w3.org/1999/02/22-rdf-syntax-ns#nil");
+const rdfRest = namedNode("http://www.w3.org/1999/02/22-rdf-syntax-ns#rest");
+const rdfType = namedNode("http://www.w3.org/1999/02/22-rdf-syntax-ns#type");
+const rdfsSubClassOf = namedNode(
+  "http://www.w3.org/2000/01/rdf-schema#subClassOf",
+);
 
 /**
  * A Resource abstraction over subjects or objects in an RDF/JS dataset.
@@ -62,7 +79,7 @@ export class Resource<
     }): boolean {
       for (const _ of dataset.match(
         instance,
-        options?.instanceOfPredicate ?? rdf.type,
+        options?.instanceOfPredicate ?? rdfType,
         class_,
       )) {
         return true;
@@ -77,7 +94,7 @@ export class Resource<
       // Recurse into class's sub-classes that haven't been visited yet.
       for (const quad of dataset.match(
         null,
-        options?.subClassOfPredicate ?? rdfs.subClassOf,
+        options?.subClassOfPredicate ?? rdfsSubClassOf,
         class_,
         null,
       )) {
@@ -129,7 +146,7 @@ export class Resource<
     }): boolean {
       for (const _ of dataset.match(
         thisIdentifier,
-        options?.subClassOfPredicate ?? rdfs.subClassOf,
+        options?.subClassOfPredicate ?? rdfsSubClassOf,
         class_,
       )) {
         return true;
@@ -140,7 +157,7 @@ export class Resource<
       // Recurse into class's sub-classes that haven't been visited yet.
       for (const quad of dataset.match(
         null,
-        options?.subClassOfPredicate ?? rdfs.subClassOf,
+        options?.subClassOfPredicate ?? rdfsSubClassOf,
         class_,
         null,
       )) {
@@ -170,13 +187,13 @@ export class Resource<
    * Consider the resource itself as an RDF list.
    */
   toList(): Either<Resource.ValueError, readonly Resource.Value[]> {
-    if (this.identifier.equals(rdf.nil)) {
+    if (this.identifier.equals(rdfNil)) {
       return Either.of([]);
     }
 
     const firstObjects = [
       ...new TermSet(
-        [...this.dataset.match(this.identifier, rdf.first, null)].map(
+        [...this.dataset.match(this.identifier, rdfFirst, null)].map(
           (quad) => quad.object,
         ),
       ),
@@ -185,7 +202,7 @@ export class Resource<
       return Left(
         new Resource.MissingValueError({
           focusResource: this,
-          predicate: rdf.first,
+          predicate: rdfFirst,
         }),
       );
     }
@@ -193,7 +210,7 @@ export class Resource<
       return Left(
         new Resource.MultipleValueError({
           focusResource: this,
-          predicate: rdf.first,
+          predicate: rdfFirst,
           values: firstObjects,
         }),
       );
@@ -210,14 +227,14 @@ export class Resource<
             actualValue: firstObject,
             expectedValueType: "BlankNode | NamedNode",
             focusResource: this,
-            predicate: rdf.first,
+            predicate: rdfFirst,
           }),
         );
     }
 
     const restObjects = [
       ...new TermSet(
-        [...this.dataset.match(this.identifier, rdf.rest, null)].map(
+        [...this.dataset.match(this.identifier, rdfRest, null)].map(
           (quad) => quad.object,
         ),
       ),
@@ -226,7 +243,7 @@ export class Resource<
       return Left(
         new Resource.MissingValueError({
           focusResource: this,
-          predicate: rdf.rest,
+          predicate: rdfRest,
         }),
       );
     }
@@ -234,7 +251,7 @@ export class Resource<
       return Left(
         new Resource.MultipleValueError({
           focusResource: this,
-          predicate: rdf.rest,
+          predicate: rdfRest,
           values: restObjects,
         }),
       );
@@ -250,7 +267,7 @@ export class Resource<
             actualValue: restObject,
             expectedValueType: "BlankNode | NamedNode",
             focusResource: this,
-            predicate: rdf.rest,
+            predicate: rdfRest,
           }),
         );
     }
@@ -258,7 +275,7 @@ export class Resource<
     return Either.of<Resource.ValueError, readonly Resource.Value[]>([
       new Resource.Value({
         subject: this,
-        predicate: rdf.first,
+        predicate: rdfFirst,
         object: firstObject,
       }),
     ]).chain((items) =>
