@@ -12,7 +12,7 @@ import type {
 } from "@rdfjs/types";
 import { Either, Left } from "purify-ts";
 import { fromRdf } from "rdf-literal";
-import { rdf, rdfs } from "./vocabularies";
+import { rdf, rdfs } from "./vocabularies.js";
 
 /**
  * A Resource abstraction over subjects or objects in an RDF/JS dataset.
