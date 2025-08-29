@@ -183,18 +183,19 @@ export class Resource<
     ];
     if (firstObjects.length === 0) {
       return Left(
-        new Resource.MissingValueError({
+        new Resource.ListStructureError({
           focusResource: this,
+          message: "list has no rdf:first statements",
           predicate: rdf.first,
         }),
       );
     }
     if (firstObjects.length > 1) {
       return Left(
-        new Resource.MultipleValueError({
+        new Resource.ListStructureError({
           focusResource: this,
+          message: "list has multiple rdf:first statements",
           predicate: rdf.first,
-          values: firstObjects,
         }),
       );
     }
@@ -224,18 +225,19 @@ export class Resource<
     ];
     if (restObjects.length === 0) {
       return Left(
-        new Resource.MissingValueError({
+        new Resource.ListStructureError({
           focusResource: this,
+          message: "list has no rdf:rest statements",
           predicate: rdf.rest,
         }),
       );
     }
     if (restObjects.length > 1) {
       return Left(
-        new Resource.MultipleValueError({
+        new Resource.ListStructureError({
           focusResource: this,
+          message: "list has multiple rdf:rest statements",
           predicate: rdf.rest,
-          values: restObjects,
         }),
       );
     }
@@ -540,7 +542,7 @@ export namespace Resource {
     }
   }
 
-  export class ValueError extends Error {
+  export abstract class ValueError extends Error {
     readonly focusResource: Resource;
     readonly predicate: NamedNode;
 
@@ -596,26 +598,7 @@ export namespace Resource {
     }
   }
 
-  export class MultipleValueError extends ValueError {
-    readonly values: readonly Exclude<Quad_Object, "Variable">[];
-
-    constructor({
-      focusResource,
-      predicate,
-      values,
-    }: {
-      focusResource: Resource;
-      predicate: NamedNode;
-      values: readonly Exclude<Quad_Object, "Variable">[];
-    }) {
-      super({
-        focusResource,
-        message: `${Identifier.toString(focusResource.identifier)} has multiple ${predicate.value} values: ${JSON.stringify(values.map((object) => object.value))}`,
-        predicate,
-      });
-      this.values = values;
-    }
-  }
+  export class ListStructureError extends ValueError {}
 
   export class ValueOf {
     private readonly object: Resource;
