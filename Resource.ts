@@ -290,7 +290,7 @@ export class Resource<
   values(
     predicate: NamedNode,
     options?: { unique?: boolean },
-  ): Resource.Values {
+  ): Resource.Values<Resource.Value> {
     return new DatasetValues({
       subject: this,
       predicate,
@@ -304,7 +304,7 @@ export class Resource<
   valuesOf(
     predicate: NamedNode,
     options?: { unique: true },
-  ): Resource.ValuesOf {
+  ): Resource.ValuesOf<Resource.ValueOf> {
     return new DatasetValuesOf({
       object: this,
       predicate,
@@ -522,7 +522,7 @@ export namespace Resource {
       return this.object;
     }
 
-    toValues(): Values {
+    toValues(): Values<Value> {
       return new SingletonValues({
         object: this,
         predicate: this.predicate,
@@ -669,7 +669,8 @@ export namespace Resource {
     }
   }
 
-  export abstract class Values implements Iterable<Value> {
+  export abstract class Values<ValueT> implements Iterable<ValueT> {
+    abstract readonly length: number;
     protected readonly predicate: NamedNode;
     protected readonly subject: Resource;
 
@@ -684,29 +685,59 @@ export namespace Resource {
       this.subject = subject;
     }
 
-    abstract [Symbol.iterator](): Iterator<Value>;
+    abstract [Symbol.iterator](): Iterator<ValueT>;
+
+    chainMap<NewValueT>(
+      callback: (value: ValueT, index: number) => Either<Error, NewValueT>,
+    ): Either<Error, Values<NewValueT>> {
+      const newValues: NewValueT[] = [];
+      let valueI = 0;
+      for (const value of this) {
+        const callbackResult = callback(value, valueI);
+        if (callbackResult.isLeft()) {
+          return callbackResult;
+        }
+        newValues.push(callbackResult.extract() as NewValueT);
+        valueI++;
+      }
+      return Either.of(
+        new ArrayValues({
+          objects: newValues,
+          predicate: this.predicate,
+          subject: this.subject,
+        }),
+      );
+    }
+
+    concat(...values: readonly ValueT[]): Values<ValueT> {
+      return new ArrayValues({
+        objects: this.toArray().concat(...values),
+        predicate: this.predicate,
+        subject: this.subject,
+      });
+    }
 
     filter(
-      predicate: (value: Value, index: number) => boolean,
-    ): Resource.Values {
-      const array: Resource.Value[] = [];
+      predicate: (value: ValueT, index: number) => boolean,
+    ): Resource.Values<ValueT> {
+      const filteredValues: ValueT[] = [];
       let valueI = 0;
       for (const value of this) {
         if (predicate(value, valueI)) {
-          array.push(value);
+          filteredValues.push(value);
         }
         valueI++;
       }
       return new ArrayValues({
-        objects: array,
+        objects: filteredValues,
         predicate: this.predicate,
         subject: this.subject,
       });
     }
 
     find(
-      predicate: (value: Value, index: number) => boolean,
-    ): Either<MissingValueError, Value> {
+      predicate: (value: ValueT, index: number) => boolean,
+    ): Either<MissingValueError, ValueT> {
       let valueI = 0;
       for (const value of this) {
         if (predicate(value, valueI)) {
@@ -722,13 +753,39 @@ export namespace Resource {
       );
     }
 
-    flatMap<U>(
-      callback: (value: Value, index: number) => U | ReadonlyArray<U>,
-    ): readonly U[] {
-      return this.toArray().flatMap(callback);
+    flat<NewValueT>(): Values<NewValueT> {
+      return new ArrayValues<NewValueT>({
+        objects: this.toArray().flat() as readonly NewValueT[],
+        predicate: this.predicate,
+        subject: this.subject,
+      });
     }
 
-    head(): Either<ValueError, Value> {
+    flatMap<NewValueT>(
+      callback: (value: ValueT, index: number) => ReadonlyArray<NewValueT>,
+    ): Values<NewValueT> {
+      const newValues: NewValueT[] = [];
+      let valueI = 0;
+      for (const value of this) {
+        newValues.push(...callback(value, valueI));
+        valueI++;
+      }
+      return new ArrayValues({
+        objects: newValues,
+        predicate: this.predicate,
+        subject: this.subject,
+      });
+    }
+
+    static fromArray<ValueT>(parameters: {
+      predicate: NamedNode;
+      objects: readonly ValueT[];
+      subject: Resource;
+    }) {
+      return new ArrayValues(parameters);
+    }
+
+    head(): Either<ValueError, ValueT> {
       for (const value of this) {
         return Either.of(value);
       }
@@ -740,14 +797,26 @@ export namespace Resource {
       );
     }
 
-    map<U>(callback: (value: Value, index: number) => U): readonly U[] {
-      return this.toArray().map(callback);
+    map<NewValueT>(
+      callback: (value: ValueT, index: number) => NewValueT,
+    ): Values<NewValueT> {
+      const newValues: NewValueT[] = [];
+      let valueI = 0;
+      for (const value of this) {
+        newValues.push(callback(value, valueI));
+        valueI++;
+      }
+      return new ArrayValues({
+        objects: newValues,
+        predicate: this.predicate,
+        subject: this.subject,
+      });
     }
 
-    abstract toArray(): readonly Value[];
+    abstract toArray(): readonly ValueT[];
   }
 
-  export abstract class ValuesOf implements Iterable<ValueOf> {
+  export abstract class ValuesOf<ValueOfT> implements Iterable<ValueOfT> {
     protected readonly object: Resource;
     protected readonly predicate: NamedNode;
 
@@ -759,33 +828,32 @@ export namespace Resource {
       this.predicate = predicate;
     }
 
-    abstract [Symbol.iterator](): Iterator<ValueOf>;
+    abstract [Symbol.iterator](): Iterator<ValueOfT>;
 
     filter(
-      predicate: (valueOf_: ValueOf, index: number) => boolean,
-    ): Resource.ValuesOf {
-      const array: Resource.ValueOf[] = [];
-      let valueI = 0;
-      for (const valueOf_ of this) {
-        if (predicate(valueOf_, valueI)) {
-          array.push(valueOf_);
-        }
-        valueI++;
-      }
+      predicate: (valueOf_: ValueOfT, index: number) => boolean,
+    ): ValuesOf<ValueOfT> {
       return new ArrayValuesOf({
         object: this.object,
         predicate: this.predicate,
-        subjects: array,
+        subjects: this.toArray().filter(predicate),
       });
     }
 
-    flatMap<U>(
-      callback: (value: ValueOf, index: number) => U | ReadonlyArray<U>,
-    ): readonly U[] {
-      return this.toArray().flatMap(callback);
+    flatMap<NewValueOfT>(
+      callback: (
+        value: ValueOfT,
+        index: number,
+      ) => NewValueOfT | ReadonlyArray<NewValueOfT>,
+    ): ValuesOf<NewValueOfT> {
+      return new ArrayValuesOf({
+        object: this.object,
+        predicate: this.predicate,
+        subjects: this.toArray().flatMap(callback),
+      });
     }
 
-    head(): Either<ValueError, ValueOf> {
+    head(): Either<ValueError, ValueOfT> {
       for (const valueOf_ of this) {
         return Either.of(valueOf_);
       }
@@ -797,26 +865,32 @@ export namespace Resource {
       );
     }
 
-    map<U>(callback: (value: ValueOf, index: number) => U): readonly U[] {
-      return this.toArray().map(callback);
+    map<NewValueOfT>(
+      callback: (value: ValueOfT, index: number) => NewValueOfT,
+    ): ValuesOf<NewValueOfT> {
+      return new ArrayValuesOf({
+        object: this.object,
+        predicate: this.predicate,
+        subjects: this.toArray().map(callback),
+      });
     }
 
-    abstract toArray(): readonly ValueOf[];
+    abstract toArray(): readonly ValueOfT[];
   }
 }
 
 /**
  * Private implementation of Resource.Values that iterates over an array.
  */
-class ArrayValues extends Resource.Values {
-  private readonly objects: readonly Resource.Value[];
+class ArrayValues<ValueT> extends Resource.Values<ValueT> {
+  private readonly objects: readonly ValueT[];
 
   constructor({
     objects,
     predicate,
     subject,
   }: {
-    objects: readonly Resource.Value[];
+    objects: readonly ValueT[];
     predicate: NamedNode;
     subject: Resource;
   }) {
@@ -824,11 +898,15 @@ class ArrayValues extends Resource.Values {
     this.objects = objects;
   }
 
-  override [Symbol.iterator](): Iterator<Resource.Value> {
+  override get length(): number {
+    return this.objects.length;
+  }
+
+  override [Symbol.iterator](): Iterator<ValueT> {
     return this.objects[Symbol.iterator]();
   }
 
-  override toArray(): readonly Resource.Value[] {
+  override toArray(): readonly ValueT[] {
     return this.objects;
   }
 }
@@ -836,8 +914,8 @@ class ArrayValues extends Resource.Values {
 /**
  * Private implementation of Resource.ValuesOf that iterates over an array.
  */
-class ArrayValuesOf extends Resource.ValuesOf {
-  private readonly subjects: readonly Resource.ValueOf[];
+class ArrayValuesOf<ValueOfT> extends Resource.ValuesOf<ValueOfT> {
+  private readonly subjects: readonly ValueOfT[];
 
   constructor({
     object,
@@ -846,17 +924,17 @@ class ArrayValuesOf extends Resource.ValuesOf {
   }: {
     predicate: NamedNode;
     object: Resource;
-    subjects: readonly Resource.ValueOf[];
+    subjects: readonly ValueOfT[];
   }) {
     super({ object, predicate });
     this.subjects = subjects;
   }
 
-  override [Symbol.iterator](): Iterator<Resource.ValueOf> {
+  override [Symbol.iterator](): Iterator<ValueOfT> {
     return this.subjects[Symbol.iterator]();
   }
 
-  override toArray(): readonly Resource.ValueOf[] {
+  override toArray(): readonly ValueOfT[] {
     return this.subjects;
   }
 }
@@ -864,7 +942,7 @@ class ArrayValuesOf extends Resource.ValuesOf {
 /**
  * Private implementation of Resource.Values that iterates over a DatasetCore.
  */
-class DatasetValues extends Resource.Values {
+class DatasetValues extends Resource.Values<Resource.Value> {
   private readonly unique: boolean;
 
   constructor({
@@ -874,6 +952,14 @@ class DatasetValues extends Resource.Values {
   }: { predicate: NamedNode; subject: Resource; unique: boolean }) {
     super({ predicate, subject });
     this.unique = unique;
+  }
+
+  override get length(): number {
+    let length = 0;
+    for (const _ of this) {
+      length++;
+    }
+    return length;
   }
 
   override *[Symbol.iterator](): Iterator<Resource.Value> {
@@ -932,7 +1018,7 @@ class DatasetValues extends Resource.Values {
 /**
  * Private implementation of Resource.ValuesOf that iterates over a DatasetCore.
  */
-class DatasetValuesOf extends Resource.ValuesOf {
+class DatasetValuesOf extends Resource.ValuesOf<Resource.ValueOf> {
   private readonly unique: boolean;
 
   constructor({
@@ -1001,23 +1087,24 @@ class DatasetValuesOf extends Resource.ValuesOf {
 /**
  * Private implementation of Resource.Values that iterates over a single value.
  */
-class SingletonValues extends Resource.Values {
-  private readonly object: Resource.Value;
+class SingletonValues<ValueT> extends Resource.Values<ValueT> {
+  override readonly length = 1;
+  private readonly object: ValueT;
 
   constructor({
     object,
     predicate,
     subject,
-  }: { object: Resource.Value; predicate: NamedNode; subject: Resource }) {
+  }: { object: ValueT; predicate: NamedNode; subject: Resource }) {
     super({ predicate, subject });
     this.object = object;
   }
 
-  override *[Symbol.iterator](): Iterator<Resource.Value> {
+  override *[Symbol.iterator](): Iterator<ValueT> {
     yield this.object;
   }
 
-  override toArray(): readonly Resource.Value[] {
+  override toArray(): readonly ValueT[] {
     return [this.object];
   }
 }
