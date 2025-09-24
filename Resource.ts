@@ -523,7 +523,7 @@ export namespace Resource {
     }
 
     toValues(): Values<Value> {
-      return new SingletonValues({
+      return Values.fromValue({
         object: this,
         predicate: this.predicate,
         subject: this.subject,
@@ -701,7 +701,7 @@ export namespace Resource {
         valueI++;
       }
       return Either.of(
-        new ArrayValues({
+        Values.fromArray({
           objects: newValues,
           predicate: this.predicate,
           subject: this.subject,
@@ -710,7 +710,7 @@ export namespace Resource {
     }
 
     concat(...values: readonly ValueT[]): Values<ValueT> {
-      return new ArrayValues({
+      return Values.fromArray({
         objects: this.toArray().concat(...values),
         predicate: this.predicate,
         subject: this.subject,
@@ -728,7 +728,7 @@ export namespace Resource {
         }
         valueI++;
       }
-      return new ArrayValues({
+      return Values.fromArray({
         objects: filteredValues,
         predicate: this.predicate,
         subject: this.subject,
@@ -770,7 +770,7 @@ export namespace Resource {
         newValues.push(...callback(value, valueI));
         valueI++;
       }
-      return new ArrayValues({
+      return Values.fromArray({
         objects: newValues,
         predicate: this.predicate,
         subject: this.subject,
@@ -783,6 +783,14 @@ export namespace Resource {
       subject: Resource;
     }) {
       return new ArrayValues(parameters);
+    }
+
+    static fromValue<ValueT>(parameters: {
+      predicate: NamedNode;
+      object: ValueT;
+      subject: Resource;
+    }) {
+      return new SingletonValues(parameters);
     }
 
     head(): Either<ValueError, ValueT> {
@@ -806,7 +814,7 @@ export namespace Resource {
         newValues.push(callback(value, valueI));
         valueI++;
       }
-      return new ArrayValues({
+      return Values.fromArray({
         objects: newValues,
         predicate: this.predicate,
         subject: this.subject,
