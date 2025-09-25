@@ -19,30 +19,24 @@
     "typescript": "~5.6",
     "vitest": "^2.0.5"
   },
-  "main": "index.js",
   "files": ["*.d.ts", "*.js"],
   "license": "Apache-2.0",
+  "main": "index.js",
   "name": "rdfjs-resource",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/minorg/rdfjs-resource"
+  },
   "scripts": {
     "build": "tsc -b",
     "check": "biome check",
     "check:write": "biome check --write",
     "check:write:unsafe": "biome check --write --unsafe",
     "clean": "rimraf *.d.ts* *.js *.js.map __tests__/*.d.ts* __tests__/*.js __tests__/*.js.map tsconfig.tsbuildinfo",
-    "format": "biome format",
-    "format:write": "biome format --write",
-    "format:write:unsafe": "biome format --write --unsafe",
-    "lint": "biome lint",
-    "lint:write": "biome lint --write",
-    "lint:write:unsafe": "biome lint --write --unsafe",
+    "dev": "tsc -w --preserveWatchOutput",
     "test": "biome check && vitest run",
     "test:coverage": "biome check && vitest run --coverage",
-    "test:watch": "vitest watch",
-    "watch": "tsc -w --preserveWatchOutput"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/minorg/rdfjs-resource"
+    "test:watch": "vitest watch"
   },
   "type": "module",
   "types": "index.d.ts",
