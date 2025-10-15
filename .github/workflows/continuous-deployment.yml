@@ -4,6 +4,9 @@ on:
     branches:
       - "main"
   workflow_dispatch:
+permissions:
+  id-token: write
+  contents: read
 jobs:
   build:
     name: Build, test, publish
@@ -23,5 +26,3 @@ jobs:
         run: npm run test
       - name: Publish
         run: npm publish --access=public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
