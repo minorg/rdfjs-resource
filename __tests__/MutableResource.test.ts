@@ -1,7 +1,6 @@
 import type { DatasetCore } from "@rdfjs/types";
 import { rdf, xsd } from "@tpluscode/rdf-ns-builders";
 import { DataFactory, Store } from "n3";
-import { Maybe } from "purify-ts";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { MutableResource } from "../MutableResource.js";
 import { MutableResourceSet } from "../MutableResourceSet.js";
@@ -41,35 +40,12 @@ describe("MutableResource", () => {
     expect(values[0].equals(objects["stringLiteral"])).toBe(true);
   });
 
-  it("should add an array value", () => {
+  it("should add multiple values", () => {
     expect(dataset.size).toStrictEqual(0);
-    resource.add(predicate, []);
+    resource.add(predicate);
     expect(dataset.size).toStrictEqual(0);
-    resource.add(predicate, [objects["stringLiteral"], objects["intLiteral"]]);
+    resource.add(predicate, objects["stringLiteral"], objects["intLiteral"]);
     expect(dataset.size).toStrictEqual(2);
-  });
-
-  it("should add a Maybe value", () => {
-    expect(dataset.size).toStrictEqual(0);
-    resource.add(predicate, Maybe.empty());
-    expect(dataset.size).toStrictEqual(0);
-    resource.add(predicate, Maybe.of(objects["stringLiteral"]));
-    expect(dataset.size).toStrictEqual(1);
-  });
-
-  it("should add an undefined value", () => {
-    expect(dataset.size).toStrictEqual(0);
-    resource.add(predicate, undefined);
-    expect(dataset.size).toStrictEqual(0);
-  });
-
-  it("should add a Resource value", () => {
-    expect(dataset.size).toStrictEqual(0);
-    resource.add(predicate, resourceSet.resource(objects["namedNode"]));
-    expect(dataset.size).toStrictEqual(1);
-    expect([...dataset][0].object.equals(objects["namedNode"])).toStrictEqual(
-      true,
-    );
   });
 
   it("should add a List value", () => {

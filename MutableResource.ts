@@ -6,20 +6,11 @@ import type {
   Quad_Graph,
   Variable,
 } from "@rdfjs/types";
-import { Maybe } from "purify-ts";
 import { toRdf } from "rdf-literal";
 import { Resource } from "./Resource.js";
 import { rdf } from "./vocabularies.js";
 
-type AddableValue =
-  | BlankNode
-  | Literal
-  | NamedNode
-  | boolean
-  | Date
-  | number
-  | Resource
-  | string;
+type AddableValue = BlankNode | Literal | NamedNode | boolean | number | string;
 
 /**
  * Resource subclass with operations to mutate the underlying dataset.
@@ -52,15 +43,8 @@ export class MutableResource<
    * If value is undefined, do nothing.
    * Else add (p, value).
    */
-  add(
-    predicate: NamedNode,
-    value:
-      | AddableValue
-      | readonly AddableValue[]
-      | Maybe<AddableValue>
-      | undefined,
-  ): this {
-    for (const term of this.addableValuesToTerms(value)) {
+  add(predicate: NamedNode, ...values: readonly AddableValue[]): this {
+    for (const term of this.addableValuesToTerms(values)) {
       this.dataset.add(
         this.dataFactory.quad(
           this.identifier,
@@ -161,11 +145,8 @@ export class MutableResource<
    * If value is an array, delete (p, arrayValue) for each value in the array.
    * Else delete (p, value).
    */
-  delete(
-    predicate: NamedNode,
-    value?: AddableValue | readonly AddableValue[],
-  ): this {
-    if (typeof value === "undefined") {
+  delete(predicate: NamedNode, ...values: readonly AddableValue[]): this {
+    if (values.length === 0) {
       for (const quad of [
         ...this.dataset.match(
           this.identifier,
@@ -177,7 +158,7 @@ export class MutableResource<
         this.dataset.delete(quad);
       }
     } else {
-      for (const term of this.addableValuesToTerms(value)) {
+      for (const term of this.addableValuesToTerms(values)) {
         for (const quad of [
           ...this.dataset.match(
             this.identifier,
@@ -196,12 +177,9 @@ export class MutableResource<
   /**
    * Delete all existing values of p and then add the specified values.
    */
-  set(
-    predicate: NamedNode,
-    value: AddableValue | readonly AddableValue[],
-  ): this {
+  set(predicate: NamedNode, ...values: readonly AddableValue[]): this {
     this.delete(predicate);
-    return this.add(predicate, value);
+    return this.add(predicate, ...values);
   }
 
   private addableValueToTerm(
@@ -213,36 +191,14 @@ export class MutableResource<
       case "string":
         return toRdf(value, { dataFactory: this.dataFactory });
       case "object":
-        if (value instanceof Date) {
-          return toRdf(value, { dataFactory: this.dataFactory });
-        }
-        if (value instanceof Resource) {
-          return value.identifier;
-        }
         return value;
     }
   }
 
   private addableValuesToTerms(
-    value:
-      | AddableValue
-      | readonly AddableValue[]
-      | Maybe<AddableValue>
-      | undefined,
+    values: readonly AddableValue[],
   ): readonly (BlankNode | Literal | NamedNode)[] {
-    if (typeof value === "undefined") {
-      return [];
-    }
-    if (Array.isArray(value)) {
-      return value.map((subValue) => this.addableValueToTerm(subValue));
-    }
-    if (Maybe.isMaybe(value)) {
-      return value
-        .map((subValue) => this.addableValueToTerm(subValue))
-        .toList();
-    }
-    // TypeScript doesn't pick up that we've handled the array case above, so we have to cast here.
-    return [this.addableValueToTerm(value as AddableValue)];
+    return values.map((value) => this.addableValueToTerm(value));
   }
 }
 
