@@ -36,12 +36,6 @@ export class MutableResource<
 
   /**
    * Add zero or more values to this resource.
-   *
-   * If value is Maybe and Just, add (p, value).
-   * If value is Maybe and Nothing, do nothing.
-   * If value is an array, add all the values separately.
-   * If value is undefined, do nothing.
-   * Else add (p, value).
    */
   add(predicate: NamedNode, ...values: readonly AddableValue[]): this {
     for (const term of this.addableValuesToTerms(values)) {
@@ -141,9 +135,8 @@ export class MutableResource<
   /**
    * Delete zero or more values from this resource.
    *
-   * If value is undefined, delete all values of p.
-   * If value is an array, delete (p, arrayValue) for each value in the array.
-   * Else delete (p, value).
+   * If value is empty, delete all values of p
+   * Else delete (p, arrayValue) for each value in the array.
    */
   delete(predicate: NamedNode, ...values: readonly AddableValue[]): this {
     if (values.length === 0) {
