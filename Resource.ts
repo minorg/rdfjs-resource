@@ -333,16 +333,25 @@ export namespace Resource {
       this.term = term;
     }
 
+    /**
+     * Is the term an IRI / NamedNode?
+     */
     isIri(): boolean {
       return this.term.termType === "NamedNode";
     }
 
+    /**
+     * Try to convert the term to an IRI / NamedNode.
+     */
     toIri(): Either<Resource.MistypedTermValueError, NamedNode> {
       return this.term.termType === "NamedNode"
         ? Either.of(this.term as NamedNode)
         : Left(this.newMistypedValueError("NamedNode"));
     }
 
+    /**
+     * Try to convert the term to a named resource.
+     */
     toNamedResource(): Either<
       Resource.MistypedTermValueError,
       Resource<NamedNode>
@@ -408,23 +417,38 @@ export namespace Resource {
     }
   }
 
+  /**
+   * Wraps an identifier (blank node or IRI) with some methods for converting it to other types.
+   */
   export class IdentifierValue extends AbstractTermValue<Identifier> {
     toIdentifier(): Identifier {
       return this.term;
     }
   }
 
+  /**
+   * Wraps a term (blank node or IRI or literal) with some methods for converting it to other types.
+   */
   export class TermValue extends AbstractTermValue<
     BlankNode | Literal | NamedNode
   > {
+    /**
+     * Is the term a boolean literal?
+     */
     isBoolean(): boolean {
       return this.toBoolean().isRight();
     }
 
+    /**
+     * Is the term a date literal?
+     */
     isDate(): boolean {
       return this.toDate().isRight();
     }
 
+    /**
+     * Is the term an identifier (blank node or IRI)?
+     */
     isIdentifier(): boolean {
       switch (this.term.termType) {
         case "BlankNode":
@@ -435,26 +459,44 @@ export namespace Resource {
       }
     }
 
+    /**
+     * Is the term an RDF list?
+     */
     isList(): boolean {
       return this.toList().isRight();
     }
 
+    /**
+     * Is the term a literal?
+     */
     isLiteral(): boolean {
       return this.term.termType === "Literal";
     }
 
+    /**
+     * Is the term a number literal?
+     */
     isNumber(): boolean {
       return this.toNumber().isRight();
     }
 
+    /**
+     * Is the term a JavaScript primitive literal (boolean | Date | number | string)?
+     */
     isPrimitive(): boolean {
       return this.toPrimitive().isRight();
     }
 
+    /**
+     * Is the term a string literal?
+     */
     isString(): boolean {
       return this.toString().isRight();
     }
 
+    /**
+     * Try to convert the term to a boolean literal.
+     */
     toBoolean(): Either<Resource.MistypedTermValueError, boolean> {
       return this.toPrimitive().chain((primitive) =>
         typeof primitive === "boolean"
@@ -463,6 +505,9 @@ export namespace Resource {
       );
     }
 
+    /**
+     * Try to convert the term to a date literal.
+     */
     toDate(): Either<Resource.MistypedTermValueError, Date> {
       return this.toPrimitive().chain((primitive) =>
         primitive instanceof Date
@@ -471,6 +516,9 @@ export namespace Resource {
       );
     }
 
+    /**
+     * Try to convert the term to an identifier (blank node or IRI).
+     */
     toIdentifier(): Either<
       Resource.MistypedTermValueError,
       Resource.Identifier
@@ -484,16 +532,25 @@ export namespace Resource {
       }
     }
 
+    /**
+     * Try to convert the term to an RDF list.
+     */
     toList(): Either<Resource.ValueError, readonly Resource.TermValue[]> {
       return this.toResource().chain((resource) => resource.toList());
     }
 
+    /**
+     * Try to convert the term to a literal.
+     */
     toLiteral(): Either<Resource.MistypedTermValueError, Literal> {
       return this.term.termType === "Literal"
         ? Either.of(this.term)
         : Left(this.newMistypedValueError("Literal"));
     }
 
+    /**
+     * Try to convert the term to a number literal.
+     */
     toNumber(): Either<Resource.MistypedTermValueError, number> {
       return this.toPrimitive().chain((primitive) =>
         typeof primitive === "number"
@@ -502,6 +559,9 @@ export namespace Resource {
       );
     }
 
+    /**
+     * Try to convert the term to a JavaScript primitive (boolean | Date | number | string).
+     */
     toPrimitive(): Either<
       Resource.MistypedTermValueError,
       boolean | Date | number | string
@@ -531,6 +591,9 @@ export namespace Resource {
       }
     }
 
+    /**
+     * Try to convert the term to a resource (identified by a blank node or IRI).
+     */
     toResource(): Either<Resource.MistypedTermValueError, Resource> {
       return this.toIdentifier().map(
         (identifier) =>
@@ -538,6 +601,9 @@ export namespace Resource {
       );
     }
 
+    /**
+     * Try to convert the term to a string literal.
+     */
     override toString(): Either<Resource.MistypedTermValueError, string> {
       return this.toPrimitive().chain((primitive) =>
         typeof primitive === "string"
@@ -546,6 +612,9 @@ export namespace Resource {
       );
     }
 
+    /**
+     * Convert this value into a singleton sequence of values.
+     */
     toValues(): Values<TermValue> {
       return Values.fromValue({
         focusResource: this.focusResource,
@@ -613,6 +682,17 @@ export namespace Resource {
 
   export class ListStructureError extends ValueError {}
 
+  /**
+   * Iterable sequence of values of a given type.
+   *
+   * Resource.values and .valuesOf return instances of this class instead of a simple array of values in order to
+   * (1) preserve the focus resource that .values/.valuesOf was invoked on, in case of errors
+   * (2) preserve the predicate that .values/.valuesOf was invoked with, in case of errors
+   * (3) return purify types from methods like .find instead of null or undefined
+   * (4) add some methods that aren't on arrays, like .chainMap and .head
+   *
+   * The class doesn't try to implement the entire Array interface. Methods are added as needed by downstream code.
+   */
   export abstract class Values<ValueT> implements Iterable<ValueT> {
     abstract readonly length: number;
     protected readonly focusResource: Resource;
@@ -631,6 +711,15 @@ export namespace Resource {
 
     abstract [Symbol.iterator](): Iterator<ValueT>;
 
+    /**
+     * For each value in the sequence, try to convert it to a new type / transform it using the provided callback.
+     *
+     * If any conversion fails, return the failure (the Left).
+     *
+     * If all of the conversions succeed, return a new Values with the converted values.
+     *
+     * This is a combination of Either.chain and Either.map.
+     */
     chainMap<NewValueT>(
       callback: (value: ValueT, index: number) => Either<Error, NewValueT>,
     ): Either<Error, Values<NewValueT>> {
@@ -653,6 +742,9 @@ export namespace Resource {
       );
     }
 
+    /**
+     * Concatenate another values of the same type to this Values, returning a new Values instance.
+     */
     concat(...values: readonly ValueT[]): Values<ValueT> {
       return Values.fromArray({
         focusResource: this.focusResource,
@@ -661,6 +753,9 @@ export namespace Resource {
       });
     }
 
+    /**
+     * Filter the values, returning a new Values instance.
+     */
     filter(
       predicate: (value: ValueT, index: number) => boolean,
     ): Resource.Values<ValueT> {
@@ -679,6 +774,11 @@ export namespace Resource {
       });
     }
 
+    /**
+     * Find a value that satisfies the given predicate.
+     *
+     * Return Right if a value satisfies the predicate, otherwise Left.
+     */
     find(
       predicate: (value: ValueT, index: number) => boolean,
     ): Either<MissingValueError, ValueT> {
@@ -697,6 +797,11 @@ export namespace Resource {
       );
     }
 
+    /**
+     * Flatten a Values of iterables into a new Values.
+     *
+     * Equivalent of Array.flat.
+     */
     flat<NewValueT>(): Values<NewValueT> {
       return new ArrayValues<NewValueT>({
         focusResource: this.focusResource,
@@ -705,6 +810,9 @@ export namespace Resource {
       });
     }
 
+    /**
+     * Map each value to an array of values of a new type. Flatten those arrays and return the result as a new Values.
+     */
     flatMap<NewValueT>(
       callback: (value: ValueT, index: number) => ReadonlyArray<NewValueT>,
     ): Values<NewValueT> {
@@ -721,6 +829,9 @@ export namespace Resource {
       });
     }
 
+    /**
+     * Create a Values instance from an array of values.
+     */
     static fromArray<ValueT>(parameters: {
       focusResource: Resource;
       predicate: NamedNode;
@@ -729,6 +840,9 @@ export namespace Resource {
       return new ArrayValues(parameters);
     }
 
+    /**
+     * Create a Values instance from a single value.
+     */
     static fromValue<ValueT>(parameters: {
       focusResource: Resource;
       predicate: NamedNode;
@@ -737,6 +851,9 @@ export namespace Resource {
       return new SingletonValues(parameters);
     }
 
+    /**
+     * Get the head of this sequence of values if the sequence is non-empty. Otherwise return Left.
+     */
     head(): Either<ValueError, ValueT> {
       for (const value of this) {
         return Either.of(value);
@@ -749,6 +866,9 @@ export namespace Resource {
       );
     }
 
+    /**
+     * Map each value to a value of a new type and return a new Values with the mapped results.
+     */
     map<NewValueT>(
       callback: (value: ValueT, index: number) => NewValueT,
     ): Values<NewValueT> {
@@ -765,6 +885,9 @@ export namespace Resource {
       });
     }
 
+    /**
+     * Convert this values to an array of the values.
+     */
     abstract toArray(): readonly ValueT[];
   }
 }
