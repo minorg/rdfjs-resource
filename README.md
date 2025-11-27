@@ -28,7 +28,7 @@ import { rdf } from "@tpluscode/rdf-ns-builders";
 const value = resource.value(rdf.type).toNumber().orDefault(0);
 ```
 
-`Resource.value(predicate)` and `Resource.values(predicate)` return a `Resource.Value`, which has various `to` conversion methods that return [purify-ts](https://gigobyte.github.io/purify/) `Maybe` monads.
+`Resource.value(predicate)` and `Resource.values(predicate)` return a `Resource.TermValue`, which has various `to` conversion methods that return [purify-ts](https://gigobyte.github.io/purify/) `Either` monads.
 
 See the `Resource.test.ts` for additional usage.
 
