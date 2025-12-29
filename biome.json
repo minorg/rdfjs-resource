@@ -1,7 +1,20 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  },
   "files": {
-    "ignore": ["*.js", "*.js.map", "*.d.ts", "*.d.ts.map"]
+    "includes": [
+      "**",
+      "!**/*.js",
+      "!**/*.js.map",
+      "!**/*.d.ts",
+      "!**/*.d.ts.map"
+    ]
   },
   "formatter": {
     "enabled": true,
@@ -10,13 +23,18 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
       "complexity": {
         "useLiteralKeys": "off"
-      }
+      },
+      "correctness": {
+        "useImportExtensions": {
+          "level": "error",
+          "options": {
+            "forceJsExtensions": true
+          }
+        }
+      },
+      "recommended": true
     }
-  },
-  "organizeImports": {
-    "enabled": true
   }
 }
