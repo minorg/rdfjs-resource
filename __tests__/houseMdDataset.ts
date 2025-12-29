@@ -1,5 +1,5 @@
 import type { DatasetCore, Quad } from "@rdfjs/types";
-// @ts-ignore
+// @ts-expect-error
 import housemd from "housemd";
 import N3 from "n3";
 

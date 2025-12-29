@@ -8,7 +8,7 @@
   },
   "description": "Resource abstraction over RDF/JS Datasets",
   "devDependencies": {
-    "@biomejs/biome": "1.9.4",
+    "@biomejs/biome": "2.3.10",
     "@tpluscode/rdf-ns-builders": "^4.3.0",
     "@tsconfig/strictest": "^2.0.5",
     "@types/n3": "^1.26.0",
