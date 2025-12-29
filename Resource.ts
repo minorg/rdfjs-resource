@@ -406,7 +406,7 @@ export namespace Resource {
       throw new RangeError(identifier);
     }
 
-    // biome-ignore lint/suspicious/noShadowRestrictedNames: <explanation>
+    // biome-ignore lint/suspicious/noShadowRestrictedNames: allow toString
     export function toString(identifier: Identifier) {
       switch (identifier.termType) {
         case "BlankNode":

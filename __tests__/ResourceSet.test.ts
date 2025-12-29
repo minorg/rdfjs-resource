@@ -1,8 +1,8 @@
 import { schema } from "@tpluscode/rdf-ns-builders";
 import N3 from "n3";
 import { describe, it } from "vitest";
-import { ResourceSet } from "../ResourceSet";
-import { houseMdDataset } from "./houseMdDataset";
+import { ResourceSet } from "../ResourceSet.js";
+import { houseMdDataset } from "./houseMdDataset.js";
 
 describe("ResourceSet", () => {
   const resourceSet = new ResourceSet({ dataset: houseMdDataset });
