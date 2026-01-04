@@ -1,24 +1,16 @@
 import type { DatasetCore } from "@rdfjs/types";
-import { rdf, xsd } from "@tpluscode/rdf-ns-builders";
+import { rdf } from "@tpluscode/rdf-ns-builders";
 import { DataFactory, Store } from "n3";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { MutableResource } from "../MutableResource.js";
 import { MutableResourceSet } from "../MutableResourceSet.js";
+import { testData } from "./testData.js";
 
 describe("MutableResource", () => {
   let dataset: DatasetCore;
+  const { objects, predicate, subject } = testData;
   let resource: MutableResource;
   let resourceSet: MutableResourceSet;
-
-  const objects = {
-    blankNode: DataFactory.blankNode(),
-    booleanLiteral: DataFactory.literal(1, xsd.boolean),
-    intLiteral: DataFactory.literal(1),
-    namedNode: DataFactory.namedNode("http://example.com/namedNodeObject"),
-    stringLiteral: DataFactory.literal("stringLiteralObject"),
-  };
-
-  const predicate = DataFactory.namedNode("http://example.com/predicate");
 
   beforeEach(() => {
     dataset = new Store();
@@ -26,9 +18,7 @@ describe("MutableResource", () => {
       dataFactory: DataFactory,
       dataset,
     });
-    resource = resourceSet.mutableNamedResource(
-      DataFactory.namedNode("http://example.com/subject"),
-    );
+    resource = resourceSet.mutableNamedResource(subject);
   });
 
   it("should add a value", () => {

@@ -334,10 +334,26 @@ export namespace Resource {
     }
 
     /**
+     * Is the term a blank node?
+     */
+    isBlankNode(): boolean {
+      return this.term.termType === "BlankNode";
+    }
+
+    /**
      * Is the term an IRI / NamedNode?
      */
     isIri(): boolean {
       return this.term.termType === "NamedNode";
+    }
+
+    /**
+     * Try to convert the term to a blank node.
+     */
+    toBlankNode(): Either<Resource.MistypedTermValueError, BlankNode> {
+      return this.term.termType === "BlankNode"
+        ? Either.of(this.term as BlankNode)
+        : Left(this.newMistypedValueError("BlankNode"));
     }
 
     /**
