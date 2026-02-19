@@ -1,11 +1,14 @@
+import DefaultDataFactory from "@rdfjs/data-model";
 import TermSet from "@rdfjs/term-set";
 import type {
   BlankNode,
+  DataFactory,
   DatasetCore,
   NamedNode,
   Quad_Graph,
   Variable,
 } from "@rdfjs/types";
+
 import { Resource } from "./Resource.js";
 import { rdf, rdfs } from "./vocabularies.js";
 
@@ -13,10 +16,13 @@ import { rdf, rdfs } from "./vocabularies.js";
  * A ResourceSet wraps an RDF/JS dataset with convenient resource factory methods.
  */
 export class ResourceSet {
-  readonly dataset: DatasetCore;
+  private readonly dataFactory: DataFactory;
 
-  constructor({ dataset }: { dataset: DatasetCore }) {
-    this.dataset = dataset;
+  constructor(
+    readonly dataset: DatasetCore,
+    options?: { dataFactory?: DataFactory },
+  ) {
+    this.dataFactory = options?.dataFactory ?? DefaultDataFactory;
   }
 
   *instancesOf(
@@ -38,19 +44,13 @@ export class ResourceSet {
     options?: Parameters<ResourceSet["instancesOf"]>[1],
   ): Generator<Resource<NamedNode>> {
     for (const identifier of this.instanceIdentifiers(class_, options)) {
-      if (identifier.termType === "NamedNode")
-        yield this.namedResource(identifier);
+      if (identifier.termType === "NamedNode") yield this.resource(identifier);
     }
   }
 
-  namedResource(identifier: NamedNode): Resource<NamedNode> {
-    return new Resource({
-      dataset: this.dataset,
-      identifier,
-    });
-  }
-
-  resource(identifier: Resource.Identifier): Resource {
+  resource<IdentifierT extends Resource.Identifier>(
+    identifier: IdentifierT,
+  ): Resource<IdentifierT> {
     return new Resource({
       dataset: this.dataset,
       identifier,
