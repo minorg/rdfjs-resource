@@ -3,6 +3,7 @@
     "@rdfjs/data-model": "~2.1.1",
     "@rdfjs/term-set": "~2.0.3",
     "@rdfjs/types": "~2.0.1",
+    "@types/rdfjs__data-model": "~2.0.9",
     "@types/rdfjs__term-set": "~2.0.9",
     "purify-ts": "~2.1.4"
   },
