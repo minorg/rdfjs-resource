@@ -1,48 +1,15 @@
-import type {
-  BlankNode,
-  Literal,
-  NamedNode,
-  Quad,
-  Quad_Object,
-  Variable,
-} from "@rdfjs/types";
-import { rdf, rdfs, schema, skos, xsd } from "@tpluscode/rdf-ns-builders";
+import type { BlankNode, Literal, NamedNode } from "@rdfjs/types";
+import { rdf, rdfs, schema, skos } from "@tpluscode/rdf-ns-builders";
 import { DataFactory, Parser, Store } from "n3";
-import { beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { Resource } from "../src/Resource.js";
 import { ResourceSet } from "../src/ResourceSet.js";
 import { houseMdDataset } from "./houseMdDataset.js";
+import { testData } from "./testData.js";
 
 describe("Resource", () => {
-  const objects: Record<string, Exclude<Quad_Object, Quad | Variable>> = {
-    blankNode: DataFactory.blankNode(),
-    booleanLiteral: DataFactory.literal(1, xsd.boolean),
-    dateLiteral: DataFactory.literal("2002-09-24", xsd.date),
-    dateTimeLiteral: DataFactory.literal("2002-05-30T09:00:00", xsd.dateTime),
-    intLiteral: DataFactory.literal(1),
-    namedNode: DataFactory.namedNode("http://example.com/namedNodeObject"),
-    stringLiteral: DataFactory.literal("stringLiteralObject"),
-  };
-
-  const predicate = DataFactory.namedNode("http://example.com/predicate");
-  const subject = DataFactory.namedNode("http://example.com/subject");
-
-  const houseMdResourceSet = new ResourceSet(houseMdDataset);
-  const houseMdResource = houseMdResourceSet.resource(
-    DataFactory.namedNode("https://housemd.rdf-ext.org/person/allison-cameron"),
-  );
-  let testResource: Resource;
-
-  beforeAll(() => {
-    testResource = new Resource(new Store(), subject);
-    for (const object of Object.values(objects)) {
-      testResource.add(predicate, object);
-    }
-  });
-
-  it("should check instance of with rdf:type", ({ expect }) => {
-    expect(houseMdResource.isInstanceOf(schema.Person)).toStrictEqual(true);
-  });
+  const { objects, predicate, subject } = testData;
+  const testResource = testData.resource();
 
   describe("isInstanceOf", () => {
     const dataset = new Store();
@@ -55,6 +22,16 @@ describe("Resource", () => {
     const subClassInstance = new Resource(dataset, DataFactory.blankNode());
     subClassInstance.add(rdf.type, subClass);
     dataset.addQuad(DataFactory.quad(subClass, rdfs.subClassOf, class_));
+
+    it("third party data", ({ expect }) => {
+      const houseMdResourceSet = new ResourceSet(houseMdDataset);
+      const houseMdResource = houseMdResourceSet.resource(
+        DataFactory.namedNode(
+          "https://housemd.rdf-ext.org/person/allison-cameron",
+        ),
+      );
+      expect(houseMdResource.isInstanceOf(schema.Person)).toStrictEqual(true);
+    });
 
     it("should find a class instance", () => {
       expect(classInstance.isInstanceOf(class_)).toStrictEqual(true);
@@ -110,76 +87,6 @@ describe("Resource", () => {
     expect(subClass.isSubClassOf(class1)).toStrictEqual(false);
   });
 
-  it("should get a value (missing)", ({ expect }) => {
-    expect(
-      testResource
-        .value(DataFactory.namedNode("http://example.com/nonexistent"))
-        .toMaybe()
-        .extract(),
-    ).toBeUndefined();
-  });
-
-  it("should get a value (present)", ({ expect }) => {
-    expect(
-      testResource
-        .values(predicate)
-        .find((value) => value.isIri())
-        .unsafeCoerce()
-        .toIri()
-        .toMaybe()
-        .extract()?.value,
-    ).toStrictEqual(objects["namedNode"].value);
-  });
-
-  it("should get a value (filtered)", ({ expect }) => {
-    const value = testResource
-      .values(predicate)
-      .find((value) => value.isIri())
-      .toMaybe()
-      .extract();
-    expect(value?.isIri()).toBe(true);
-  });
-
-  it("should get all values", ({ expect }) => {
-    const values = [...testResource.values(predicate)];
-    expect(values).toHaveLength(Object.keys(objects).length);
-    for (const object of Object.values(objects)) {
-      expect(
-        values.find((value) => value.toTerm().equals(object)),
-      ).toBeDefined();
-    }
-  });
-
-  it("should get a valueOf", ({ expect }) => {
-    const resourceValues = [...testResource.values(predicate)].flatMap(
-      (value) => value.toResource().toMaybe().toList(),
-    );
-    expect(resourceValues).toHaveLength(2);
-    for (const resourceValue of resourceValues) {
-      expect(
-        resourceValue
-          .valueOf(predicate)
-          .unsafeCoerce()
-          .toIdentifier()
-          .equals(testResource.identifier),
-      ).toBe(true);
-    }
-  });
-
-  it("should get a valuesOf", ({ expect }) => {
-    const resourceValues = [...testResource.values(predicate)].flatMap(
-      (value) => value.toResource().toMaybe().toList(),
-    );
-    expect(resourceValues).toHaveLength(2);
-    for (const resourceValue of resourceValues) {
-      const valuesOf = [...resourceValue.valuesOf(predicate)];
-      expect(valuesOf).toHaveLength(1);
-      expect(valuesOf[0].toIdentifier().equals(testResource.identifier)).toBe(
-        true,
-      );
-    }
-  });
-
   describe("toList", () => {
     const parseAndGetRdfList = (
       ttl: string,
@@ -229,175 +136,75 @@ describe("Resource", () => {
     });
   });
 
-  describe("TermValue", () => {
-    it("isBlankNode", ({ expect }) => {
+  describe("value", () => {
+    it("missing", ({ expect }) => {
       expect(
-        [...testResource.values(predicate)].filter((value) =>
-          value.isBlankNode(),
-        ),
-      ).toHaveLength(1);
+        testResource
+          .value(DataFactory.namedNode("http://example.com/nonexistent"))
+          .toMaybe()
+          .extract(),
+      ).toBeUndefined();
     });
 
-    it("isBoolean", ({ expect }) => {
-      expect(
-        [...testResource.values(predicate)].filter((value) =>
-          value.isBoolean(),
-        ),
-      ).toHaveLength(1);
-    });
-
-    it("isDate", ({ expect }) => {
-      expect(
-        [...testResource.values(predicate)].filter((value) => value.isDate()),
-      ).toHaveLength(2);
-    });
-
-    it("isIdentifier", ({ expect }) => {
-      expect(
-        [...testResource.values(predicate)].filter((value) =>
-          value.isIdentifier(),
-        ),
-      ).toHaveLength(2);
-    });
-
-    it("isLiteral", ({ expect }) => {
-      expect(
-        [...testResource.values(predicate)].filter((value) =>
-          value.isLiteral(),
-        ),
-      ).toHaveLength(5);
-    });
-
-    it("isNumber", ({ expect }) => {
-      expect(
-        [...testResource.values(predicate)].filter((value) => value.isNumber()),
-      ).toHaveLength(1);
-    });
-
-    it("isPrimitive", ({ expect }) => {
-      expect(
-        [...testResource.values(predicate)].filter((value) =>
-          value.isPrimitive(),
-        ),
-      ).toHaveLength(5);
-    });
-
-    it("isString", ({ expect }) => {
-      expect(
-        [...testResource.values(predicate)].filter((value) => value.isString()),
-      ).toHaveLength(1);
-    });
-
-    it("toBlankNode", ({ expect }) => {
-      const values = [...testResource.values(predicate)].flatMap((value) =>
-        value.toBlankNode().toMaybe().toList(),
-      );
-      expect(values).toHaveLength(1);
-      expect(values[0].termType).toStrictEqual("BlankNode");
-    });
-
-    it("toBoolean", ({ expect }) => {
-      const values = [...testResource.values(predicate)].flatMap((value) =>
-        value.toBoolean().toMaybe().toList(),
-      );
-      expect(values).toHaveLength(1);
-      expect(values[0]).toStrictEqual(true);
-    });
-
-    it("toDate", ({ expect }) => {
-      expect(
-        [...testResource.values(predicate)].flatMap((value) =>
-          value.toDate().toMaybe().toList(),
-        ),
-      ).toHaveLength(2);
-    });
-
-    it("toIdentifier", ({ expect }) => {
-      const values = [...testResource.values(predicate)].flatMap((value) =>
-        value.toIdentifier().toMaybe().toList(),
-      );
-      expect(values).toHaveLength(2);
-      expect(
-        values.find((value) => value.equals(objects["blankNode"])),
-      ).toBeDefined();
-      expect(
-        values.find((value) => value.equals(objects["namedNode"])),
-      ).toBeDefined();
-    });
-
-    it("toIri", ({ expect }) => {
-      const values = [...testResource.values(predicate)].flatMap((value) =>
-        value.toIri().toMaybe().toList(),
-      );
-      expect(values).toHaveLength(1);
-      expect(values[0].equals(objects["namedNode"])).toStrictEqual(true);
-    });
-
-    it("toLiteral", ({ expect }) => {
-      expect(
-        [...testResource.values(predicate)].flatMap((value) =>
-          value.toLiteral().toMaybe().toList(),
-        ),
-      ).toHaveLength(5);
-    });
-
-    it("toNumber", ({ expect }) => {
-      const values = [...testResource.values(predicate)].flatMap((value) =>
-        value.toNumber().toMaybe().toList(),
-      );
-      expect(values).toHaveLength(1);
-      expect(values[0]).toStrictEqual(1);
-    });
-
-    it("toPrimitive", ({ expect }) => {
-      const primitives = [...testResource.values(predicate)].flatMap((value) =>
-        value.toPrimitive().toMaybe().toList(),
-      );
-      expect(primitives).toHaveLength(5);
-      expect(
-        primitives.filter((primitive) => typeof primitive === "boolean"),
-      ).toHaveLength(1);
-      expect(
-        primitives.filter((primitive) => primitive instanceof Date),
-      ).toHaveLength(2);
-      expect(
-        primitives.filter((primitive) => typeof primitive === "number"),
-      ).toHaveLength(1);
-      expect(
-        primitives.filter((primitive) => typeof primitive === "string"),
-      ).toHaveLength(1);
-    });
-
-    it("toResource", ({ expect }) => {
-      const values = [...testResource.values(predicate)].flatMap((value) =>
-        value.toResource().toMaybe().toList(),
-      );
-      expect(values).toHaveLength(2);
-      expect(
-        values.find((value) => value.identifier.equals(objects["blankNode"])),
-      ).toBeDefined();
-      expect(
-        values.find((value) => value.identifier.equals(objects["namedNode"])),
-      ).toBeDefined();
-    });
-
-    it("toString", ({ expect }) => {
+    it("present", ({ expect }) => {
       expect(
         testResource
           .values(predicate)
-          .find((value) => value.isString())
-          .chain((value) => value.toString())
-          .orDefault("test"),
-      ).toStrictEqual(objects["stringLiteral"].value);
+          .find((value) => value.isIri())
+          .unsafeCoerce()
+          .toIri()
+          .toMaybe()
+          .extract()?.value,
+      ).toStrictEqual(objects["namedNode"].value);
     });
 
-    it("toValues", ({ expect }) => {
-      const value = testResource.value(predicate).unsafeCoerce();
-      const values = value.toValues();
-      expect(values).toHaveLength(1);
-      expect(
-        values.head().unsafeCoerce().toTerm().equals(value.toTerm()),
-      ).toStrictEqual(true);
+    it("filtered", ({ expect }) => {
+      const value = testResource
+        .values(predicate)
+        .find((value) => value.isIri())
+        .toMaybe()
+        .extract();
+      expect(value?.isIri()).toBe(true);
     });
+  });
+
+  it("values", ({ expect }) => {
+    const values = [...testResource.values(predicate)];
+    expect(values).toHaveLength(Object.keys(objects).length);
+    for (const object of Object.values(objects)) {
+      expect(
+        values.find((value) => value.toTerm().equals(object)),
+      ).toBeDefined();
+    }
+  });
+
+  it("valueOf", ({ expect }) => {
+    const resourceValues = [...testResource.values(predicate)].flatMap(
+      (value) => value.toResource().toMaybe().toList(),
+    );
+    expect(resourceValues).toHaveLength(2);
+    for (const resourceValue of resourceValues) {
+      expect(
+        resourceValue
+          .valueOf(predicate)
+          .unsafeCoerce()
+          .toIdentifier()
+          .equals(testResource.identifier),
+      ).toBe(true);
+    }
+  });
+
+  it("valuesOf", ({ expect }) => {
+    const resourceValues = [...testResource.values(predicate)].flatMap(
+      (value) => value.toResource().toMaybe().toList(),
+    );
+    expect(resourceValues).toHaveLength(2);
+    for (const resourceValue of resourceValues) {
+      const valuesOf = [...resourceValue.valuesOf(predicate)];
+      expect(valuesOf).toHaveLength(1);
+      expect(valuesOf[0].toIdentifier().equals(testResource.identifier)).toBe(
+        true,
+      );
+    }
   });
 });
