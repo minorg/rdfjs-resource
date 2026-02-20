@@ -15,68 +15,6 @@ export class TermValue extends AbstractTermValue<
   BlankNode | Literal | NamedNode
 > {
   /**
-   * Is the term a boolean literal?
-   */
-  isBoolean(): boolean {
-    return this.toBoolean().isRight();
-  }
-
-  /**
-   * Is the term a date literal?
-   */
-  isDate(): boolean {
-    return this.toDate().isRight();
-  }
-
-  /**
-   * Is the term an identifier (blank node or IRI)?
-   */
-  isIdentifier(): boolean {
-    switch (this.term.termType) {
-      case "BlankNode":
-      case "NamedNode":
-        return true;
-      default:
-        return false;
-    }
-  }
-
-  /**
-   * Is the term an RDF list?
-   */
-  isList(): boolean {
-    return this.toList().isRight();
-  }
-
-  /**
-   * Is the term a literal?
-   */
-  isLiteral(): boolean {
-    return this.term.termType === "Literal";
-  }
-
-  /**
-   * Is the term a number literal?
-   */
-  isNumber(): boolean {
-    return this.toNumber().isRight();
-  }
-
-  /**
-   * Is the term a JavaScript primitive literal (boolean | Date | number | string)?
-   */
-  isPrimitive(): boolean {
-    return this.toPrimitive().isRight();
-  }
-
-  /**
-   * Is the term a string literal?
-   */
-  isString(): boolean {
-    return this.toString().isRight();
-  }
-
-  /**
    * Try to convert the term to a boolean literal.
    */
   toBoolean(): Either<MistypedTermValueError, boolean> {

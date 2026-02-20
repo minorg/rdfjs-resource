@@ -279,7 +279,7 @@ describe("Resource", () => {
       expect(
         testResource
           .values(predicate)
-          .find((value) => value.isIri())
+          .find((value) => value.termType === "NamedNode")
           .unsafeCoerce()
           .toIri()
           .toMaybe()
@@ -290,10 +290,10 @@ describe("Resource", () => {
     it("filtered", ({ expect }) => {
       const value = testResource
         .values(predicate)
-        .find((value) => value.isIri())
+        .find((value) => value.termType === "NamedNode")
         .toMaybe()
         .extract();
-      expect(value?.isIri()).toBe(true);
+      expect(value).toBeDefined();
     });
   });
 

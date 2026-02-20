@@ -10,60 +10,6 @@ describe("TermValue", () => {
     testResource.add(predicate, object);
   }
 
-  it("isBlankNode", ({ expect }) => {
-    expect(
-      [...testResource.values(predicate)].filter((value) =>
-        value.isBlankNode(),
-      ),
-    ).toHaveLength(1);
-  });
-
-  it("isBoolean", ({ expect }) => {
-    expect(
-      [...testResource.values(predicate)].filter((value) => value.isBoolean()),
-    ).toHaveLength(1);
-  });
-
-  it("isDate", ({ expect }) => {
-    expect(
-      [...testResource.values(predicate)].filter((value) => value.isDate()),
-    ).toHaveLength(4);
-  });
-
-  it("isIdentifier", ({ expect }) => {
-    expect(
-      [...testResource.values(predicate)].filter((value) =>
-        value.isIdentifier(),
-      ),
-    ).toHaveLength(2);
-  });
-
-  it("isLiteral", ({ expect }) => {
-    expect(
-      [...testResource.values(predicate)].filter((value) => value.isLiteral()),
-    ).toHaveLength(41);
-  });
-
-  it("isNumber", ({ expect }) => {
-    expect(
-      [...testResource.values(predicate)].filter((value) => value.isNumber()),
-    ).toHaveLength(16);
-  });
-
-  it("isPrimitive", ({ expect }) => {
-    expect(
-      [...testResource.values(predicate)].filter((value) =>
-        value.isPrimitive(),
-      ),
-    ).toHaveLength(39);
-  });
-
-  it("isString", ({ expect }) => {
-    expect(
-      [...testResource.values(predicate)].filter((value) => value.isString()),
-    ).toHaveLength(18);
-  });
-
   it("toBlankNode", ({ expect }) => {
     const values = [...testResource.values(predicate)].flatMap((value) =>
       value.toBlankNode().toMaybe().toList(),
@@ -161,7 +107,7 @@ describe("TermValue", () => {
     expect(
       testResource
         .values(predicate)
-        .find((value) => value.isString())
+        .find((value) => value.toString().isRight())
         .chain((value) => value.toString())
         .orDefault("test"),
     ).toStrictEqual(objects["stringLiteral"].value);

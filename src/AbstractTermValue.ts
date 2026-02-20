@@ -24,18 +24,8 @@ export abstract class AbstractTermValue<
     this.term = term;
   }
 
-  /**
-   * Is the term a blank node?
-   */
-  isBlankNode(): boolean {
-    return this.term.termType === "BlankNode";
-  }
-
-  /**
-   * Is the term an IRI / NamedNode?
-   */
-  isIri(): boolean {
-    return this.term.termType === "NamedNode";
+  get termType(): "BlankNode" | "Literal" | "NamedNode" {
+    return this.term.termType;
   }
 
   /**
