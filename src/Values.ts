@@ -1,9 +1,7 @@
 import type { NamedNode } from "@rdfjs/types";
 import { Either, Left } from "purify-ts";
-import { ArrayValues } from "./ArrayValues.js";
 import { MissingValueError } from "./MissingValueError.js";
 import type { Resource } from "./Resource.js";
-import { SingletonValues } from "./SingletonValues.js";
 import type { ValueError } from "./ValueError.js";
 
 /**
@@ -125,7 +123,7 @@ export abstract class Values<ValueT> implements Iterable<ValueT> {
    * Equivalent of Array.flat.
    */
   flat<NewValueT>(): Values<NewValueT> {
-    return new ArrayValues<NewValueT>({
+    return Values.fromArray<NewValueT>({
       focusResource: this.focusResource,
       predicate: this.predicate,
       values: this.toArray().flat() as readonly NewValueT[],
@@ -211,4 +209,63 @@ export abstract class Values<ValueT> implements Iterable<ValueT> {
    * Convert this values to an array of the values.
    */
   abstract toArray(): readonly ValueT[];
+}
+
+/**
+ * Private implementation of Resource.Values that iterates over an array.
+ *
+ * Must be in the same file to avoid circular dependencies.
+ */
+class ArrayValues<ValueT> extends Values<ValueT> {
+  private readonly values: readonly ValueT[];
+
+  constructor({
+    values,
+    ...superParameters
+  }: {
+    focusResource: Resource;
+    predicate: NamedNode;
+    values: readonly ValueT[];
+  }) {
+    super(superParameters);
+    this.values = values;
+  }
+
+  override get length(): number {
+    return this.values.length;
+  }
+
+  override [Symbol.iterator](): Iterator<ValueT> {
+    return this.values[Symbol.iterator]();
+  }
+
+  override toArray(): readonly ValueT[] {
+    return this.values;
+  }
+}
+
+/**
+ * Private implementation of Values that iterates over a single value.
+ *
+ * Must be in the same file to avoid circular dependencies.
+ */
+class SingletonValues<ValueT> extends Values<ValueT> {
+  override readonly length = 1;
+  private readonly value: ValueT;
+
+  constructor({
+    value,
+    ...superParameters
+  }: { focusResource: Resource; value: ValueT; predicate: NamedNode }) {
+    super(superParameters);
+    this.value = value;
+  }
+
+  override *[Symbol.iterator](): Iterator<ValueT> {
+    yield this.value;
+  }
+
+  override toArray(): readonly ValueT[] {
+    return [this.value];
+  }
 }
