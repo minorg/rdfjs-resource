@@ -8,8 +8,9 @@ import type {
 } from "@rdfjs/types";
 import { rdf, rdfs, schema, skos, xsd } from "@tpluscode/rdf-ns-builders";
 import { DataFactory, Parser, Store } from "n3";
-import { Resource, ResourceSet } from "rdfjs-resource";
 import { beforeAll, describe, expect, it } from "vitest";
+import { Resource } from "../src/Resource.js";
+import { ResourceSet } from "../src/ResourceSet.js";
 import { houseMdDataset } from "./houseMdDataset.js";
 
 describe("Resource", () => {
@@ -26,16 +27,16 @@ describe("Resource", () => {
   const predicate = DataFactory.namedNode("http://example.com/predicate");
   const subject = DataFactory.namedNode("http://example.com/subject");
 
-  const houseMdResourceSet = new ResourceSet({ dataset: houseMdDataset });
+  const houseMdResourceSet = new ResourceSet(houseMdDataset);
   const houseMdResource = houseMdResourceSet.resource(
     DataFactory.namedNode("https://housemd.rdf-ext.org/person/allison-cameron"),
   );
-  let mutableResource: Resource;
+  let testResource: Resource;
 
   beforeAll(() => {
-    mutableResource = new Resource(new Store(), subject);
+    testResource = new Resource(new Store(), subject);
     for (const object of Object.values(objects)) {
-      mutableResource.add(predicate, object);
+      testResource.add(predicate, object);
     }
   });
 
@@ -46,22 +47,12 @@ describe("Resource", () => {
   describe("isInstanceOf", () => {
     const dataset = new Store();
     const class_ = skos.Concept;
-    const classInstance = new Resource({
-      dataFactory: DataFactory,
-      dataset,
-      identifier: DataFactory.blankNode(),
-      mutateGraph: DataFactory.defaultGraph(),
-    });
+    const classInstance = new Resource(dataset, DataFactory.blankNode());
     classInstance.add(rdf.type, class_);
     const subClass = DataFactory.namedNode(
       "http://example.com/ConceptSubclass",
     );
-    const subClassInstance = new Resource({
-      dataFactory: DataFactory,
-      dataset,
-      identifier: DataFactory.blankNode(),
-      mutateGraph: DataFactory.defaultGraph(),
-    });
+    const subClassInstance = new Resource(dataset, DataFactory.blankNode());
     subClassInstance.add(rdf.type, subClass);
     dataset.addQuad(DataFactory.quad(subClass, rdfs.subClassOf, class_));
 
@@ -83,10 +74,7 @@ describe("Resource", () => {
 
     it("should handle the negative case", () => {
       expect(
-        new Resource({
-          dataset,
-          identifier: DataFactory.blankNode(),
-        }).isInstanceOf(class_),
+        new Resource(dataset, DataFactory.blankNode()).isInstanceOf(class_),
       ).toStrictEqual(false);
     });
   });
@@ -94,19 +82,15 @@ describe("Resource", () => {
   it("isSubClassOf (positive case)", () => {
     const dataset = new Store();
     const class_ = skos.Concept;
-    const subClass = new Resource<NamedNode>({
-      dataFactory: DataFactory,
+    const subClass = new Resource(
       dataset,
-      identifier: DataFactory.namedNode("http://example.com/subClass"),
-      mutateGraph: DataFactory.defaultGraph(),
-    });
+      DataFactory.namedNode("http://example.com/subClass"),
+    );
     subClass.add(rdfs.subClassOf, class_);
-    const subSubClass = new Resource<NamedNode>({
-      dataFactory: DataFactory,
+    const subSubClass = new Resource(
       dataset,
-      identifier: DataFactory.namedNode("http://example.com/subSubClass"),
-      mutateGraph: DataFactory.defaultGraph(),
-    });
+      DataFactory.namedNode("http://example.com/subSubClass"),
+    );
     subSubClass.add(rdfs.subClassOf, subClass.identifier);
     expect(subSubClass.isSubClassOf(class_)).toStrictEqual(true);
   });
@@ -114,25 +98,21 @@ describe("Resource", () => {
   it("isSubClassOf (negative case)", () => {
     const dataset = new Store();
     const class1 = skos.Concept;
-    const class2 = new Resource<NamedNode>({
-      dataFactory: DataFactory,
+    const class2 = new Resource(
       dataset,
-      identifier: DataFactory.namedNode("http://example.com/subClass"),
-      mutateGraph: DataFactory.defaultGraph(),
-    });
-    const subClass = new Resource<NamedNode>({
-      dataFactory: DataFactory,
+      DataFactory.namedNode("http://example.com/subClass"),
+    );
+    const subClass = new Resource(
       dataset,
-      identifier: DataFactory.namedNode("http://example.com/subSubClass"),
-      mutateGraph: DataFactory.defaultGraph(),
-    });
+      DataFactory.namedNode("http://example.com/subSubClass"),
+    );
     subClass.add(rdfs.subClassOf, class2.identifier);
     expect(subClass.isSubClassOf(class1)).toStrictEqual(false);
   });
 
   it("should get a value (missing)", ({ expect }) => {
     expect(
-      mutableResource
+      testResource
         .value(DataFactory.namedNode("http://example.com/nonexistent"))
         .toMaybe()
         .extract(),
@@ -141,7 +121,7 @@ describe("Resource", () => {
 
   it("should get a value (present)", ({ expect }) => {
     expect(
-      mutableResource
+      testResource
         .values(predicate)
         .find((value) => value.isIri())
         .unsafeCoerce()
@@ -152,7 +132,7 @@ describe("Resource", () => {
   });
 
   it("should get a value (filtered)", ({ expect }) => {
-    const value = mutableResource
+    const value = testResource
       .values(predicate)
       .find((value) => value.isIri())
       .toMaybe()
@@ -161,7 +141,7 @@ describe("Resource", () => {
   });
 
   it("should get all values", ({ expect }) => {
-    const values = [...mutableResource.values(predicate)];
+    const values = [...testResource.values(predicate)];
     expect(values).toHaveLength(Object.keys(objects).length);
     for (const object of Object.values(objects)) {
       expect(
@@ -171,7 +151,7 @@ describe("Resource", () => {
   });
 
   it("should get a valueOf", ({ expect }) => {
-    const resourceValues = [...mutableResource.values(predicate)].flatMap(
+    const resourceValues = [...testResource.values(predicate)].flatMap(
       (value) => value.toResource().toMaybe().toList(),
     );
     expect(resourceValues).toHaveLength(2);
@@ -181,22 +161,22 @@ describe("Resource", () => {
           .valueOf(predicate)
           .unsafeCoerce()
           .toIdentifier()
-          .equals(mutableResource.identifier),
+          .equals(testResource.identifier),
       ).toBe(true);
     }
   });
 
   it("should get a valuesOf", ({ expect }) => {
-    const resourceValues = [...mutableResource.values(predicate)].flatMap(
+    const resourceValues = [...testResource.values(predicate)].flatMap(
       (value) => value.toResource().toMaybe().toList(),
     );
     expect(resourceValues).toHaveLength(2);
     for (const resourceValue of resourceValues) {
       const valuesOf = [...resourceValue.valuesOf(predicate)];
       expect(valuesOf).toHaveLength(1);
-      expect(
-        valuesOf[0].toIdentifier().equals(mutableResource.identifier),
-      ).toBe(true);
+      expect(valuesOf[0].toIdentifier().equals(testResource.identifier)).toBe(
+        true,
+      );
     }
   });
 
@@ -206,11 +186,12 @@ describe("Resource", () => {
     ): readonly (BlankNode | Literal | NamedNode)[] => {
       const dataset = new Store();
       dataset.addQuads(new Parser({ format: "Turtle" }).parse(ttl));
-      return new Resource({
+      return new Resource(
         dataset,
-        identifier: [...dataset.match(subject, predicate, null, null)][0]
-          .object as BlankNode | NamedNode,
-      })
+        [...dataset.match(subject, predicate, null, null)][0].object as
+          | BlankNode
+          | NamedNode,
+      )
         .toList()
         .unsafeCoerce()
         .map((value) => value.toTerm());
@@ -251,7 +232,7 @@ describe("Resource", () => {
   describe("TermValue", () => {
     it("isBlankNode", ({ expect }) => {
       expect(
-        [...mutableResource.values(predicate)].filter((value) =>
+        [...testResource.values(predicate)].filter((value) =>
           value.isBlankNode(),
         ),
       ).toHaveLength(1);
@@ -259,7 +240,7 @@ describe("Resource", () => {
 
     it("isBoolean", ({ expect }) => {
       expect(
-        [...mutableResource.values(predicate)].filter((value) =>
+        [...testResource.values(predicate)].filter((value) =>
           value.isBoolean(),
         ),
       ).toHaveLength(1);
@@ -267,15 +248,13 @@ describe("Resource", () => {
 
     it("isDate", ({ expect }) => {
       expect(
-        [...mutableResource.values(predicate)].filter((value) =>
-          value.isDate(),
-        ),
+        [...testResource.values(predicate)].filter((value) => value.isDate()),
       ).toHaveLength(2);
     });
 
     it("isIdentifier", ({ expect }) => {
       expect(
-        [...mutableResource.values(predicate)].filter((value) =>
+        [...testResource.values(predicate)].filter((value) =>
           value.isIdentifier(),
         ),
       ).toHaveLength(2);
@@ -283,7 +262,7 @@ describe("Resource", () => {
 
     it("isLiteral", ({ expect }) => {
       expect(
-        [...mutableResource.values(predicate)].filter((value) =>
+        [...testResource.values(predicate)].filter((value) =>
           value.isLiteral(),
         ),
       ).toHaveLength(5);
@@ -291,15 +270,13 @@ describe("Resource", () => {
 
     it("isNumber", ({ expect }) => {
       expect(
-        [...mutableResource.values(predicate)].filter((value) =>
-          value.isNumber(),
-        ),
+        [...testResource.values(predicate)].filter((value) => value.isNumber()),
       ).toHaveLength(1);
     });
 
     it("isPrimitive", ({ expect }) => {
       expect(
-        [...mutableResource.values(predicate)].filter((value) =>
+        [...testResource.values(predicate)].filter((value) =>
           value.isPrimitive(),
         ),
       ).toHaveLength(5);
@@ -307,14 +284,12 @@ describe("Resource", () => {
 
     it("isString", ({ expect }) => {
       expect(
-        [...mutableResource.values(predicate)].filter((value) =>
-          value.isString(),
-        ),
+        [...testResource.values(predicate)].filter((value) => value.isString()),
       ).toHaveLength(1);
     });
 
     it("toBlankNode", ({ expect }) => {
-      const values = [...mutableResource.values(predicate)].flatMap((value) =>
+      const values = [...testResource.values(predicate)].flatMap((value) =>
         value.toBlankNode().toMaybe().toList(),
       );
       expect(values).toHaveLength(1);
@@ -322,7 +297,7 @@ describe("Resource", () => {
     });
 
     it("toBoolean", ({ expect }) => {
-      const values = [...mutableResource.values(predicate)].flatMap((value) =>
+      const values = [...testResource.values(predicate)].flatMap((value) =>
         value.toBoolean().toMaybe().toList(),
       );
       expect(values).toHaveLength(1);
@@ -331,14 +306,14 @@ describe("Resource", () => {
 
     it("toDate", ({ expect }) => {
       expect(
-        [...mutableResource.values(predicate)].flatMap((value) =>
+        [...testResource.values(predicate)].flatMap((value) =>
           value.toDate().toMaybe().toList(),
         ),
       ).toHaveLength(2);
     });
 
     it("toIdentifier", ({ expect }) => {
-      const values = [...mutableResource.values(predicate)].flatMap((value) =>
+      const values = [...testResource.values(predicate)].flatMap((value) =>
         value.toIdentifier().toMaybe().toList(),
       );
       expect(values).toHaveLength(2);
@@ -351,7 +326,7 @@ describe("Resource", () => {
     });
 
     it("toIri", ({ expect }) => {
-      const values = [...mutableResource.values(predicate)].flatMap((value) =>
+      const values = [...testResource.values(predicate)].flatMap((value) =>
         value.toIri().toMaybe().toList(),
       );
       expect(values).toHaveLength(1);
@@ -360,14 +335,14 @@ describe("Resource", () => {
 
     it("toLiteral", ({ expect }) => {
       expect(
-        [...mutableResource.values(predicate)].flatMap((value) =>
+        [...testResource.values(predicate)].flatMap((value) =>
           value.toLiteral().toMaybe().toList(),
         ),
       ).toHaveLength(5);
     });
 
     it("toNumber", ({ expect }) => {
-      const values = [...mutableResource.values(predicate)].flatMap((value) =>
+      const values = [...testResource.values(predicate)].flatMap((value) =>
         value.toNumber().toMaybe().toList(),
       );
       expect(values).toHaveLength(1);
@@ -375,8 +350,8 @@ describe("Resource", () => {
     });
 
     it("toPrimitive", ({ expect }) => {
-      const primitives = [...mutableResource.values(predicate)].flatMap(
-        (value) => value.toPrimitive().toMaybe().toList(),
+      const primitives = [...testResource.values(predicate)].flatMap((value) =>
+        value.toPrimitive().toMaybe().toList(),
       );
       expect(primitives).toHaveLength(5);
       expect(
@@ -394,7 +369,7 @@ describe("Resource", () => {
     });
 
     it("toResource", ({ expect }) => {
-      const values = [...mutableResource.values(predicate)].flatMap((value) =>
+      const values = [...testResource.values(predicate)].flatMap((value) =>
         value.toResource().toMaybe().toList(),
       );
       expect(values).toHaveLength(2);
@@ -408,7 +383,7 @@ describe("Resource", () => {
 
     it("toString", ({ expect }) => {
       expect(
-        mutableResource
+        testResource
           .values(predicate)
           .find((value) => value.isString())
           .chain((value) => value.toString())
@@ -417,7 +392,7 @@ describe("Resource", () => {
     });
 
     it("toValues", ({ expect }) => {
-      const value = mutableResource.value(predicate).unsafeCoerce();
+      const value = testResource.value(predicate).unsafeCoerce();
       const values = value.toValues();
       expect(values).toHaveLength(1);
       expect(
