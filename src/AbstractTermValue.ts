@@ -62,10 +62,7 @@ export abstract class AbstractTermValue<
   toNamedResource(): Either<MistypedTermValueError, Resource<NamedNode>> {
     return this.toIri().map(
       (identifier) =>
-        new Resource<NamedNode>({
-          dataset: this.focusResource.dataset,
-          identifier,
-        }),
+        new Resource<NamedNode>(this.focusResource.dataset, identifier),
     );
   }
 

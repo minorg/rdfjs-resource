@@ -51,9 +51,8 @@ export class ResourceSet {
   resource<IdentifierT extends Resource.Identifier>(
     identifier: IdentifierT,
   ): Resource<IdentifierT> {
-    return new Resource({
-      dataset: this.dataset,
-      identifier,
+    return new Resource(this.dataset, identifier, {
+      dataFactory: this.dataFactory,
     });
   }
 

@@ -1,16 +1,27 @@
+import DefaultDataFactory from "@rdfjs/data-model";
 import TermSet from "@rdfjs/term-set";
 import type {
   BlankNode,
+  DataFactory,
   DatasetCore,
   Literal,
   NamedNode,
   Quad_Graph,
   Variable,
 } from "@rdfjs/types";
-import { Either, Left } from "purify-ts";
-import { rdf, rdfs } from "./vocabularies.js";
 
-type AddableValue = BlankNode | Literal | NamedNode | boolean | number | string;
+import { Either, Left } from "purify-ts";
+
+import { DatasetObjectValues } from "./DatasetObjectValues.js";
+import { DatasetSubjectValues } from "./DatasetSubjectValues.js";
+import { Identifier as _Identifier } from "./Identifier.js";
+import { IdentifierValue as _IdentifierValue } from "./IdentifierValue.js";
+import { ListStructureError as _ListStructureError } from "./ListStructureError.js";
+import { MistypedTermValueError as _MistypedTermValueError } from "./MistypedTermValueError.js";
+import { TermValue as _TermValue } from "./TermValue.js";
+import { ValueError as _ValueError } from "./ValueError.js";
+import { Values as _Values } from "./Values.js";
+import { rdf, rdfs } from "./vocabularies.js";
 
 /**
  * A Resource abstraction over subjects or objects in an RDF/JS dataset.
@@ -18,74 +29,27 @@ type AddableValue = BlankNode | Literal | NamedNode | boolean | number | string;
 export class Resource<
   IdentifierT extends Resource.Identifier = Resource.Identifier,
 > {
-  readonly dataset: DatasetCore;
-  readonly identifier: IdentifierT;
+  private readonly dataFactory: DataFactory;
 
-  /**
-   * Delete zero or more values from this resource.
-   *
-   * If value is empty, delete all values of p
-   * Else delete (p, arrayValue) for each value in the array.
-   */
-  delete(
-    predicate: NamedNode,
-    object?: AddableValue,
-    graph?: Exclude<Quad_Graph, Variable>,
-  ): this {
-    if (!object) {
-      for (const quad of [
-        ...this.dataset.match(this.identifier, predicate, null, graph),
-      ]) {
-        this.dataset.delete(quad);
-      }
-    } else {
-      for (const term of this.addableValuesToTerms(values)) {
-        for (const quad of [
-          ...this.dataset.match(
-            this.identifier,
-            predicate,
-            term,
-            this.mutateGraph,
-          ),
-        ]) {
-          this.dataset.delete(quad);
-        }
-      }
-    }
-    return this;
-  }
-
-  /**
-   * Delete all existing values of p and then add the specified values.
-   */
-  set(predicate: NamedNode, ...values: readonly AddableValue[]): this {
-    this.delete(predicate);
-    return this.add(predicate, ...values);
-  }
-
-  constructor({
-    dataset,
-    identifier,
-  }: {
-    dataset: DatasetCore;
-    identifier: IdentifierT;
-  }) {
-    this.dataset = dataset;
-    this.identifier = identifier;
+  constructor(
+    readonly dataset: DatasetCore,
+    readonly identifier: IdentifierT,
+    options?: { dataFactory?: DataFactory },
+  ) {
+    this.dataFactory = options?.dataFactory ?? DefaultDataFactory;
   }
 
   /**
    * Add zero or more values to this resource.
    */
-  add(predicate: NamedNode, ...values: readonly AddableValue[]): this {
-    for (const term of this.addableValuesToTerms(values)) {
+  add(
+    predicate: NamedNode,
+    object: AddableValue | readonly AddableValue[],
+    graph?: Exclude<Quad_Graph, Variable>,
+  ): this {
+    for (const term of this.addableValuesToTerms(object)) {
       this.dataset.add(
-        this.dataFactory.quad(
-          this.identifier,
-          predicate,
-          term,
-          this.mutateGraph,
-        ),
+        this.dataFactory.quad(this.identifier, predicate, term, graph),
       );
     }
     return this;
@@ -104,47 +68,24 @@ export class Resource<
   ): Resource {
     const itemsArray = [...items];
     if (itemsArray.length === 0) {
-      return new Resource({
+      return new Resource(this.dataset, rdf.nil, {
         dataFactory: this.dataFactory,
-        dataset: this.dataset,
-        identifier: rdf.nil,
-        mutateGraph: this.mutateGraph,
       });
     }
 
     const mintSubListIdentifier =
       options?.mintSubListIdentifier ?? (() => this.dataFactory.blankNode());
 
-    const listResource = new Resource({
-      dataFactory: this.dataFactory,
-      dataset: this.dataset,
-      identifier: mintSubListIdentifier(itemsArray[0], 0),
-      mutateGraph: this.mutateGraph,
-    });
+    const listResource = new Resource(
+      this.dataset,
+      mintSubListIdentifier(itemsArray[0], 0),
+      { dataFactory: this.dataFactory },
+    );
     listResource.addListItems(itemsArray, { mintSubListIdentifier });
 
     this.add(predicate, listResource.identifier);
 
     return listResource;
-  }
-
-  private addableValueToTerm(
-    value: AddableValue,
-  ): BlankNode | Literal | NamedNode {
-    switch (typeof value) {
-      case "boolean":
-      case "number":
-      case "string":
-        return toRdf(value, { dataFactory: this.dataFactory });
-      case "object":
-        return value;
-    }
-  }
-
-  private addableValuesToTerms(
-    values: readonly AddableValue[],
-  ): readonly (BlankNode | Literal | NamedNode)[] {
-    return values.map((value) => this.addableValueToTerm(value));
   }
 
   /**
@@ -154,6 +95,7 @@ export class Resource<
     items: Iterable<AddableValue>,
     options?: {
       addSubListResourceValues?: (subListResource: Resource) => void;
+      graph?: Exclude<Quad_Graph, Variable>;
       mintSubListIdentifier?: (
         item: AddableValue,
         itemIndex: number,
@@ -162,6 +104,7 @@ export class Resource<
   ): this {
     const addSubListResourceValues =
       options?.addSubListResourceValues ?? (() => {});
+    const graph = options?.graph;
     const mintSubListIdentifier =
       options?.mintSubListIdentifier ?? (() => this.dataFactory.blankNode());
 
@@ -170,23 +113,51 @@ export class Resource<
     for (const item of items) {
       if (itemIndex > 0) {
         // If currentHead !== this, then create a new head and point the current head's rdf:rest at it
-        const newHead = new Resource({
-          dataFactory: this.dataFactory,
-          dataset: this.dataset,
-          identifier: mintSubListIdentifier(item, itemIndex),
-          mutateGraph: this.mutateGraph,
-        });
+        const newHead = new Resource(
+          this.dataset,
+          mintSubListIdentifier(item, itemIndex),
+          { dataFactory: this.dataFactory },
+        );
         addSubListResourceValues(newHead);
-        currentHead.add(rdf.rest, newHead.identifier);
+        currentHead.add(rdf.rest, newHead.identifier, graph);
         currentHead = newHead;
       }
-      currentHead.add(rdf.first, item);
+      currentHead.add(rdf.first, item, graph);
       itemIndex++;
     }
     if (itemIndex > 0) {
       // If there were any items there was an rdf:first on the current head
       // Close that head by adding an rdf:rest rdf:nil
-      currentHead.add(rdf.rest, rdf.nil);
+      currentHead.add(rdf.rest, rdf.nil, graph);
+    }
+    return this;
+  }
+
+  /**
+   * Delete zero or more values from this resource.
+   *
+   * If value is empty, delete all values of p
+   * Else delete (p, arrayValue) for each value in the array.
+   */
+  delete(
+    predicate: NamedNode,
+    object?: AddableValue | readonly AddableValue[],
+    graph?: Exclude<Quad_Graph, Variable>,
+  ): this {
+    if (!object) {
+      for (const quad of [
+        ...this.dataset.match(this.identifier, predicate, null, graph),
+      ]) {
+        this.dataset.delete(quad);
+      }
+    } else {
+      for (const term of this.addableValuesToTerms(object)) {
+        for (const quad of [
+          ...this.dataset.match(this.identifier, predicate, term, graph),
+        ]) {
+          this.dataset.delete(quad);
+        }
+      }
     }
     return this;
   }
@@ -324,6 +295,18 @@ export class Resource<
   }
 
   /**
+   * Delete all existing values of p and then add the specified values.
+   */
+  set(
+    predicate: NamedNode,
+    object: AddableValue | readonly AddableValue[],
+    graph?: Exclude<Quad_Graph, Variable>,
+  ): this {
+    this.delete(predicate, undefined, graph);
+    return this.add(predicate, object, graph);
+  }
+
+  /**
    * Consider the resource itself as an RDF list.
    */
   toList(): Either<Resource.ValueError, readonly Resource.TermValue[]> {
@@ -421,7 +404,7 @@ export class Resource<
         term: firstObject,
       }),
     ]).chain((items) =>
-      new Resource({ dataset: this.dataset, identifier: restObject })
+      new Resource(this.dataset, restObject)
         .toList()
         .map((restItems) => items.concat(restItems)),
     );
@@ -470,6 +453,45 @@ export class Resource<
       unique: !!options?.unique,
     });
   }
+
+  private addableValueToTerm(
+    value: AddableValue,
+  ): BlankNode | Literal | NamedNode {
+    switch (typeof value) {
+      case "boolean":
+      case "number":
+      case "string":
+        return toRdf(value, { dataFactory: this.dataFactory });
+      case "object":
+        return value;
+    }
+  }
+
+  private addableValuesToTerms(
+    values: AddableValue | readonly AddableValue[],
+  ): readonly (BlankNode | Literal | NamedNode)[] {
+    if (Array.isArray(values)) {
+      return values.map((value) => this.addableValueToTerm(value));
+    }
+    return [this.addableValueToTerm(values as AddableValue)];
+  }
 }
 
-export namespace Resource {}
+type AddableValue = BlankNode | Literal | NamedNode | boolean | number | string;
+
+export namespace Resource {
+  export type Identifier = _Identifier;
+  export const Identifier = _Identifier;
+  export type IdentifierValue = _IdentifierValue;
+  export const IdentifierValue = _IdentifierValue;
+  export type ListStructureError = _ListStructureError;
+  export const ListStructureError = _ListStructureError;
+  export type MistypedTermValueError = _MistypedTermValueError;
+  export const MistypedTermValueError = _MistypedTermValueError;
+  export type TermValue = _TermValue;
+  export const TermValue = _TermValue;
+  export type ValueError = _ValueError;
+  export const ValueError = _ValueError;
+  export type Values<ValueT> = _Values<ValueT>;
+  export const Values = _Values;
+}

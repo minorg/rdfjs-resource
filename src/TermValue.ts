@@ -174,8 +174,7 @@ export class TermValue extends AbstractTermValue<
    */
   toResource(): Either<MistypedTermValueError, Resource> {
     return this.toIdentifier().map(
-      (identifier) =>
-        new Resource({ dataset: this.focusResource.dataset, identifier }),
+      (identifier) => new Resource(this.focusResource.dataset, identifier),
     );
   }
 
