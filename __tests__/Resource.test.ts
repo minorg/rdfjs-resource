@@ -1,44 +1,52 @@
-import type { BlankNode, Literal, NamedNode } from "@rdfjs/types";
-import { rdf, rdfs, schema, skos } from "@tpluscode/rdf-ns-builders";
-import N3, { DataFactory, Parser, Store } from "n3";
+import type {
+  BlankNode,
+  Literal,
+  NamedNode,
+  Quad,
+  Quad_Object,
+  Variable,
+} from "@rdfjs/types";
+import { rdf, rdfs, schema, skos, xsd } from "@tpluscode/rdf-ns-builders";
+import { DataFactory, Parser, Store } from "n3";
+import { Resource, ResourceSet } from "rdfjs-resource";
 import { beforeAll, describe, expect, it } from "vitest";
-import { MutableResource } from "../MutableResource.js";
-import { Resource } from "../Resource.js";
-import { ResourceSet } from "../ResourceSet.js";
 import { houseMdDataset } from "./houseMdDataset.js";
-import { testData } from "./testData.js";
 
 describe("Resource", () => {
-  const { objects, predicate, subject } = testData;
+  const objects: Record<string, Exclude<Quad_Object, Quad | Variable>> = {
+    blankNode: DataFactory.blankNode(),
+    booleanLiteral: DataFactory.literal(1, xsd.boolean),
+    dateLiteral: DataFactory.literal("2002-09-24", xsd.date),
+    dateTimeLiteral: DataFactory.literal("2002-05-30T09:00:00", xsd.dateTime),
+    intLiteral: DataFactory.literal(1),
+    namedNode: DataFactory.namedNode("http://example.com/namedNodeObject"),
+    stringLiteral: DataFactory.literal("stringLiteralObject"),
+  };
 
-  const immutableResourceSet = new ResourceSet({ dataset: houseMdDataset });
-  const immutableResource = immutableResourceSet.namedResource(
-    N3.DataFactory.namedNode(
-      "https://housemd.rdf-ext.org/person/allison-cameron",
-    ),
+  const predicate = DataFactory.namedNode("http://example.com/predicate");
+  const subject = DataFactory.namedNode("http://example.com/subject");
+
+  const houseMdResourceSet = new ResourceSet({ dataset: houseMdDataset });
+  const houseMdResource = houseMdResourceSet.resource(
+    DataFactory.namedNode("https://housemd.rdf-ext.org/person/allison-cameron"),
   );
   let mutableResource: Resource;
 
   beforeAll(() => {
-    mutableResource = new MutableResource({
-      dataFactory: DataFactory,
-      dataset: new Store(),
-      identifier: subject,
-      mutateGraph: DataFactory.defaultGraph(),
-    });
+    mutableResource = new Resource(new Store(), subject);
     for (const object of Object.values(objects)) {
-      (mutableResource as MutableResource).add(predicate, object);
+      mutableResource.add(predicate, object);
     }
   });
 
   it("should check instance of with rdf:type", ({ expect }) => {
-    expect(immutableResource.isInstanceOf(schema.Person)).toStrictEqual(true);
+    expect(houseMdResource.isInstanceOf(schema.Person)).toStrictEqual(true);
   });
 
   describe("isInstanceOf", () => {
     const dataset = new Store();
     const class_ = skos.Concept;
-    const classInstance = new MutableResource({
+    const classInstance = new Resource({
       dataFactory: DataFactory,
       dataset,
       identifier: DataFactory.blankNode(),
@@ -48,7 +56,7 @@ describe("Resource", () => {
     const subClass = DataFactory.namedNode(
       "http://example.com/ConceptSubclass",
     );
-    const subClassInstance = new MutableResource({
+    const subClassInstance = new Resource({
       dataFactory: DataFactory,
       dataset,
       identifier: DataFactory.blankNode(),
@@ -86,14 +94,14 @@ describe("Resource", () => {
   it("isSubClassOf (positive case)", () => {
     const dataset = new Store();
     const class_ = skos.Concept;
-    const subClass = new MutableResource<NamedNode>({
+    const subClass = new Resource<NamedNode>({
       dataFactory: DataFactory,
       dataset,
       identifier: DataFactory.namedNode("http://example.com/subClass"),
       mutateGraph: DataFactory.defaultGraph(),
     });
     subClass.add(rdfs.subClassOf, class_);
-    const subSubClass = new MutableResource<NamedNode>({
+    const subSubClass = new Resource<NamedNode>({
       dataFactory: DataFactory,
       dataset,
       identifier: DataFactory.namedNode("http://example.com/subSubClass"),
@@ -106,13 +114,13 @@ describe("Resource", () => {
   it("isSubClassOf (negative case)", () => {
     const dataset = new Store();
     const class1 = skos.Concept;
-    const class2 = new MutableResource<NamedNode>({
+    const class2 = new Resource<NamedNode>({
       dataFactory: DataFactory,
       dataset,
       identifier: DataFactory.namedNode("http://example.com/subClass"),
       mutateGraph: DataFactory.defaultGraph(),
     });
-    const subClass = new MutableResource<NamedNode>({
+    const subClass = new Resource<NamedNode>({
       dataFactory: DataFactory,
       dataset,
       identifier: DataFactory.namedNode("http://example.com/subSubClass"),

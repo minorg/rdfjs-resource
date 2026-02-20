@@ -37,7 +37,7 @@
     "check": "biome check",
     "check:write": "biome check --write",
     "check:write:unsafe": "biome check --write --unsafe",
-    "clean": "rimraf *.d.ts* *.js *.js.map __tests__/*.d.ts* __tests__/*.js __tests__/*.js.map tsconfig.tsbuildinfo",
+    "clean": "rimraf dist tsconfig.tsbuildinfo",
     "dev": "tsc -w --preserveWatchOutput",
     "test": "biome check && vitest run",
     "test:coverage": "biome check && vitest run --coverage",

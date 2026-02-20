@@ -1,5 +1,5 @@
+import DataFactory from "@rdfjs/data-model";
 import { schema } from "@tpluscode/rdf-ns-builders";
-import N3 from "n3";
 import { describe, it } from "vitest";
 import { ResourceSet } from "../ResourceSet.js";
 import { houseMdDataset } from "./houseMdDataset.js";
@@ -35,7 +35,7 @@ describe("ResourceSet", () => {
 
   it("should get a named instance of a Person", ({ expect }) => {
     const person = resourceSet.namedResource(
-      N3.DataFactory.namedNode(
+      DataFactory.namedNode(
         "https://housemd.rdf-ext.org/person/allison-cameron",
       ),
     );
