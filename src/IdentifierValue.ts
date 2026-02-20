@@ -1,3 +1,4 @@
+import { AbstractTermValue } from "./AbstractTermValue.js";
 import type { Identifier } from "./Identifier.js";
 
 /**

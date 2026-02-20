@@ -1,14 +1,14 @@
 import TermSet from "@rdfjs/term-set";
 import type { BlankNode, Literal, NamedNode } from "@rdfjs/types";
 import { DatasetValues } from "./DatasetValues.js";
-import type { TermValue } from "./TermValue.js";
+import { TermValue } from "./TermValue.js";
 
 /**
  * Private implementation of Values that iterates over a DatasetCore.
  *
  * Instances of this class are returned from value/values, so focusResource is the subject of the predicate and we're looking for objects.
  */
-class DatasetObjectValues extends DatasetValues<TermValue> {
+export class DatasetObjectValues extends DatasetValues<TermValue> {
   override get length(): number {
     let length = 0;
     for (const _ of this) {
@@ -56,8 +56,8 @@ class DatasetObjectValues extends DatasetValues<TermValue> {
     //     }
     //   }
     // } else {
-    for (const quad of this.focusdataset.match(
-      this.focusidentifier,
+    for (const quad of this.focusResource.dataset.match(
+      this.focusResource.identifier,
       this.predicate,
       null,
       null,

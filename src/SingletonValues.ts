@@ -3,9 +3,9 @@ import type { Resource } from "./Resource.js";
 import { Values } from "./Values.js";
 
 /**
- * Private implementation of Values that iterates over a single value.
+ * Implementation of Values that iterates over a single value.
  */
-class SingletonValues<ValueT> extends Values<ValueT> {
+export class SingletonValues<ValueT> extends Values<ValueT> {
   override readonly length = 1;
   private readonly value: ValueT;
 

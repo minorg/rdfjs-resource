@@ -4,11 +4,11 @@ import { DatasetValues } from "./DatasetValues.js";
 import { IdentifierValue } from "./IdentifierValue.js";
 
 /**
- * Private implementation of Values that iterates over a DatasetCore.
+ * Implementation of Values that iterates over a DatasetCore.
  *
  * Instances of this class are returned from valueOf/valuesOf, so focusResource is the object of the predicate and we're looking for subjects.
  */
-class DatasetSubjectValues extends DatasetValues<IdentifierValue> {
+export class DatasetSubjectValues extends DatasetValues<IdentifierValue> {
   override *[Symbol.iterator](): Iterator<IdentifierValue> {
     if (this.unique) {
       const uniqueIdentifiers = new TermSet<BlankNode | Literal | NamedNode>();
@@ -35,10 +35,10 @@ class DatasetSubjectValues extends DatasetValues<IdentifierValue> {
   }
 
   private *nonUniqueIdentifierIterator(): Generator<BlankNode | NamedNode> {
-    for (const quad of this.focusdataset.match(
+    for (const quad of this.focusResource.dataset.match(
       null,
       this.predicate,
-      this.focusidentifier,
+      this.focusResource.identifier,
     )) {
       switch (quad.subject.termType) {
         case "BlankNode":

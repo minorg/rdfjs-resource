@@ -1,7 +1,9 @@
 import type { NamedNode } from "@rdfjs/types";
 import { Either, Left } from "purify-ts";
+import { ArrayValues } from "./ArrayValues.js";
 import { MissingValueError } from "./MissingValueError.js";
 import type { Resource } from "./Resource.js";
+import { SingletonValues } from "./SingletonValues.js";
 import type { ValueError } from "./ValueError.js";
 
 /**
@@ -78,9 +80,7 @@ export abstract class Values<ValueT> implements Iterable<ValueT> {
   /**
    * Filter the values, returning a new Values instance.
    */
-  filter(
-    predicate: (value: ValueT, index: number) => boolean,
-  ): Resource.Values<ValueT> {
+  filter(predicate: (value: ValueT, index: number) => boolean): Values<ValueT> {
     const filteredValues: ValueT[] = [];
     let valueI = 0;
     for (const value of this) {

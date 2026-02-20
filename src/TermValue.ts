@@ -1,6 +1,11 @@
 import type { BlankNode, Literal, NamedNode } from "@rdfjs/types";
 import { Either, Left } from "purify-ts";
+import { AbstractTermValue } from "./AbstractTermValue.js";
+import type { Identifier } from "./Identifier.js";
+import { MistypedTermValueError } from "./MistypedTermValueError.js";
 import { Resource } from "./Resource.js";
+import type { ValueError } from "./ValueError.js";
+import { Values } from "./Values.js";
 
 /**
  * Wraps a term (blank node or IRI or literal) with some methods for converting it to other types.
@@ -73,7 +78,7 @@ export class TermValue extends AbstractTermValue<
   /**
    * Try to convert the term to a boolean literal.
    */
-  toBoolean(): Either<Resource.MistypedTermValueError, boolean> {
+  toBoolean(): Either<MistypedTermValueError, boolean> {
     return this.toPrimitive().chain((primitive) =>
       typeof primitive === "boolean"
         ? Either.of(primitive)
@@ -84,7 +89,7 @@ export class TermValue extends AbstractTermValue<
   /**
    * Try to convert the term to a date literal.
    */
-  toDate(): Either<Resource.MistypedTermValueError, Date> {
+  toDate(): Either<MistypedTermValueError, Date> {
     return this.toPrimitive().chain((primitive) =>
       primitive instanceof Date
         ? Either.of(primitive)
@@ -95,7 +100,7 @@ export class TermValue extends AbstractTermValue<
   /**
    * Try to convert the term to an identifier (blank node or IRI).
    */
-  toIdentifier(): Either<Resource.MistypedTermValueError, Resource.Identifier> {
+  toIdentifier(): Either<MistypedTermValueError, Identifier> {
     switch (this.term.termType) {
       case "BlankNode":
       case "NamedNode":
@@ -108,14 +113,14 @@ export class TermValue extends AbstractTermValue<
   /**
    * Try to convert the term to an RDF list.
    */
-  toList(): Either<Resource.ValueError, readonly Resource.TermValue[]> {
+  toList(): Either<ValueError, readonly TermValue[]> {
     return this.toResource().chain((resource) => resource.toList());
   }
 
   /**
    * Try to convert the term to a literal.
    */
-  toLiteral(): Either<Resource.MistypedTermValueError, Literal> {
+  toLiteral(): Either<MistypedTermValueError, Literal> {
     return this.term.termType === "Literal"
       ? Either.of(this.term)
       : Left(this.newMistypedValueError("Literal"));
@@ -124,7 +129,7 @@ export class TermValue extends AbstractTermValue<
   /**
    * Try to convert the term to a number literal.
    */
-  toNumber(): Either<Resource.MistypedTermValueError, number> {
+  toNumber(): Either<MistypedTermValueError, number> {
     return this.toPrimitive().chain((primitive) =>
       typeof primitive === "number"
         ? Either.of(primitive)
@@ -136,12 +141,12 @@ export class TermValue extends AbstractTermValue<
    * Try to convert the term to a JavaScript primitive (boolean | Date | number | string).
    */
   toPrimitive(): Either<
-    Resource.MistypedTermValueError,
+    MistypedTermValueError,
     boolean | Date | number | string
   > {
     if (this.term.termType !== "Literal") {
       return Left(
-        new Resource.MistypedTermValueError({
+        new MistypedTermValueError({
           actualValue: this.term,
           expectedValueType: "Literal",
           focusResource: this.focusResource,
@@ -154,7 +159,7 @@ export class TermValue extends AbstractTermValue<
       return Either.of(fromRdf(this.term, true));
     } catch {
       return Left(
-        new Resource.MistypedTermValueError({
+        new MistypedTermValueError({
           actualValue: this.term,
           expectedValueType: "primitive",
           focusResource: this.focusResource,
@@ -167,7 +172,7 @@ export class TermValue extends AbstractTermValue<
   /**
    * Try to convert the term to a resource (identified by a blank node or IRI).
    */
-  toResource(): Either<Resource.MistypedTermValueError, Resource> {
+  toResource(): Either<MistypedTermValueError, Resource> {
     return this.toIdentifier().map(
       (identifier) =>
         new Resource({ dataset: this.focusResource.dataset, identifier }),
@@ -177,7 +182,7 @@ export class TermValue extends AbstractTermValue<
   /**
    * Try to convert the term to a string literal.
    */
-  override toString(): Either<Resource.MistypedTermValueError, string> {
+  override toString(): Either<MistypedTermValueError, string> {
     return this.toPrimitive().chain((primitive) =>
       typeof primitive === "string"
         ? Either.of(primitive as string)

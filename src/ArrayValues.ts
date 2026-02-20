@@ -1,9 +1,11 @@
+import type { NamedNode } from "@rdfjs/types";
+import type { Resource } from "./Resource.js";
 import { Values } from "./Values.js";
 
 /**
- * Private implementation of Resource.Values that iterates over an array.
+ * Implementation of Resource.Values that iterates over an array.
  */
-class ArrayValues<ValueT> extends Values<ValueT> {
+export class ArrayValues<ValueT> extends Values<ValueT> {
   private readonly values: readonly ValueT[];
 
   constructor({

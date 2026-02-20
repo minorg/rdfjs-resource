@@ -1,11 +1,10 @@
 import TermSet from "@rdfjs/term-set";
 import type {
   BlankNode,
-  DataFactory,
   DatasetCore,
   Literal,
   NamedNode,
-  Quad,
+  Quad_Graph,
   Variable,
 } from "@rdfjs/types";
 import { Either, Left } from "purify-ts";
@@ -28,15 +27,14 @@ export class Resource<
    * If value is empty, delete all values of p
    * Else delete (p, arrayValue) for each value in the array.
    */
-  delete(predicate: NamedNode, ...values: readonly AddableValue[]): this {
-    if (values.length === 0) {
+  delete(
+    predicate: NamedNode,
+    object?: AddableValue,
+    graph?: Exclude<Quad_Graph, Variable>,
+  ): this {
+    if (!object) {
       for (const quad of [
-        ...this.dataset.match(
-          this.identifier,
-          predicate,
-          null,
-          this.mutateGraph,
-        ),
+        ...this.dataset.match(this.identifier, predicate, null, graph),
       ]) {
         this.dataset.delete(quad);
       }

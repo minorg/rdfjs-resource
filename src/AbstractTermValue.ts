@@ -1,4 +1,11 @@
-class AbstractTermValue<TermT extends BlankNode | Literal | NamedNode> {
+import type { BlankNode, Literal, NamedNode } from "@rdfjs/types";
+import { Either, Left } from "purify-ts";
+import { MistypedTermValueError } from "./MistypedTermValueError.js";
+import { Resource } from "./Resource.js";
+
+export abstract class AbstractTermValue<
+  TermT extends BlankNode | Literal | NamedNode,
+> {
   protected readonly focusResource: Resource;
   protected readonly predicate: NamedNode;
   protected readonly term: TermT;
@@ -34,7 +41,7 @@ class AbstractTermValue<TermT extends BlankNode | Literal | NamedNode> {
   /**
    * Try to convert the term to a blank node.
    */
-  toBlankNode(): Either<Resource.MistypedTermValueError, BlankNode> {
+  toBlankNode(): Either<MistypedTermValueError, BlankNode> {
     return this.term.termType === "BlankNode"
       ? Either.of(this.term as BlankNode)
       : Left(this.newMistypedValueError("BlankNode"));
@@ -43,7 +50,7 @@ class AbstractTermValue<TermT extends BlankNode | Literal | NamedNode> {
   /**
    * Try to convert the term to an IRI / NamedNode.
    */
-  toIri(): Either<Resource.MistypedTermValueError, NamedNode> {
+  toIri(): Either<MistypedTermValueError, NamedNode> {
     return this.term.termType === "NamedNode"
       ? Either.of(this.term as NamedNode)
       : Left(this.newMistypedValueError("NamedNode"));
@@ -52,10 +59,7 @@ class AbstractTermValue<TermT extends BlankNode | Literal | NamedNode> {
   /**
    * Try to convert the term to a named resource.
    */
-  toNamedResource(): Either<
-    Resource.MistypedTermValueError,
-    Resource<NamedNode>
-  > {
+  toNamedResource(): Either<MistypedTermValueError, Resource<NamedNode>> {
     return this.toIri().map(
       (identifier) =>
         new Resource<NamedNode>({
@@ -71,8 +75,8 @@ class AbstractTermValue<TermT extends BlankNode | Literal | NamedNode> {
 
   protected newMistypedValueError(
     expectedValueType: string,
-  ): Resource.MistypedTermValueError {
-    return new Resource.MistypedTermValueError({
+  ): MistypedTermValueError {
+    return new MistypedTermValueError({
       actualValue: this.term,
       expectedValueType,
       focusResource: this.focusResource,
