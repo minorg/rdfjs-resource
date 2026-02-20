@@ -1,17 +1,14 @@
 {
   "compilerOptions": {
-    "declaration": true,
-    "declarationMap": true,
-    "esModuleInterop": true,
     "exactOptionalPropertyTypes": false,
     "forceConsistentCasingInFileNames": true,
     "module": "ES2020",
     "moduleResolution": "node",
+    "noEmit": true,
     "noUncheckedIndexedAccess": false,
-    "outDir": "dist",
     "sourceMap": true,
     "target": "ES2020"
   },
   "extends": ["@tsconfig/strictest/tsconfig.json"],
-  "include": ["src/*.ts"]
+  "include": ["*.ts"]
 }

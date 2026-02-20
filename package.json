@@ -34,11 +34,13 @@
   },
   "scripts": {
     "build": "tsc -b",
+    "build:tests": "tsc -b -p __tests__",
     "check": "biome check",
     "check:write": "biome check --write",
     "check:write:unsafe": "biome check --write --unsafe",
     "clean": "rimraf dist tsconfig.tsbuildinfo",
     "dev": "tsc -w --preserveWatchOutput",
+    "dev:tests": "tsc -w --preserveWatchOutput -p __tests__",
     "test": "biome check && vitest run",
     "test:coverage": "biome check && vitest run --coverage",
     "test:watch": "vitest watch"

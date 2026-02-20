@@ -34,7 +34,7 @@ describe("ResourceSet", () => {
   });
 
   it("should get a named instance of a Person", ({ expect }) => {
-    const person = houseMdResourceSet.namedResource(
+    const person = houseMdResourceSet.resource(
       DataFactory.namedNode(
         "https://housemd.rdf-ext.org/person/allison-cameron",
       ),
