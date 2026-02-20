@@ -22,8 +22,8 @@
     "vitest": "~4.0.18"
   },
   "files": [
-    "*.d.ts",
-    "*.js"
+    "dist/*.d.ts",
+    "dist/*.js"
   ],
   "license": "Apache-2.0",
   "main": "index.js",
