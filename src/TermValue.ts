@@ -1,5 +1,6 @@
 import type { BlankNode, Literal, NamedNode } from "@rdfjs/types";
 import { Either, Left } from "purify-ts";
+import { fromRdf } from "rdf-literal";
 import { AbstractTermValue } from "./AbstractTermValue.js";
 import type { Identifier } from "./Identifier.js";
 import { MistypedTermValueError } from "./MistypedTermValueError.js";

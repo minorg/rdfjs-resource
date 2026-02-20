@@ -11,7 +11,7 @@ import type {
 } from "@rdfjs/types";
 
 import { Either, Left } from "purify-ts";
-
+import { toRdf } from "rdf-literal";
 import { DatasetObjectValues } from "./DatasetObjectValues.js";
 import { DatasetSubjectValues } from "./DatasetSubjectValues.js";
 import { Identifier as _Identifier } from "./Identifier.js";
