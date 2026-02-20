@@ -27,7 +27,7 @@ describe("TermValue", () => {
   it("isDate", ({ expect }) => {
     expect(
       [...testResource.values(predicate)].filter((value) => value.isDate()),
-    ).toHaveLength(2);
+    ).toHaveLength(4);
   });
 
   it("isIdentifier", ({ expect }) => {
@@ -41,13 +41,13 @@ describe("TermValue", () => {
   it("isLiteral", ({ expect }) => {
     expect(
       [...testResource.values(predicate)].filter((value) => value.isLiteral()),
-    ).toHaveLength(5);
+    ).toHaveLength(41);
   });
 
   it("isNumber", ({ expect }) => {
     expect(
       [...testResource.values(predicate)].filter((value) => value.isNumber()),
-    ).toHaveLength(1);
+    ).toHaveLength(16);
   });
 
   it("isPrimitive", ({ expect }) => {
@@ -55,13 +55,13 @@ describe("TermValue", () => {
       [...testResource.values(predicate)].filter((value) =>
         value.isPrimitive(),
       ),
-    ).toHaveLength(5);
+    ).toHaveLength(39);
   });
 
   it("isString", ({ expect }) => {
     expect(
       [...testResource.values(predicate)].filter((value) => value.isString()),
-    ).toHaveLength(1);
+    ).toHaveLength(18);
   });
 
   it("toBlankNode", ({ expect }) => {
@@ -85,7 +85,7 @@ describe("TermValue", () => {
       [...testResource.values(predicate)].flatMap((value) =>
         value.toDate().toMaybe().toList(),
       ),
-    ).toHaveLength(2);
+    ).toHaveLength(4);
   });
 
   it("toIdentifier", ({ expect }) => {
@@ -114,34 +114,34 @@ describe("TermValue", () => {
       [...testResource.values(predicate)].flatMap((value) =>
         value.toLiteral().toMaybe().toList(),
       ),
-    ).toHaveLength(5);
+    ).toHaveLength(41);
   });
 
   it("toNumber", ({ expect }) => {
     const values = [...testResource.values(predicate)].flatMap((value) =>
       value.toNumber().toMaybe().toList(),
     );
-    expect(values).toHaveLength(1);
-    expect(values[0]).toStrictEqual(1);
+    expect(values).toHaveLength(16);
+    expect(values[0]).toStrictEqual(42);
   });
 
   it("toPrimitive", ({ expect }) => {
     const primitives = [...testResource.values(predicate)].flatMap((value) =>
       value.toPrimitive().toMaybe().toList(),
     );
-    expect(primitives).toHaveLength(5);
+    expect(primitives).toHaveLength(39);
     expect(
       primitives.filter((primitive) => typeof primitive === "boolean"),
     ).toHaveLength(1);
     expect(
       primitives.filter((primitive) => primitive instanceof Date),
-    ).toHaveLength(2);
+    ).toHaveLength(4);
     expect(
       primitives.filter((primitive) => typeof primitive === "number"),
-    ).toHaveLength(1);
+    ).toHaveLength(16);
     expect(
       primitives.filter((primitive) => typeof primitive === "string"),
-    ).toHaveLength(1);
+    ).toHaveLength(18);
   });
 
   it("toResource", ({ expect }) => {
