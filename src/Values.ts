@@ -1,5 +1,7 @@
 import type { NamedNode } from "@rdfjs/types";
+
 import { Either, Left } from "purify-ts";
+
 import { MissingValueError } from "./MissingValueError.js";
 import type { Resource } from "./Resource.js";
 import type { ValueError } from "./ValueError.js";
@@ -16,9 +18,10 @@ import type { ValueError } from "./ValueError.js";
  * The class doesn't try to implement the entire Array interface. Methods are added as needed by downstream code.
  */
 export abstract class Values<ValueT> implements Iterable<ValueT> {
-  abstract readonly length: number;
   protected readonly focusResource: Resource;
   protected readonly predicate: NamedNode;
+
+  abstract readonly length: number;
 
   protected constructor({
     focusResource,
@@ -29,6 +32,28 @@ export abstract class Values<ValueT> implements Iterable<ValueT> {
   }) {
     this.focusResource = focusResource;
     this.predicate = predicate;
+  }
+
+  /**
+   * Create a Values instance from an array of values.
+   */
+  static fromArray<ValueT>(parameters: {
+    focusResource: Resource;
+    predicate: NamedNode;
+    values: readonly ValueT[];
+  }): Values<ValueT> {
+    return new ArrayValues(parameters);
+  }
+
+  /**
+   * Create a Values instance from a single value.
+   */
+  static fromValue<ValueT>(parameters: {
+    focusResource: Resource;
+    predicate: NamedNode;
+    value: ValueT;
+  }) {
+    return new SingletonValues(parameters);
   }
 
   abstract [Symbol.iterator](): Iterator<ValueT>;
@@ -150,28 +175,6 @@ export abstract class Values<ValueT> implements Iterable<ValueT> {
   }
 
   /**
-   * Create a Values instance from an array of values.
-   */
-  static fromArray<ValueT>(parameters: {
-    focusResource: Resource;
-    predicate: NamedNode;
-    values: readonly ValueT[];
-  }): Values<ValueT> {
-    return new ArrayValues(parameters);
-  }
-
-  /**
-   * Create a Values instance from a single value.
-   */
-  static fromValue<ValueT>(parameters: {
-    focusResource: Resource;
-    predicate: NamedNode;
-    value: ValueT;
-  }) {
-    return new SingletonValues(parameters);
-  }
-
-  /**
    * Get the head of this sequence of values if the sequence is non-empty. Otherwise return Left.
    */
   head(): Either<ValueError, ValueT> {
@@ -250,8 +253,9 @@ class ArrayValues<ValueT> extends Values<ValueT> {
  * Must be in the same file to avoid circular dependencies.
  */
 class SingletonValues<ValueT> extends Values<ValueT> {
-  override readonly length = 1;
   private readonly value: ValueT;
+
+  override readonly length = 1;
 
   constructor({
     value,
