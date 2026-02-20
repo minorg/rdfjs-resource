@@ -11,6 +11,119 @@ describe("Resource", () => {
   const { objects, predicate, subject } = testData;
   const testResource = testData.resource();
 
+  it("add", () => {
+    const resource = new Resource(new Store(), subject);
+    resource.add(predicate, objects["stringLiteral"]);
+    const values = [...resource.values(predicate)].map((value) =>
+      value.toTerm(),
+    );
+    expect(values).toHaveLength(1);
+    expect(values[0].equals(objects["stringLiteral"])).toBe(true);
+  });
+
+  describe("addList", () => {
+    it("simple", () => {
+      const resource = new Resource(new Store(), subject);
+      resource.addList(predicate, [
+        objects["stringLiteral"],
+        objects["intLiteral"],
+      ]);
+      expect([...resource.values(predicate)]).toHaveLength(1);
+      const list = resource
+        .value(predicate)
+        .chain((value) => value.toList())
+        .map((values) =>
+          values.flatMap((value) => value.toLiteral().toMaybe().toList()),
+        )
+        .orDefault([]);
+      expect(list).toHaveLength(2);
+      expect(
+        list.some((element) => element.equals(objects["stringLiteral"])),
+      ).toStrictEqual(true);
+      expect(
+        list.some((element) => element.equals(objects["intLiteral"])),
+      ).toStrictEqual(true);
+    });
+
+    for (const terms of [
+      [],
+      [DataFactory.literal("test")],
+      [DataFactory.literal("test"), DataFactory.literal("test")],
+      [
+        DataFactory.literal("test"),
+        DataFactory.literal("test"),
+        DataFactory.literal("test"),
+      ],
+      [
+        DataFactory.literal("test"),
+        DataFactory.literal("test"),
+        DataFactory.literal("test"),
+        DataFactory.literal("test"),
+      ],
+    ]) {
+      it(`list of ${terms.length} terms`, ({ expect }) => {
+        const resource = new Resource(new Store(), subject);
+        const listResource = resource.addList(predicate, terms, {
+          mintSubListIdentifier: (_, itemIndex) =>
+            DataFactory.namedNode(
+              `http://example.com/list${itemIndex.toString()}`,
+            ),
+        });
+        if (terms.length === 0) {
+          expect(listResource.identifier.equals(rdf.nil)).toStrictEqual(true);
+        } else {
+          expect(resource.dataset.size).not.toEqual(0);
+        }
+        // Should only have NamedNode identifiers for the pieces of the list
+        const datasetQuads = [
+          ...resource.dataset.match(null, null, null, null),
+        ];
+        expect(
+          datasetQuads.every(
+            (quad) =>
+              quad.subject.termType === "NamedNode" &&
+              (quad.object.termType === "NamedNode" ||
+                quad.object.termType === "Literal"),
+          ),
+        );
+        const deserializedTerms = [
+          ...listResource
+            .toList()
+            .unsafeCoerce()
+            .map((value) => value.toTerm()),
+        ];
+        expect(deserializedTerms).toHaveLength(terms.length);
+        terms.forEach((term, termI) => {
+          expect(term.equals(deserializedTerms[termI])).toStrictEqual(true);
+        });
+      });
+    }
+  });
+
+  describe("delete", () => {
+    it("one value", () => {
+      const resource = new Resource(new Store(), subject);
+      resource.add(predicate, objects["stringLiteral"]);
+      resource.add(predicate, objects["intLiteral"]);
+      expect([...resource.values(predicate)]).toHaveLength(2);
+      resource.delete(predicate, objects["intLiteral"]);
+      const values = [...resource.values(predicate)].map((value) =>
+        value.toTerm(),
+      );
+      expect(values).toHaveLength(1);
+      expect(values[0].equals(objects["stringLiteral"])).toBe(true);
+    });
+
+    it("all values", () => {
+      const resource = new Resource(new Store(), subject);
+      resource.add(predicate, objects["stringLiteral"]);
+      resource.add(predicate, objects["intLiteral"]);
+      expect([...resource.values(predicate)]).toHaveLength(2);
+      resource.delete(predicate);
+      expect([...resource.values(predicate)]).toHaveLength(0);
+    });
+  });
+
   describe("isInstanceOf", () => {
     const dataset = new Store();
     const class_ = skos.Concept;
@@ -85,6 +198,19 @@ describe("Resource", () => {
     );
     subClass.add(rdfs.subClassOf, class2.identifier);
     expect(subClass.isSubClassOf(class1)).toStrictEqual(false);
+  });
+
+  it("set", () => {
+    const resource = new Resource(new Store(), subject);
+    resource.add(predicate, objects["stringLiteral"]);
+    expect(resource.dataset.size).toStrictEqual(1);
+    resource.set(predicate, objects["intLiteral"]);
+    expect(resource.dataset.size).toStrictEqual(1);
+    const values = [...resource.values(predicate)].map((value) =>
+      value.toTerm(),
+    );
+    expect(values).toHaveLength(1);
+    expect(values[0].equals(objects["intLiteral"])).toBe(true);
   });
 
   describe("toList", () => {
