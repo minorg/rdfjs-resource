@@ -1,9 +1,14 @@
+import { Store } from "n3";
 import { describe, it } from "vitest";
+import { Resource } from "../src/Resource.js";
 import { testData } from "./testData.js";
 
 describe("TermValue", () => {
-  const { objects, predicate } = testData;
-  const testResource = testData.resource();
+  const { objects, predicate, subject } = testData;
+  const testResource = new Resource(new Store(), subject);
+  for (const object of Object.values(objects)) {
+    testResource.add(predicate, object);
+  }
 
   it("isBlankNode", ({ expect }) => {
     expect(

@@ -9,7 +9,10 @@ import { testData } from "./testData.js";
 
 describe("Resource", () => {
   const { objects, predicate, subject } = testData;
-  const testResource = testData.resource();
+  const testResource = new Resource(new Store(), subject);
+  for (const object of Object.values(objects)) {
+    testResource.add(predicate, object);
+  }
 
   it("add", () => {
     const resource = new Resource(new Store(), subject);
