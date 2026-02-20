@@ -11,12 +11,12 @@ import type {
 } from "@rdfjs/types";
 
 import { Either, Left } from "purify-ts";
-import { toRdf } from "rdf-literal";
 import { DatasetObjectValues } from "./DatasetObjectValues.js";
 import { DatasetSubjectValues } from "./DatasetSubjectValues.js";
 import { Identifier as _Identifier } from "./Identifier.js";
 import { IdentifierValue as _IdentifierValue } from "./IdentifierValue.js";
 import { ListStructureError as _ListStructureError } from "./ListStructureError.js";
+import { LiteralCodec } from "./LiteralCodec.js";
 import { MistypedTermValueError as _MistypedTermValueError } from "./MistypedTermValueError.js";
 import { TermValue as _TermValue } from "./TermValue.js";
 import { ValueError as _ValueError } from "./ValueError.js";
@@ -30,6 +30,7 @@ export class Resource<
   IdentifierT extends Resource.Identifier = Resource.Identifier,
 > {
   private readonly dataFactory: DataFactory;
+  private readonly literalCodec: LiteralCodec;
 
   constructor(
     readonly dataset: DatasetCore,
@@ -37,6 +38,7 @@ export class Resource<
     options?: { dataFactory?: DataFactory },
   ) {
     this.dataFactory = options?.dataFactory ?? DefaultDataFactory;
+    this.literalCodec = new LiteralCodec({ dataFactory: this.dataFactory });
   }
 
   /**
@@ -461,7 +463,7 @@ export class Resource<
       case "boolean":
       case "number":
       case "string":
-        return toRdf(value, { dataFactory: this.dataFactory });
+        return this.literalCodec.fromPrimitive(value);
       case "object":
         return value;
     }

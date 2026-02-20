@@ -20,3 +20,21 @@ export namespace rdfs {
     "http://www.w3.org/2000/01/rdf-schema#subClassOf",
   );
 }
+
+export namespace xsd {
+  export const boolean = DataFactory.namedNode(
+    "http://www.w3.org/2001/XMLSchema#boolean",
+  );
+  export const dateTime = DataFactory.namedNode(
+    "http://www.w3.org/2001/XMLSchema#dateTime",
+  );
+  export const decimal = DataFactory.namedNode(
+    "http://www.w3.org/2001/XMLSchema#decimal",
+  );
+  export const double = DataFactory.namedNode(
+    "http://www.w3.org/2001/XMLSchema#double",
+  );
+  export const integer = DataFactory.namedNode(
+    "http://www.w3.org/2001/XMLSchema#integer",
+  );
+}
