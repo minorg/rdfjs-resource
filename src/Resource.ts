@@ -18,6 +18,7 @@ import { IdentifierValue as _IdentifierValue } from "./IdentifierValue.js";
 import { ListStructureError as _ListStructureError } from "./ListStructureError.js";
 import { LiteralCodec } from "./LiteralCodec.js";
 import { MistypedTermValueError as _MistypedTermValueError } from "./MistypedTermValueError.js";
+import type { Primitive } from "./Primitive.js";
 import { TermValue as _TermValue } from "./TermValue.js";
 import { ValueError as _ValueError } from "./ValueError.js";
 import { Values as _Values } from "./Values.js";
@@ -479,7 +480,7 @@ export class Resource<
   }
 }
 
-type AddableValue = BlankNode | Literal | NamedNode | boolean | number | string;
+type AddableValue = BlankNode | Literal | NamedNode | Exclude<Primitive, Date>;
 
 export namespace Resource {
   export type Identifier = _Identifier;

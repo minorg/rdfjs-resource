@@ -1,9 +1,8 @@
-import { list } from "@tpluscode/rdf-ns-builders";
 import { describe, it } from "vitest";
 import { LiteralCodec } from "../src/LiteralCodec.js";
 import { testData } from "./testData.js";
 
-describe("LiteralCodecs", () => {
+describe("LiteralCodec", () => {
   const { objects } = testData;
   const sut = new LiteralCodec();
 

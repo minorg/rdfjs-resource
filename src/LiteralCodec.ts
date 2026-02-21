@@ -3,8 +3,6 @@ import type { DataFactory, Literal, NamedNode } from "@rdfjs/types";
 import { Either, Left } from "purify-ts";
 import { xsd } from "./vocabularies.js";
 
-type Primitive = boolean | Date | number | string;
-
 /**
  * Coder-decoder methods for literals.
  *
