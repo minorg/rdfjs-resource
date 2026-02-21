@@ -313,7 +313,7 @@ export namespace LiteralDecoder {
 
   class UnrecognizedLiteralDatatypeError extends Error {
     constructor(readonly literal: Literal) {
-      super(`unrecognized Literal datatype: ${literal.datatype}`);
+      super(`unrecognized Literal datatype: ${literal.datatype.value}`);
     }
   }
 }

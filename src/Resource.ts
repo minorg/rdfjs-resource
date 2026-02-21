@@ -16,7 +16,7 @@ import { DatasetSubjectValues } from "./DatasetSubjectValues.js";
 import { Identifier as _Identifier } from "./Identifier.js";
 import { IdentifierValue as _IdentifierValue } from "./IdentifierValue.js";
 import { ListStructureError as _ListStructureError } from "./ListStructureError.js";
-import { LiteralCodec } from "./LiteralDecoder.js";
+import { LiteralFactory } from "./LiteralFactory.js";
 import { MistypedTermValueError as _MistypedTermValueError } from "./MistypedTermValueError.js";
 import type { Primitive } from "./Primitive.js";
 import { TermValue as _TermValue } from "./TermValue.js";
@@ -31,7 +31,7 @@ export class Resource<
   IdentifierT extends Resource.Identifier = Resource.Identifier,
 > {
   private readonly dataFactory: DataFactory;
-  private readonly literalCodec: LiteralCodec;
+  private readonly literalFactory: LiteralFactory;
 
   constructor(
     readonly dataset: DatasetCore,
@@ -39,7 +39,7 @@ export class Resource<
     options?: { dataFactory?: DataFactory },
   ) {
     this.dataFactory = options?.dataFactory ?? DefaultDataFactory;
-    this.literalCodec = new LiteralCodec({ dataFactory: this.dataFactory });
+    this.literalFactory = new LiteralFactory({ dataFactory: this.dataFactory });
   }
 
   /**
@@ -462,9 +462,11 @@ export class Resource<
   ): BlankNode | Literal | NamedNode {
     switch (typeof value) {
       case "boolean":
+        return this.literalFactory.boolean(value);
       case "number":
+        return this.literalFactory.number(value);
       case "string":
-        return this.literalCodec.fromPrimitive(value);
+        return this.literalFactory.string(value);
       case "object":
         return value;
     }

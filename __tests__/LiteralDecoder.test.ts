@@ -1,10 +1,12 @@
 import { describe, it } from "vitest";
-import { LiteralCodec } from "../src/LiteralCodec.js";
+import { LiteralDecoder } from "../src/LiteralDecoder.js";
+import { LiteralFactory } from "../src/LiteralFactory.js";
 import { testData } from "./testData.js";
 
-describe("LiteralCodec", () => {
+describe("LiteralDecoder", () => {
   const { objects } = testData;
-  const sut = new LiteralCodec();
+  const literalFactory = new LiteralFactory();
+  const sut = LiteralDecoder;
 
   for (const object of Object.values(objects)) {
     if (object.termType !== "Literal") {
@@ -13,16 +15,18 @@ describe("LiteralCodec", () => {
 
     it(object.datatype.value, ({ expect }) => {
       const expectedLiteral = object;
-      const actualPrimitive = sut.toPrimitive(expectedLiteral).unsafeCoerce();
+      const actualPrimitive = sut
+        .decodePrimitive(expectedLiteral)
+        .unsafeCoerce();
       {
-        const actualLiteral = sut.fromPrimitive(
+        const actualLiteral = literalFactory.primitive(
           actualPrimitive,
           expectedLiteral.datatype, // Specify datatype
         );
         expect(actualLiteral.equals(expectedLiteral)).toStrictEqual(true);
       }
 
-      sut.fromPrimitive(actualPrimitive); // Don't specify datatype
+      literalFactory.primitive(actualPrimitive); // Don't specify datatype
     });
   }
 });
