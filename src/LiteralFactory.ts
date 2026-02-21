@@ -56,7 +56,7 @@ export class LiteralFactory {
     }
   }
 
-  number(value: number, datatype?: NamedNode): Literal {
+  number(value: bigint | number, datatype?: NamedNode): Literal {
     let valueString = value.toString(10);
 
     if (Number.isNaN(value) || value === Infinity || value === -Infinity) {
@@ -83,7 +83,10 @@ export class LiteralFactory {
       }
     } else {
       if (!datatype) {
-        if (Number.isInteger(value)) {
+        if (typeof value === "bigint") {
+          datatype = value >= 0 ? xsd.unsignedLong : xsd.long;
+        } else if (Number.isInteger(value)) {
+          // Don't try to break this down further.
           datatype = xsd.integer;
         } else if (
           /^[+-]?([0-9]+(\\.[0-9]*)?|\\.[0-9]+)[eE][+-]?[0-9]+$/.test(
@@ -131,6 +134,7 @@ export class LiteralFactory {
         }
         throw new Error("not implemented");
       }
+      case "bigint":
       case "number":
         return this.number(value, datatype);
       case "string":
@@ -157,7 +161,9 @@ export class LiteralFactory {
         case "http://www.w3.org/2001/XMLSchema#token":
           break;
         default:
-          throw new Error(`unrecognized string datatype ${datatype.value}`);
+          throw new RangeError(
+            `unrecognized string datatype ${datatype.value}`,
+          );
       }
     }
 

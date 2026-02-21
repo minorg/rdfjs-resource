@@ -2,6 +2,12 @@ export const numericXsdDatatypeRanges: Record<
   string,
   [bigint | number | undefined, bigint | number | undefined]
 > = {
+  // Float types
+  "http://www.w3.org/2001/XMLSchema#float": [undefined, undefined],
+  "http://www.w3.org/2001/XMLSchema#double": [undefined, undefined],
+  "http://www.w3.org/2001/XMLSchema#decimal": [undefined, undefined],
+
+  // Integer types
   "http://www.w3.org/2001/XMLSchema#byte": [-128, 127],
   "http://www.w3.org/2001/XMLSchema#int": [-2147483648, 2147483647],
   "http://www.w3.org/2001/XMLSchema#integer": [undefined, undefined],

@@ -463,6 +463,7 @@ export class Resource<
     switch (typeof value) {
       case "boolean":
         return this.literalFactory.boolean(value);
+      case "bigint":
       case "number":
         return this.literalFactory.number(value);
       case "string":

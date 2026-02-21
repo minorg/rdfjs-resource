@@ -151,16 +151,28 @@ export namespace LiteralDecoder {
     return Either.of(new Date(`${literal.value}-01`));
   }
 
-  export function decodeIntLike(literal: Literal): Either<Error, number> {
+  export function decodeIntLike(
+    literal: Literal,
+  ): Either<Error, bigint | number> {
     if (isIntLikeDatatype(literal.datatype)) {
       return decodeIntLikeValue(literal);
     }
     return Left(new UnrecognizedLiteralDatatypeError(literal));
   }
 
-  function decodeIntLikeValue(literal: Literal): Either<Error, number> {
+  function decodeIntLikeValue(
+    literal: Literal,
+  ): Either<Error, bigint | number> {
     return Either.encase(() => {
-      const value = Number.parseInt(literal.value, 10);
+      let value: bigint | number;
+      switch (literal.datatype.value) {
+        case "http://www.w3.org/2001/XMLSchema#long":
+        case "http://www.w3.org/2001/XMLSchema#unsignedLong":
+          value = BigInt(literal.value);
+          break;
+        default:
+          value = Number.parseInt(literal.value, 10);
+      }
 
       const range = numericXsdDatatypeRanges[literal.datatype.value];
       if (!range) {
@@ -182,7 +194,9 @@ export namespace LiteralDecoder {
     });
   }
 
-  export function decodeNumber(literal: Literal): Either<Error, number> {
+  export function decodeNumber(
+    literal: Literal,
+  ): Either<Error, bigint | number> {
     if (isFloatLikeDatatype(literal.datatype)) {
       return decodeFloatLikeValue(literal);
     }
@@ -204,6 +218,9 @@ export namespace LiteralDecoder {
     }
     if (isIntLikeDatatype(literal.datatype)) {
       return decodeIntLikeValue(literal);
+    }
+    if (isStringLikeDatatype(literal.datatype)) {
+      return decodeStringLikeValue(literal);
     }
     return Left(new UnrecognizedLiteralDatatypeError(literal));
   }

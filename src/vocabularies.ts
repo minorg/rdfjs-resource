@@ -43,4 +43,10 @@ export namespace xsd {
   export const integer = DataFactory.namedNode(
     "http://www.w3.org/2001/XMLSchema#integer",
   );
+  export const long = DataFactory.namedNode(
+    "http://www.w3.org/2001/XMLSchema#long",
+  );
+  export const unsignedLong = DataFactory.namedNode(
+    "http://www.w3.org/2001/XMLSchema#unsignedLong",
+  );
 }
