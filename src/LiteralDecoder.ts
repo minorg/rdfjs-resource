@@ -58,19 +58,20 @@ export namespace LiteralDecoder {
         return decodeDateValue(literal);
 
       case "http://www.w3.org/2001/XMLSchema#dateTime":
+      case "http://www.w3.org/2001/XMLSchema#dateTimeStamp":
         return decodeDateTimeValue(literal);
 
-      case "http://www.w3.org/2001/XMLSchema#gDay":
-        return decodeGDayValue(literal);
+      // case "http://www.w3.org/2001/XMLSchema#gDay":
+      //   return decodeGDayValue(literal);
 
-      case "http://www.w3.org/2001/XMLSchema#gMonthDay":
-        return decodeGMonthDayValue(literal);
+      // case "http://www.w3.org/2001/XMLSchema#gMonthDay":
+      //   return decodeGMonthDayValue(literal);
 
-      case "http://www.w3.org/2001/XMLSchema#gYear":
-        return decodeGYearValue(literal);
+      // case "http://www.w3.org/2001/XMLSchema#gYear":
+      //   return decodeGYearValue(literal);
 
-      case "http://www.w3.org/2001/XMLSchema#gYearMonth":
-        return decodeGYearMonthValue(literal);
+      // case "http://www.w3.org/2001/XMLSchema#gYearMonth":
+      //   return decodeGYearMonthValue(literal);
 
       default:
         return Left(new UnrecognizedLiteralDatatypeError(literal));
@@ -117,39 +118,39 @@ export namespace LiteralDecoder {
     return Either.encase(() => Number.parseFloat(literal.value));
   }
 
-  function decodeGDayValue(literal: Literal): Either<Error, Date> {
-    if (!literal.value.match(/^[0-9]+$/)) {
-      return Left(new LiteralValueError(literal));
-    }
+  // function decodeGDayValue(literal: Literal): Either<Error, Date> {
+  //   if (!literal.value.match(/^[0-9]+$/)) {
+  //     return Left(new LiteralValueError(literal));
+  //   }
 
-    return Either.of(new Date(0, 0, Number.parseInt(literal.value, 10)));
-  }
+  //   return Either.of(new Date(0, 0, Number.parseInt(literal.value, 10)));
+  // }
 
-  function decodeGMonthDayValue(literal: Literal): Either<Error, Date> {
-    if (!literal.value.match(/^[0-9]+-[0-9][0-9]$/)) {
-      return Left(new LiteralValueError(literal));
-    }
+  // function decodeGMonthDayValue(literal: Literal): Either<Error, Date> {
+  //   if (!literal.value.match(/^[0-9]+-[0-9][0-9]$/)) {
+  //     return Left(new LiteralValueError(literal));
+  //   }
 
-    const valueSplit = literal.value.split("-");
-    return Either.of(
-      new Date(0, parseInt(valueSplit[0], 10) - 1, parseInt(valueSplit[1], 10)),
-    );
-  }
+  //   const valueSplit = literal.value.split("-");
+  //   return Either.of(
+  //     new Date(0, parseInt(valueSplit[0], 10) - 1, parseInt(valueSplit[1], 10)),
+  //   );
+  // }
 
-  function decodeGYearValue(literal: Literal): Either<Error, Date> {
-    if (!literal.value.match(/^[0-9]+$/)) {
-      return Left(new LiteralValueError(literal));
-    }
+  // function decodeGYearValue(literal: Literal): Either<Error, Date> {
+  //   if (!literal.value.match(/^[0-9]+$/)) {
+  //     return Left(new LiteralValueError(literal));
+  //   }
 
-    return Either.of(new Date(`${literal.value}-01-01`));
-  }
+  //   return Either.of(new Date(`${literal.value}-01-01`));
+  // }
 
-  function decodeGYearMonthValue(literal: Literal): Either<Error, Date> {
-    if (!literal.value.match(/^[0-9]+-[0-9][0-9]$/)) {
-      return Left(new LiteralValueError(literal));
-    }
-    return Either.of(new Date(`${literal.value}-01`));
-  }
+  // function decodeGYearMonthValue(literal: Literal): Either<Error, Date> {
+  //   if (!literal.value.match(/^[0-9]+-[0-9][0-9]$/)) {
+  //     return Left(new LiteralValueError(literal));
+  //   }
+  //   return Either.of(new Date(`${literal.value}-01`));
+  // }
 
   export function decodeIntLike(
     literal: Literal,
@@ -244,10 +245,7 @@ export namespace LiteralDecoder {
     switch (datatype.value) {
       case "http://www.w3.org/2001/XMLSchema#date":
       case "http://www.w3.org/2001/XMLSchema#dateTime":
-      case "http://www.w3.org/2001/XMLSchema#gDay":
-      case "http://www.w3.org/2001/XMLSchema#gMonthDay":
-      case "http://www.w3.org/2001/XMLSchema#gYear":
-      case "http://www.w3.org/2001/XMLSchema#gYearMonth":
+      case "http://www.w3.org/2001/XMLSchema#dateTimeStamp":
         return true;
       default:
         return false;
@@ -298,7 +296,9 @@ export namespace LiteralDecoder {
       case "http://www.w3.org/2001/XMLSchema#Name":
       case "http://www.w3.org/2001/XMLSchema#NCName":
       case "http://www.w3.org/2001/XMLSchema#NMTOKEN":
+      case "http://www.w3.org/2001/XMLSchema#NOTATION":
       case "http://www.w3.org/2001/XMLSchema#normalizedString":
+      case "http://www.w3.org/2001/XMLSchema#QName":
       case "http://www.w3.org/2001/XMLSchema#string":
       case "http://www.w3.org/2001/XMLSchema#time":
       case "http://www.w3.org/2001/XMLSchema#token":

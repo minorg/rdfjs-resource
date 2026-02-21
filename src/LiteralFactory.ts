@@ -30,27 +30,28 @@ export class LiteralFactory {
           datatype,
         );
       case "http://www.w3.org/2001/XMLSchema#dateTime":
+      case "http://www.w3.org/2001/XMLSchema#dateTimeStamp":
         return this.dataFactory.literal(value.toISOString(), datatype);
-      case "http://www.w3.org/2001/XMLSchema#gDay":
-        return this.dataFactory.literal(
-          value.getUTCDate().toString(),
-          datatype,
-        );
-      case "http://www.w3.org/2001/XMLSchema#gMonthDay":
-        return this.dataFactory.literal(
-          `${value.getUTCMonth() + 1}-${value.getUTCDate()}`,
-          datatype,
-        );
-      case "http://www.w3.org/2001/XMLSchema#gYear":
-        return this.dataFactory.literal(
-          value.getUTCFullYear().toString(),
-          datatype,
-        );
-      case "http://www.w3.org/2001/XMLSchema#gYearMonth":
-        return this.dataFactory.literal(
-          `${value.getUTCFullYear()}-${value.getUTCMonth() + 1}`,
-          datatype,
-        );
+      // case "http://www.w3.org/2001/XMLSchema#gDay":
+      //   return this.dataFactory.literal(
+      //     value.getUTCDate().toString(),
+      //     datatype,
+      //   );
+      // case "http://www.w3.org/2001/XMLSchema#gMonthDay":
+      //   return this.dataFactory.literal(
+      //     `${value.getUTCMonth() + 1}-${value.getUTCDate()}`,
+      //     datatype,
+      //   );
+      // case "http://www.w3.org/2001/XMLSchema#gYear":
+      //   return this.dataFactory.literal(
+      //     value.getUTCFullYear().toString(),
+      //     datatype,
+      //   );
+      // case "http://www.w3.org/2001/XMLSchema#gYearMonth":
+      //   return this.dataFactory.literal(
+      //     `${value.getUTCFullYear()}-${value.getUTCMonth() + 1}`,
+      //     datatype,
+      //   );
       default:
         throw new RangeError(`unrecognized date datatype ${datatype.value}`);
     }
@@ -156,6 +157,8 @@ export class LiteralFactory {
         case "http://www.w3.org/2001/XMLSchema#NCName":
         case "http://www.w3.org/2001/XMLSchema#NMTOKEN":
         case "http://www.w3.org/2001/XMLSchema#normalizedString":
+        case "http://www.w3.org/2001/XMLSchema#NOTATION":
+        case "http://www.w3.org/2001/XMLSchema#QName":
         case "http://www.w3.org/2001/XMLSchema#string":
         case "http://www.w3.org/2001/XMLSchema#time":
         case "http://www.w3.org/2001/XMLSchema#token":

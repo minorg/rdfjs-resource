@@ -31,6 +31,9 @@ export namespace xsd {
   export const dateTime = DataFactory.namedNode(
     "http://www.w3.org/2001/XMLSchema#dateTime",
   );
+  export const dateTimeStamp = DataFactory.namedNode(
+    "http://www.w3.org/2001/XMLSchema#dateTimeStamp",
+  );
   export const decimal = DataFactory.namedNode(
     "http://www.w3.org/2001/XMLSchema#decimal",
   );
