@@ -3,6 +3,8 @@ import type { DataFactory, Literal, NamedNode } from "@rdfjs/types";
 import { Either, Left } from "purify-ts";
 import { xsd } from "./vocabularies.js";
 
+type Primitive = boolean | Date | number | string;
+
 /**
  * Coder-decoder methods for literals.
  *
@@ -90,10 +92,7 @@ export class LiteralCodec {
     return this.dataFactory.literal(valueString, xsd.decimal);
   }
 
-  fromPrimitive(
-    value: boolean | Date | number | string,
-    datatype?: NamedNode,
-  ): Literal {
+  fromPrimitive(value: Primitive, datatype?: NamedNode): Literal {
     switch (typeof value) {
       case "boolean":
         return this.fromBoolean(value);
@@ -228,18 +227,74 @@ export class LiteralCodec {
     }
   }
 
+  toFloat(literal: Literal): Either<Error, number> {
+    switch (literal.datatype.value) {
+      case "http://www.w3.org/2001/XMLSchema#decimal":
+      case "http://www.w3.org/2001/XMLSchema#double":
+      case "http://www.w3.org/2001/XMLSchema#float":
+        return Either.encase(() => Number.parseFloat(literal.value));
+      default:
+        return Left(
+          new Error(`unexpected float datatype: ${literal.datatype.value}`),
+        );
+    }
+  }
+
+  toInt(literal: Literal): Either<Error, number> {
+    switch (literal.datatype.value) {
+      case "http://www.w3.org/2001/XMLSchema#byte":
+      case "http://www.w3.org/2001/XMLSchema#int":
+      case "http://www.w3.org/2001/XMLSchema#integer":
+      case "http://www.w3.org/2001/XMLSchema#long":
+      case "http://www.w3.org/2001/XMLSchema#negativeInteger":
+      case "http://www.w3.org/2001/XMLSchema#nonNegativeInteger":
+      case "http://www.w3.org/2001/XMLSchema#nonPositiveInteger":
+      case "http://www.w3.org/2001/XMLSchema#positiveInteger":
+      case "http://www.w3.org/2001/XMLSchema#short":
+      case "http://www.w3.org/2001/XMLSchema#unsignedByte":
+      case "http://www.w3.org/2001/XMLSchema#unsignedInt":
+      case "http://www.w3.org/2001/XMLSchema#unsignedLong":
+      case "http://www.w3.org/2001/XMLSchema#unsignedShort":
+        return Either.encase(() => Number.parseInt(literal.value, 10));
+      default:
+        return Left(
+          new Error(`unexpected int datatype: ${literal.datatype.value}`),
+        );
+    }
+  }
+
   toNumber(literal: Literal): Either<Error, number> {
-    // return Either.encase(() => {
-    //   if (
-    //     literal.datatype.equals(xsd.decimal) ||
-    //     literal.datatype.equals(xsd.double) ||
-    //     literal.datatype.equals(xsd.float)
-    //   ) {
-    //     return Number.parseFloat(literal.value);
-    //   }
-    //   throw new Error(
-    //     `unrecognized number datatype: ${literal.datatype.value}`,
-    //   );
-    // });
+    return this.toFloat(literal).altLazy(() => this.toInt(literal));
+  }
+
+  toPrimitive(literal: Literal): Either<Error, Primitive> {
+    return (this.toBoolean(literal) as Either<Error, Primitive>)
+      .altLazy(() => this.toDate(literal))
+      .altLazy(() => this.toNumber(literal))
+      .altLazy(() => this.toString(literal));
+  }
+
+  toString(literal: Literal): Either<Error, string> {
+    switch (literal.datatype.value) {
+      case "http://www.w3.org/1999/02/22-rdf-syntax-ns#dirLangString":
+      case "http://www.w3.org/1999/02/22-rdf-syntax-ns#langString":
+      case "http://www.w3.org/2001/XMLSchema#anyURI":
+      case "http://www.w3.org/2001/XMLSchema#base64Binary":
+      case "http://www.w3.org/2001/XMLSchema#duration":
+      case "http://www.w3.org/2001/XMLSchema#hexBinary":
+      case "http://www.w3.org/2001/XMLSchema#language":
+      case "http://www.w3.org/2001/XMLSchema#Name":
+      case "http://www.w3.org/2001/XMLSchema#NCName":
+      case "http://www.w3.org/2001/XMLSchema#NMTOKEN":
+      case "http://www.w3.org/2001/XMLSchema#normalizedString":
+      case "http://www.w3.org/2001/XMLSchema#string":
+      case "http://www.w3.org/2001/XMLSchema#time":
+      case "http://www.w3.org/2001/XMLSchema#token":
+        return Either.of(literal.value);
+      default:
+        return Left(
+          new Error(`unexpected string datatype: ${literal.datatype.value}`),
+        );
+    }
   }
 }
