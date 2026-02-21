@@ -25,6 +25,9 @@ export namespace xsd {
   export const boolean = DataFactory.namedNode(
     "http://www.w3.org/2001/XMLSchema#boolean",
   );
+  export const date = DataFactory.namedNode(
+    "http://www.w3.org/2001/XMLSchema#date",
+  );
   export const dateTime = DataFactory.namedNode(
     "http://www.w3.org/2001/XMLSchema#dateTime",
   );
@@ -33,6 +36,9 @@ export namespace xsd {
   );
   export const double = DataFactory.namedNode(
     "http://www.w3.org/2001/XMLSchema#double",
+  );
+  export const float = DataFactory.namedNode(
+    "http://www.w3.org/2001/XMLSchema#float",
   );
   export const integer = DataFactory.namedNode(
     "http://www.w3.org/2001/XMLSchema#integer",

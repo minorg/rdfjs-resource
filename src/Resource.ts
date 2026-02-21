@@ -16,7 +16,7 @@ import { DatasetSubjectValues } from "./DatasetSubjectValues.js";
 import { Identifier as _Identifier } from "./Identifier.js";
 import { IdentifierValue as _IdentifierValue } from "./IdentifierValue.js";
 import { ListStructureError as _ListStructureError } from "./ListStructureError.js";
-import { LiteralCodec } from "./LiteralCodec.js";
+import { LiteralCodec } from "./LiteralDecoder.js";
 import { MistypedTermValueError as _MistypedTermValueError } from "./MistypedTermValueError.js";
 import type { Primitive } from "./Primitive.js";
 import { TermValue as _TermValue } from "./TermValue.js";
