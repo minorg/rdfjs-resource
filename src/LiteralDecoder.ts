@@ -10,21 +10,11 @@ import { xsd } from "./vocabularies.js";
  * Partially adapted from rdf-literal.js (https://github.com/rubensworks/rdf-literal.js), MIT license.
  */
 export namespace LiteralDecoder {
-  function checkDatatype(
-    literal: Literal,
-    expectedDataType: NamedNode,
-  ): Either<Error, Literal> {
-    if (!literal.datatype.equals(expectedDataType)) {
-      return Left(
-        new UnexpectedLiteralDatatypeError(literal, expectedDataType),
-      );
-    }
-
-    return Either.of(literal);
-  }
-
   export function decodeBoolean(literal: Literal): Either<Error, boolean> {
-    return checkDatatype(literal, xsd.boolean).chain(decodeBooleanValue);
+    if (isBooleanDatatype(literal.datatype)) {
+      return decodeBooleanValue(literal);
+    }
+    return Left(new UnrecognizedLiteralDatatypeError(literal));
   }
 
   function decodeBooleanValue(literal: Literal): Either<Error, boolean> {
@@ -41,7 +31,10 @@ export namespace LiteralDecoder {
   }
 
   export function decodeDate(literal: Literal): Either<Error, Date> {
-    return checkDatatype(literal, xsd.date).chain(decodeDateValue);
+    if (isDateDatatype(literal.datatype)) {
+      return decodeDateValue(literal);
+    }
+    return Left(new UnrecognizedLiteralDatatypeError(literal));
   }
 
   function decodeDateValue(literal: Literal): Either<Error, Date> {
@@ -53,13 +46,10 @@ export namespace LiteralDecoder {
   }
 
   export function decodeDateTime(literal: Literal): Either<Error, Date> {
-    switch (literal.datatype.value) {
-      case "http://www.w3.org/2001/XMLSchema#dateTime":
-      case "http://www.w3.org/2001/XMLSchema#dateTimeStamp":
-        return decodeDateTimeValue(literal);
-      default:
-        return Left(new UnrecognizedLiteralDatatypeError(literal));
+    if (isDateTimeDatatype(literal.datatype)) {
+      return decodeDateTimeValue(literal);
     }
+    return Left(new UnrecognizedLiteralDatatypeError(literal));
   }
 
   function decodeDateTimeValue(literal: Literal): Either<Error, Date> {
@@ -72,18 +62,6 @@ export namespace LiteralDecoder {
     }
 
     return Either.of(new Date(literal.value));
-  }
-
-  export function decodeDecimal(literal: Literal): Either<Error, number> {
-    return checkDatatype(literal, xsd.decimal).chain(decodeFloatLikeValue);
-  }
-
-  export function decodeDouble(literal: Literal): Either<Error, number> {
-    return checkDatatype(literal, xsd.double).chain(decodeFloatLikeValue);
-  }
-
-  export function decodeFloat(literal: Literal): Either<Error, number> {
-    return checkDatatype(literal, xsd.float).chain(decodeFloatLikeValue);
   }
 
   export function decodeFloatLike(literal: Literal): Either<Error, number> {
