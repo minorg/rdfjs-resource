@@ -461,9 +461,10 @@ export class Resource<
     value: AddableValue,
   ): BlankNode | Literal | NamedNode {
     switch (typeof value) {
+      case "bigint":
+        return this.literalFactory.bigint(value);
       case "boolean":
         return this.literalFactory.boolean(value);
-      case "bigint":
       case "number":
         return this.literalFactory.number(value);
       case "string":
