@@ -1,6 +1,6 @@
 import DefaultDataFactory from "@rdfjs/data-model";
 import type { DataFactory, Literal, NamedNode } from "@rdfjs/types";
-import { numericXsdDatatypeRanges } from "./numericXsdDatatypeRanges.js";
+import { literalDatatypeDefinitions } from "./literalDatatypeDefinitions.js";
 import type { Primitive } from "./Primitive.js";
 import { xsd } from "./vocabularies.js";
 
@@ -14,13 +14,43 @@ export class LiteralFactory {
     this.dataFactory = options?.dataFactory ?? DefaultDataFactory;
   }
 
-  boolean(value: boolean): Literal {
+  bigint(value: bigint, datatype?: NamedNode): Literal {
+    const valueString = value.toString(10);
+
+    if (!datatype) {
+      datatype = value >= 0 ? xsd.unsignedLong : xsd.long;
+    }
+
+    const datatypeDefinition = literalDatatypeDefinitions[datatype.value];
+    if (datatypeDefinition) {
+      switch (datatypeDefinition.kind) {
+        case "bigdecimal":
+        case "bigint":
+        case "float":
+        case "int": {
+          const [min, max] = datatypeDefinition.range;
+          if (
+            (min !== undefined && value < min) ||
+            (max !== undefined && value > max)
+          ) {
+            throw new RangeError(
+              `value (${value}) outside range [${min}, ${max}] of ${datatype.value}`,
+            );
+          }
+        }
+      }
+    }
+
+    return this.dataFactory.literal(valueString, datatype);
+  }
+
+  boolean(value: boolean, _datatype?: NamedNode): Literal {
     return this.dataFactory.literal(value.toString(), xsd.boolean);
   }
 
   date(value: Date, datatype?: NamedNode): Literal {
     if (!datatype) {
-      datatype = xsd.dateTime;
+      datatype = xsd.date;
     }
 
     switch (datatype.value) {
@@ -57,63 +87,51 @@ export class LiteralFactory {
     }
   }
 
-  number(value: bigint | number, datatype?: NamedNode): Literal {
+  number(value: number, datatype?: NamedNode): Literal {
     let valueString = value.toString(10);
+    if (Number.isNaN(value)) {
+      valueString = "NaN";
+    } else if (value === Infinity) {
+      valueString = "INF";
+    } else if (value === -Infinity) {
+      valueString = "-INF";
+    }
 
-    if (Number.isNaN(value) || value === Infinity || value === -Infinity) {
-      if (datatype) {
-        switch (datatype.value) {
-          case "http://www.w3.org/2001/XMLSchema#double":
-          case "http://www.w3.org/2001/XMLSchema#float":
-            break;
-          default:
-            throw new RangeError(
-              `NaN/INF/-INF values only supported by xsd:double and xsd:float`,
-            );
-        }
+    if (!datatype) {
+      if (Number.isInteger(value)) {
+        // Don't try to break this down further.
+        datatype = xsd.integer;
       } else {
         datatype = xsd.double;
       }
+    }
 
-      if (Number.isNaN(value)) {
-        valueString = "NaN";
-      } else if (value === Infinity) {
-        valueString = "INF";
-      } else if (value === -Infinity) {
-        valueString = "-INF";
-      }
-    } else {
-      if (!datatype) {
-        if (typeof value === "bigint") {
-          datatype = value >= 0 ? xsd.unsignedLong : xsd.long;
-        } else if (Number.isInteger(value)) {
-          // Don't try to break this down further.
-          datatype = xsd.integer;
-        } else if (
-          /^[+-]?([0-9]+(\\.[0-9]*)?|\\.[0-9]+)[eE][+-]?[0-9]+$/.test(
-            valueString,
-          )
-        ) {
-          // Has exponent: xsd:double
-          datatype = xsd.double;
-          return this.dataFactory.literal(valueString, xsd.double);
-        } else {
-          datatype = xsd.decimal;
-        }
-      }
-
-      const range = numericXsdDatatypeRanges[datatype.value];
-      if (!range) {
-        throw new RangeError(`unrecognized numeric datatype ${datatype.value}`);
-      }
-      const [min, max] = range;
+    const datatypeDefinition = literalDatatypeDefinitions[datatype.value];
+    if (datatypeDefinition) {
       if (
-        (min !== undefined && value < min) ||
-        (max !== undefined && value > max)
+        (Number.isNaN(value) || value === Infinity || value === -Infinity) &&
+        datatypeDefinition.kind !== "float"
       ) {
         throw new RangeError(
-          `value (${value}) outside range [${min}, ${max}] of ${datatype.value}`,
+          `NaN/INF/-INF values only supported by xsd:double and xsd:float`,
         );
+      }
+
+      switch (datatypeDefinition.kind) {
+        case "bigdecimal":
+        case "bigint":
+        case "float":
+        case "int": {
+          const [min, max] = datatypeDefinition.range;
+          if (
+            (min !== undefined && value < min) ||
+            (max !== undefined && value > max)
+          ) {
+            throw new RangeError(
+              `value (${value}) outside range [${min}, ${max}] of ${datatype.value}`,
+            );
+          }
+        }
       }
     }
 
@@ -122,20 +140,16 @@ export class LiteralFactory {
 
   primitive(value: Primitive, datatype?: NamedNode): Literal {
     switch (typeof value) {
+      case "bigint":
+        return this.bigint(value, datatype);
       case "boolean":
-        if (datatype && !datatype.equals(xsd.boolean)) {
-          throw new RangeError(
-            `unrecognized boolean datatype ${datatype.value}`,
-          );
-        }
-        return this.boolean(value);
+        return this.boolean(value, datatype);
       case "object": {
         if (value instanceof Date) {
           return this.date(value, datatype);
         }
         throw new Error("not implemented");
       }
-      case "bigint":
       case "number":
         return this.number(value, datatype);
       case "string":
@@ -145,28 +159,9 @@ export class LiteralFactory {
 
   string(value: string, datatype?: NamedNode) {
     if (datatype) {
-      switch (datatype.value) {
-        case "http://www.w3.org/1999/02/22-rdf-syntax-ns#dirLangString":
-        case "http://www.w3.org/1999/02/22-rdf-syntax-ns#langString":
-        case "http://www.w3.org/2001/XMLSchema#anyURI":
-        case "http://www.w3.org/2001/XMLSchema#base64Binary":
-        case "http://www.w3.org/2001/XMLSchema#duration":
-        case "http://www.w3.org/2001/XMLSchema#hexBinary":
-        case "http://www.w3.org/2001/XMLSchema#language":
-        case "http://www.w3.org/2001/XMLSchema#Name":
-        case "http://www.w3.org/2001/XMLSchema#NCName":
-        case "http://www.w3.org/2001/XMLSchema#NMTOKEN":
-        case "http://www.w3.org/2001/XMLSchema#normalizedString":
-        case "http://www.w3.org/2001/XMLSchema#NOTATION":
-        case "http://www.w3.org/2001/XMLSchema#QName":
-        case "http://www.w3.org/2001/XMLSchema#string":
-        case "http://www.w3.org/2001/XMLSchema#time":
-        case "http://www.w3.org/2001/XMLSchema#token":
-          break;
-        default:
-          throw new RangeError(
-            `unrecognized string datatype ${datatype.value}`,
-          );
+      const datatypeDefinition = literalDatatypeDefinitions[datatype.value];
+      if (datatypeDefinition && datatypeDefinition.kind !== "string") {
+        throw new RangeError(`not a string datatype ${datatype.value}`);
       }
     }
 

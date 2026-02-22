@@ -1,7 +1,8 @@
-type LiteralDatatype =
+type LiteralDatatypeDefinition =
   | {
       // Arbitrary-precision decimal
       kind: "bigdecimal";
+      readonly range: [undefined, undefined];
     }
   | {
       // Arbitrary precision integer
@@ -35,7 +36,10 @@ type LiteralDatatype =
       kind: "string";
     };
 
-export const literalDatatypes: Record<string, LiteralDatatype> = {
+export const literalDatatypeDefinitions: Record<
+  string,
+  LiteralDatatypeDefinition
+> = {
   // Boolean
   "http://www.w3.org/2001/XMLSchema#boolean": {
     kind: "boolean",
@@ -69,6 +73,7 @@ export const literalDatatypes: Record<string, LiteralDatatype> = {
   // Arbitrary precision decimal
   "http://www.w3.org/2001/XMLSchema#decimal": {
     kind: "bigdecimal",
+    range: [undefined, undefined],
   },
 
   // Fixed-width integers

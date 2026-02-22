@@ -1,6 +1,6 @@
-import type { Literal, NamedNode } from "@rdfjs/types";
+import type { Literal } from "@rdfjs/types";
 import { Either, Left } from "purify-ts";
-import { literalDatatypes } from "./literalDatatypes.js";
+import { literalDatatypeDefinitions } from "./literalDatatypeDefinitions.js";
 import type { Primitive } from "./Primitive.js";
 
 /**
@@ -10,7 +10,7 @@ import type { Primitive } from "./Primitive.js";
  */
 export namespace LiteralDecoder {
   export function decodeBigIntLiteral(literal: Literal): Either<Error, bigint> {
-    if (literalDatatypes[literal.datatype.value]?.kind === "bigint") {
+    if (literalDatatypeDefinitions[literal.datatype.value]?.kind === "bigint") {
       return decodeBigIntLiteralValue(literal);
     }
     return Left(new LiteralDatatypeError(literal));
@@ -20,12 +20,13 @@ export namespace LiteralDecoder {
     return Either.encase(() => {
       const value = BigInt(literal.value);
 
-      const literalDatatype = literalDatatypes[literal.datatype.value];
-      if (literalDatatype?.kind !== "bigint") {
+      const literalDatatypeDefinition =
+        literalDatatypeDefinitions[literal.datatype.value];
+      if (literalDatatypeDefinition?.kind !== "bigint") {
         throw new LiteralDatatypeError(literal);
       }
 
-      const [min, max] = literalDatatype.range;
+      const [min, max] = literalDatatypeDefinition.range;
       if (
         (min !== undefined && value < min) ||
         (max !== undefined && value > max)
@@ -43,7 +44,9 @@ export namespace LiteralDecoder {
   export function decodeBooleanLiteral(
     literal: Literal,
   ): Either<Error, boolean> {
-    if (literalDatatypes[literal.datatype.value]?.kind === "boolean") {
+    if (
+      literalDatatypeDefinitions[literal.datatype.value]?.kind === "boolean"
+    ) {
       return decodeBooleanLiteralValue(literal);
     }
     return Left(new LiteralDatatypeError(literal));
@@ -63,7 +66,7 @@ export namespace LiteralDecoder {
   }
 
   export function decodeDateLiteral(literal: Literal): Either<Error, Date> {
-    if (literalDatatypes[literal.datatype.value]?.kind === "date") {
+    if (literalDatatypeDefinitions[literal.datatype.value]?.kind === "date") {
       return decodeDateLiteralValue(literal);
     }
     return Left(new LiteralDatatypeError(literal));
@@ -78,7 +81,9 @@ export namespace LiteralDecoder {
   }
 
   export function decodeDateTimeLiteral(literal: Literal): Either<Error, Date> {
-    if (literalDatatypes[literal.datatype.value]?.kind === "datetime") {
+    if (
+      literalDatatypeDefinitions[literal.datatype.value]?.kind === "datetime"
+    ) {
       return decodeDateTimeLiteralValue(literal);
     }
     return Left(new LiteralDatatypeError(literal));
@@ -97,7 +102,7 @@ export namespace LiteralDecoder {
   }
 
   export function decodeFloatLiteral(literal: Literal): Either<Error, number> {
-    if (literalDatatypes[literal.datatype.value]?.kind === "float") {
+    if (literalDatatypeDefinitions[literal.datatype.value]?.kind === "float") {
       return decodeFloatLiteralValue(literal);
     }
 
@@ -109,7 +114,7 @@ export namespace LiteralDecoder {
   }
 
   export function decodeIntLiteral(literal: Literal): Either<Error, number> {
-    if (literalDatatypes[literal.datatype.value]?.kind === "int") {
+    if (literalDatatypeDefinitions[literal.datatype.value]?.kind === "int") {
       return decodeIntLiteralValue(literal);
     }
     return Left(new LiteralDatatypeError(literal));
@@ -119,12 +124,13 @@ export namespace LiteralDecoder {
     return Either.encase(() => {
       const value = Number.parseInt(literal.value, 10);
 
-      const literalDatatype = literalDatatypes[literal.datatype.value];
-      if (literalDatatype?.kind !== "int") {
+      const literalDatatypeDefinition =
+        literalDatatypeDefinitions[literal.datatype.value];
+      if (literalDatatypeDefinition?.kind !== "int") {
         throw new LiteralDatatypeError(literal);
       }
 
-      const [min, max] = literalDatatype.range;
+      const [min, max] = literalDatatypeDefinition.range;
       if (
         (min !== undefined && value < min) ||
         (max !== undefined && value > max)
@@ -142,22 +148,23 @@ export namespace LiteralDecoder {
   export function decodeNumberLiteral(
     literal: Literal,
   ): Either<Error, bigint | number> {
-    if (literalDatatypes[literal.datatype.value]?.kind === "float") {
+    if (literalDatatypeDefinitions[literal.datatype.value]?.kind === "float") {
       return decodeFloatLiteralValue(literal);
     }
-    if (literalDatatypes[literal.datatype.value]?.kind === "int") {
+    if (literalDatatypeDefinitions[literal.datatype.value]?.kind === "int") {
       return decodeIntLiteralValue(literal);
     }
     return Left(new LiteralDatatypeError(literal));
   }
 
   export function decodePrimitive(literal: Literal): Either<Error, Primitive> {
-    const literalDatatype = literalDatatypes[literal.datatype.value];
-    if (!literalDatatype) {
+    const literalDatatypeDefinition =
+      literalDatatypeDefinitions[literal.datatype.value];
+    if (!literalDatatypeDefinition) {
       return Left(new LiteralDatatypeError(literal));
     }
 
-    switch (literalDatatype.kind) {
+    switch (literalDatatypeDefinition.kind) {
       case "bigdecimal":
         return Left(
           new LiteralDatatypeError(
@@ -183,7 +190,7 @@ export namespace LiteralDecoder {
   }
 
   export function decodeStringLiteral(literal: Literal): Either<Error, string> {
-    if (literalDatatypes[literal.datatype.value]?.kind === "string") {
+    if (literalDatatypeDefinitions[literal.datatype.value]?.kind === "string") {
       return decodeStringLiteralValue(literal);
     }
     return Left(new LiteralDatatypeError(literal));

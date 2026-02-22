@@ -38,7 +38,7 @@ const literals = {
   positiveInteger: DataFactory.literal("1", xsd.positiveInteger),
 
   // Numeric - decimal & floating point
-  decimal: DataFactory.literal("10.5", xsd.decimal),
+  // decimal: DataFactory.literal("10.5", xsd.decimal),
   float: DataFactory.literal("3.14", xsd.float),
   double: DataFactory.literal("2.718281828459045", xsd.double),
 
