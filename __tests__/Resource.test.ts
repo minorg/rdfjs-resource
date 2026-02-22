@@ -1,61 +1,153 @@
 import type { BlankNode, Literal, NamedNode } from "@rdfjs/types";
 import { rdf, rdfs, schema, skos } from "@tpluscode/rdf-ns-builders";
-import N3, { DataFactory, Parser, Store } from "n3";
-import { beforeAll, describe, expect, it } from "vitest";
-import { MutableResource } from "../MutableResource.js";
-import { Resource } from "../Resource.js";
-import { ResourceSet } from "../ResourceSet.js";
+import { DataFactory, Parser, Store } from "n3";
+import { describe, expect, it } from "vitest";
+import { Resource } from "../src/Resource.js";
+import { ResourceSet } from "../src/ResourceSet.js";
 import { houseMdDataset } from "./houseMdDataset.js";
 import { testData } from "./testData.js";
 
 describe("Resource", () => {
   const { objects, predicate, subject } = testData;
+  const testResource = new Resource(new Store(), subject);
+  for (const object of Object.values(objects)) {
+    testResource.add(predicate, object);
+  }
 
-  const immutableResourceSet = new ResourceSet({ dataset: houseMdDataset });
-  const immutableResource = immutableResourceSet.namedResource(
-    N3.DataFactory.namedNode(
-      "https://housemd.rdf-ext.org/person/allison-cameron",
-    ),
-  );
-  let mutableResource: Resource;
+  it("add", () => {
+    const resource = new Resource(new Store(), subject);
+    resource.add(predicate, objects["stringLiteral"]);
+    const values = [...resource.values(predicate)].map((value) =>
+      value.toTerm(),
+    );
+    expect(values).toHaveLength(1);
+    expect(values[0].equals(objects["stringLiteral"])).toBe(true);
+  });
 
-  beforeAll(() => {
-    mutableResource = new MutableResource({
-      dataFactory: DataFactory,
-      dataset: new Store(),
-      identifier: subject,
-      mutateGraph: DataFactory.defaultGraph(),
+  describe("addList", () => {
+    it("simple", () => {
+      const resource = new Resource(new Store(), subject);
+      resource.addList(predicate, [
+        objects["stringLiteral"],
+        objects["intLiteral"],
+      ]);
+      expect([...resource.values(predicate)]).toHaveLength(1);
+      const list = resource
+        .value(predicate)
+        .chain((value) => value.toList())
+        .map((values) =>
+          values.flatMap((value) => value.toLiteral().toMaybe().toList()),
+        )
+        .orDefault([]);
+      expect(list).toHaveLength(2);
+      expect(
+        list.some((element) => element.equals(objects["stringLiteral"])),
+      ).toStrictEqual(true);
+      expect(
+        list.some((element) => element.equals(objects["intLiteral"])),
+      ).toStrictEqual(true);
     });
-    for (const object of Object.values(objects)) {
-      (mutableResource as MutableResource).add(predicate, object);
+
+    for (const terms of [
+      [],
+      [DataFactory.literal("test")],
+      [DataFactory.literal("test"), DataFactory.literal("test")],
+      [
+        DataFactory.literal("test"),
+        DataFactory.literal("test"),
+        DataFactory.literal("test"),
+      ],
+      [
+        DataFactory.literal("test"),
+        DataFactory.literal("test"),
+        DataFactory.literal("test"),
+        DataFactory.literal("test"),
+      ],
+    ]) {
+      it(`list of ${terms.length} terms`, ({ expect }) => {
+        const resource = new Resource(new Store(), subject);
+        const listResource = resource.addList(predicate, terms, {
+          mintSubListIdentifier: (_, itemIndex) =>
+            DataFactory.namedNode(
+              `http://example.com/list${itemIndex.toString()}`,
+            ),
+        });
+        if (terms.length === 0) {
+          expect(listResource.identifier.equals(rdf.nil)).toStrictEqual(true);
+        } else {
+          expect(resource.dataset.size).not.toEqual(0);
+        }
+        // Should only have NamedNode identifiers for the pieces of the list
+        const datasetQuads = [
+          ...resource.dataset.match(null, null, null, null),
+        ];
+        expect(
+          datasetQuads.every(
+            (quad) =>
+              quad.subject.termType === "NamedNode" &&
+              (quad.object.termType === "NamedNode" ||
+                quad.object.termType === "Literal"),
+          ),
+        );
+        const deserializedTerms = [
+          ...listResource
+            .toList()
+            .unsafeCoerce()
+            .map((value) => value.toTerm()),
+        ];
+        expect(deserializedTerms).toHaveLength(terms.length);
+        terms.forEach((term, termI) => {
+          expect(term.equals(deserializedTerms[termI])).toStrictEqual(true);
+        });
+      });
     }
   });
 
-  it("should check instance of with rdf:type", ({ expect }) => {
-    expect(immutableResource.isInstanceOf(schema.Person)).toStrictEqual(true);
+  describe("delete", () => {
+    it("one value", () => {
+      const resource = new Resource(new Store(), subject);
+      resource.add(predicate, objects["stringLiteral"]);
+      resource.add(predicate, objects["intLiteral"]);
+      expect([...resource.values(predicate)]).toHaveLength(2);
+      resource.delete(predicate, objects["intLiteral"]);
+      const values = [...resource.values(predicate)].map((value) =>
+        value.toTerm(),
+      );
+      expect(values).toHaveLength(1);
+      expect(values[0].equals(objects["stringLiteral"])).toBe(true);
+    });
+
+    it("all values", () => {
+      const resource = new Resource(new Store(), subject);
+      resource.add(predicate, objects["stringLiteral"]);
+      resource.add(predicate, objects["intLiteral"]);
+      expect([...resource.values(predicate)]).toHaveLength(2);
+      resource.delete(predicate);
+      expect([...resource.values(predicate)]).toHaveLength(0);
+    });
   });
 
   describe("isInstanceOf", () => {
     const dataset = new Store();
     const class_ = skos.Concept;
-    const classInstance = new MutableResource({
-      dataFactory: DataFactory,
-      dataset,
-      identifier: DataFactory.blankNode(),
-      mutateGraph: DataFactory.defaultGraph(),
-    });
+    const classInstance = new Resource(dataset, DataFactory.blankNode());
     classInstance.add(rdf.type, class_);
     const subClass = DataFactory.namedNode(
       "http://example.com/ConceptSubclass",
     );
-    const subClassInstance = new MutableResource({
-      dataFactory: DataFactory,
-      dataset,
-      identifier: DataFactory.blankNode(),
-      mutateGraph: DataFactory.defaultGraph(),
-    });
+    const subClassInstance = new Resource(dataset, DataFactory.blankNode());
     subClassInstance.add(rdf.type, subClass);
     dataset.addQuad(DataFactory.quad(subClass, rdfs.subClassOf, class_));
+
+    it("third party data", ({ expect }) => {
+      const houseMdResourceSet = new ResourceSet(houseMdDataset);
+      const houseMdResource = houseMdResourceSet.resource(
+        DataFactory.namedNode(
+          "https://housemd.rdf-ext.org/person/allison-cameron",
+        ),
+      );
+      expect(houseMdResource.isInstanceOf(schema.Person)).toStrictEqual(true);
+    });
 
     it("should find a class instance", () => {
       expect(classInstance.isInstanceOf(class_)).toStrictEqual(true);
@@ -75,10 +167,7 @@ describe("Resource", () => {
 
     it("should handle the negative case", () => {
       expect(
-        new Resource({
-          dataset,
-          identifier: DataFactory.blankNode(),
-        }).isInstanceOf(class_),
+        new Resource(dataset, DataFactory.blankNode()).isInstanceOf(class_),
       ).toStrictEqual(false);
     });
   });
@@ -86,19 +175,15 @@ describe("Resource", () => {
   it("isSubClassOf (positive case)", () => {
     const dataset = new Store();
     const class_ = skos.Concept;
-    const subClass = new MutableResource<NamedNode>({
-      dataFactory: DataFactory,
+    const subClass = new Resource(
       dataset,
-      identifier: DataFactory.namedNode("http://example.com/subClass"),
-      mutateGraph: DataFactory.defaultGraph(),
-    });
+      DataFactory.namedNode("http://example.com/subClass"),
+    );
     subClass.add(rdfs.subClassOf, class_);
-    const subSubClass = new MutableResource<NamedNode>({
-      dataFactory: DataFactory,
+    const subSubClass = new Resource(
       dataset,
-      identifier: DataFactory.namedNode("http://example.com/subSubClass"),
-      mutateGraph: DataFactory.defaultGraph(),
-    });
+      DataFactory.namedNode("http://example.com/subSubClass"),
+    );
     subSubClass.add(rdfs.subClassOf, subClass.identifier);
     expect(subSubClass.isSubClassOf(class_)).toStrictEqual(true);
   });
@@ -106,90 +191,29 @@ describe("Resource", () => {
   it("isSubClassOf (negative case)", () => {
     const dataset = new Store();
     const class1 = skos.Concept;
-    const class2 = new MutableResource<NamedNode>({
-      dataFactory: DataFactory,
+    const class2 = new Resource(
       dataset,
-      identifier: DataFactory.namedNode("http://example.com/subClass"),
-      mutateGraph: DataFactory.defaultGraph(),
-    });
-    const subClass = new MutableResource<NamedNode>({
-      dataFactory: DataFactory,
+      DataFactory.namedNode("http://example.com/subClass"),
+    );
+    const subClass = new Resource(
       dataset,
-      identifier: DataFactory.namedNode("http://example.com/subSubClass"),
-      mutateGraph: DataFactory.defaultGraph(),
-    });
+      DataFactory.namedNode("http://example.com/subSubClass"),
+    );
     subClass.add(rdfs.subClassOf, class2.identifier);
     expect(subClass.isSubClassOf(class1)).toStrictEqual(false);
   });
 
-  it("should get a value (missing)", ({ expect }) => {
-    expect(
-      mutableResource
-        .value(DataFactory.namedNode("http://example.com/nonexistent"))
-        .toMaybe()
-        .extract(),
-    ).toBeUndefined();
-  });
-
-  it("should get a value (present)", ({ expect }) => {
-    expect(
-      mutableResource
-        .values(predicate)
-        .find((value) => value.isIri())
-        .unsafeCoerce()
-        .toIri()
-        .toMaybe()
-        .extract()?.value,
-    ).toStrictEqual(objects["namedNode"].value);
-  });
-
-  it("should get a value (filtered)", ({ expect }) => {
-    const value = mutableResource
-      .values(predicate)
-      .find((value) => value.isIri())
-      .toMaybe()
-      .extract();
-    expect(value?.isIri()).toBe(true);
-  });
-
-  it("should get all values", ({ expect }) => {
-    const values = [...mutableResource.values(predicate)];
-    expect(values).toHaveLength(Object.keys(objects).length);
-    for (const object of Object.values(objects)) {
-      expect(
-        values.find((value) => value.toTerm().equals(object)),
-      ).toBeDefined();
-    }
-  });
-
-  it("should get a valueOf", ({ expect }) => {
-    const resourceValues = [...mutableResource.values(predicate)].flatMap(
-      (value) => value.toResource().toMaybe().toList(),
+  it("set", () => {
+    const resource = new Resource(new Store(), subject);
+    resource.add(predicate, objects["stringLiteral"]);
+    expect(resource.dataset.size).toStrictEqual(1);
+    resource.set(predicate, objects["intLiteral"]);
+    expect(resource.dataset.size).toStrictEqual(1);
+    const values = [...resource.values(predicate)].map((value) =>
+      value.toTerm(),
     );
-    expect(resourceValues).toHaveLength(2);
-    for (const resourceValue of resourceValues) {
-      expect(
-        resourceValue
-          .valueOf(predicate)
-          .unsafeCoerce()
-          .toIdentifier()
-          .equals(mutableResource.identifier),
-      ).toBe(true);
-    }
-  });
-
-  it("should get a valuesOf", ({ expect }) => {
-    const resourceValues = [...mutableResource.values(predicate)].flatMap(
-      (value) => value.toResource().toMaybe().toList(),
-    );
-    expect(resourceValues).toHaveLength(2);
-    for (const resourceValue of resourceValues) {
-      const valuesOf = [...resourceValue.valuesOf(predicate)];
-      expect(valuesOf).toHaveLength(1);
-      expect(
-        valuesOf[0].toIdentifier().equals(mutableResource.identifier),
-      ).toBe(true);
-    }
+    expect(values).toHaveLength(1);
+    expect(values[0].equals(objects["intLiteral"])).toBe(true);
   });
 
   describe("toList", () => {
@@ -198,11 +222,12 @@ describe("Resource", () => {
     ): readonly (BlankNode | Literal | NamedNode)[] => {
       const dataset = new Store();
       dataset.addQuads(new Parser({ format: "Turtle" }).parse(ttl));
-      return new Resource({
+      return new Resource(
         dataset,
-        identifier: [...dataset.match(subject, predicate, null, null)][0]
-          .object as BlankNode | NamedNode,
-      })
+        [...dataset.match(subject, predicate, null, null)][0].object as
+          | BlankNode
+          | NamedNode,
+      )
         .toList()
         .unsafeCoerce()
         .map((value) => value.toTerm());
@@ -240,181 +265,75 @@ describe("Resource", () => {
     });
   });
 
-  describe("TermValue", () => {
-    it("isBlankNode", ({ expect }) => {
+  describe("value", () => {
+    it("missing", ({ expect }) => {
       expect(
-        [...mutableResource.values(predicate)].filter((value) =>
-          value.isBlankNode(),
-        ),
-      ).toHaveLength(1);
+        testResource
+          .value(DataFactory.namedNode("http://example.com/nonexistent"))
+          .toMaybe()
+          .extract(),
+      ).toBeUndefined();
     });
 
-    it("isBoolean", ({ expect }) => {
+    it("present", ({ expect }) => {
       expect(
-        [...mutableResource.values(predicate)].filter((value) =>
-          value.isBoolean(),
-        ),
-      ).toHaveLength(1);
-    });
-
-    it("isDate", ({ expect }) => {
-      expect(
-        [...mutableResource.values(predicate)].filter((value) =>
-          value.isDate(),
-        ),
-      ).toHaveLength(2);
-    });
-
-    it("isIdentifier", ({ expect }) => {
-      expect(
-        [...mutableResource.values(predicate)].filter((value) =>
-          value.isIdentifier(),
-        ),
-      ).toHaveLength(2);
-    });
-
-    it("isLiteral", ({ expect }) => {
-      expect(
-        [...mutableResource.values(predicate)].filter((value) =>
-          value.isLiteral(),
-        ),
-      ).toHaveLength(5);
-    });
-
-    it("isNumber", ({ expect }) => {
-      expect(
-        [...mutableResource.values(predicate)].filter((value) =>
-          value.isNumber(),
-        ),
-      ).toHaveLength(1);
-    });
-
-    it("isPrimitive", ({ expect }) => {
-      expect(
-        [...mutableResource.values(predicate)].filter((value) =>
-          value.isPrimitive(),
-        ),
-      ).toHaveLength(5);
-    });
-
-    it("isString", ({ expect }) => {
-      expect(
-        [...mutableResource.values(predicate)].filter((value) =>
-          value.isString(),
-        ),
-      ).toHaveLength(1);
-    });
-
-    it("toBlankNode", ({ expect }) => {
-      const values = [...mutableResource.values(predicate)].flatMap((value) =>
-        value.toBlankNode().toMaybe().toList(),
-      );
-      expect(values).toHaveLength(1);
-      expect(values[0].termType).toStrictEqual("BlankNode");
-    });
-
-    it("toBoolean", ({ expect }) => {
-      const values = [...mutableResource.values(predicate)].flatMap((value) =>
-        value.toBoolean().toMaybe().toList(),
-      );
-      expect(values).toHaveLength(1);
-      expect(values[0]).toStrictEqual(true);
-    });
-
-    it("toDate", ({ expect }) => {
-      expect(
-        [...mutableResource.values(predicate)].flatMap((value) =>
-          value.toDate().toMaybe().toList(),
-        ),
-      ).toHaveLength(2);
-    });
-
-    it("toIdentifier", ({ expect }) => {
-      const values = [...mutableResource.values(predicate)].flatMap((value) =>
-        value.toIdentifier().toMaybe().toList(),
-      );
-      expect(values).toHaveLength(2);
-      expect(
-        values.find((value) => value.equals(objects["blankNode"])),
-      ).toBeDefined();
-      expect(
-        values.find((value) => value.equals(objects["namedNode"])),
-      ).toBeDefined();
-    });
-
-    it("toIri", ({ expect }) => {
-      const values = [...mutableResource.values(predicate)].flatMap((value) =>
-        value.toIri().toMaybe().toList(),
-      );
-      expect(values).toHaveLength(1);
-      expect(values[0].equals(objects["namedNode"])).toStrictEqual(true);
-    });
-
-    it("toLiteral", ({ expect }) => {
-      expect(
-        [...mutableResource.values(predicate)].flatMap((value) =>
-          value.toLiteral().toMaybe().toList(),
-        ),
-      ).toHaveLength(5);
-    });
-
-    it("toNumber", ({ expect }) => {
-      const values = [...mutableResource.values(predicate)].flatMap((value) =>
-        value.toNumber().toMaybe().toList(),
-      );
-      expect(values).toHaveLength(1);
-      expect(values[0]).toStrictEqual(1);
-    });
-
-    it("toPrimitive", ({ expect }) => {
-      const primitives = [...mutableResource.values(predicate)].flatMap(
-        (value) => value.toPrimitive().toMaybe().toList(),
-      );
-      expect(primitives).toHaveLength(5);
-      expect(
-        primitives.filter((primitive) => typeof primitive === "boolean"),
-      ).toHaveLength(1);
-      expect(
-        primitives.filter((primitive) => primitive instanceof Date),
-      ).toHaveLength(2);
-      expect(
-        primitives.filter((primitive) => typeof primitive === "number"),
-      ).toHaveLength(1);
-      expect(
-        primitives.filter((primitive) => typeof primitive === "string"),
-      ).toHaveLength(1);
-    });
-
-    it("toResource", ({ expect }) => {
-      const values = [...mutableResource.values(predicate)].flatMap((value) =>
-        value.toResource().toMaybe().toList(),
-      );
-      expect(values).toHaveLength(2);
-      expect(
-        values.find((value) => value.identifier.equals(objects["blankNode"])),
-      ).toBeDefined();
-      expect(
-        values.find((value) => value.identifier.equals(objects["namedNode"])),
-      ).toBeDefined();
-    });
-
-    it("toString", ({ expect }) => {
-      expect(
-        mutableResource
+        testResource
           .values(predicate)
-          .find((value) => value.isString())
-          .chain((value) => value.toString())
-          .orDefault("test"),
-      ).toStrictEqual(objects["stringLiteral"].value);
+          .find((value) => value.termType === "NamedNode")
+          .unsafeCoerce()
+          .toIri()
+          .toMaybe()
+          .extract()?.value,
+      ).toStrictEqual(objects["namedNode"].value);
     });
 
-    it("toValues", ({ expect }) => {
-      const value = mutableResource.value(predicate).unsafeCoerce();
-      const values = value.toValues();
-      expect(values).toHaveLength(1);
-      expect(
-        values.head().unsafeCoerce().toTerm().equals(value.toTerm()),
-      ).toStrictEqual(true);
+    it("filtered", ({ expect }) => {
+      const value = testResource
+        .values(predicate)
+        .find((value) => value.termType === "NamedNode")
+        .toMaybe()
+        .extract();
+      expect(value).toBeDefined();
     });
+  });
+
+  it("values", ({ expect }) => {
+    const values = [...testResource.values(predicate)];
+    expect(values).toHaveLength(Object.keys(objects).length);
+    for (const object of Object.values(objects)) {
+      expect(
+        values.find((value) => value.toTerm().equals(object)),
+      ).toBeDefined();
+    }
+  });
+
+  it("valueOf", ({ expect }) => {
+    const resourceValues = [...testResource.values(predicate)].flatMap(
+      (value) => value.toResource().toMaybe().toList(),
+    );
+    expect(resourceValues).toHaveLength(2);
+    for (const resourceValue of resourceValues) {
+      expect(
+        resourceValue
+          .valueOf(predicate)
+          .unsafeCoerce()
+          .toIdentifier()
+          .equals(testResource.identifier),
+      ).toBe(true);
+    }
+  });
+
+  it("valuesOf", ({ expect }) => {
+    const resourceValues = [...testResource.values(predicate)].flatMap(
+      (value) => value.toResource().toMaybe().toList(),
+    );
+    expect(resourceValues).toHaveLength(2);
+    for (const resourceValue of resourceValues) {
+      const valuesOf = [...resourceValue.valuesOf(predicate)];
+      expect(valuesOf).toHaveLength(1);
+      expect(valuesOf[0].toIdentifier().equals(testResource.identifier)).toBe(
+        true,
+      );
+    }
   });
 });

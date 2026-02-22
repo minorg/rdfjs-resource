@@ -1,14 +1,14 @@
+import DataFactory from "@rdfjs/data-model";
 import { schema } from "@tpluscode/rdf-ns-builders";
-import N3 from "n3";
 import { describe, it } from "vitest";
-import { ResourceSet } from "../ResourceSet.js";
+import { ResourceSet } from "../src/ResourceSet.js";
 import { houseMdDataset } from "./houseMdDataset.js";
 
 describe("ResourceSet", () => {
-  const resourceSet = new ResourceSet({ dataset: houseMdDataset });
+  const houseMdResourceSet = new ResourceSet(houseMdDataset);
 
   it("should get instances of PostalAddress", ({ expect }) => {
-    const addresses = [...resourceSet.instancesOf(schema.PostalAddress)];
+    const addresses = [...houseMdResourceSet.instancesOf(schema.PostalAddress)];
     expect(addresses).toHaveLength(3);
     expect(
       addresses.some(
@@ -22,7 +22,7 @@ describe("ResourceSet", () => {
   });
 
   it("should get named instances of Person", ({ expect }) => {
-    const people = [...resourceSet.namedInstancesOf(schema.Person)];
+    const people = [...houseMdResourceSet.namedInstancesOf(schema.Person)];
     expect(people).toHaveLength(9);
     expect(
       people.some(
@@ -34,8 +34,8 @@ describe("ResourceSet", () => {
   });
 
   it("should get a named instance of a Person", ({ expect }) => {
-    const person = resourceSet.namedResource(
-      N3.DataFactory.namedNode(
+    const person = houseMdResourceSet.resource(
+      DataFactory.namedNode(
         "https://housemd.rdf-ext.org/person/allison-cameron",
       ),
     );
