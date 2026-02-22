@@ -145,9 +145,7 @@ export namespace LiteralDecoder {
     });
   }
 
-  export function decodeNumberLiteral(
-    literal: Literal,
-  ): Either<Error, bigint | number> {
+  export function decodeNumberLiteral(literal: Literal): Either<Error, number> {
     if (literalDatatypeDefinitions[literal.datatype.value]?.kind === "float") {
       return decodeFloatLiteralValue(literal);
     }
@@ -157,7 +155,9 @@ export namespace LiteralDecoder {
     return Left(new LiteralDatatypeError(literal));
   }
 
-  export function decodePrimitive(literal: Literal): Either<Error, Primitive> {
+  export function decodePrimitiveLiteral(
+    literal: Literal,
+  ): Either<Error, Primitive> {
     const literalDatatypeDefinition =
       literalDatatypeDefinitions[literal.datatype.value];
     if (!literalDatatypeDefinition) {

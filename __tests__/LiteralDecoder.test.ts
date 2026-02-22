@@ -12,7 +12,7 @@ describe("LiteralDecoder", () => {
   for (const expectedLiteral of Object.values(literals)) {
     it(expectedLiteral.datatype.value, ({ expect }) => {
       const actualPrimitive = sut
-        .decodePrimitive(expectedLiteral)
+        .decodePrimitiveLiteral(expectedLiteral)
         .unsafeCoerce();
       {
         const actualLiteral = literalFactory.primitive(

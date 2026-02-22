@@ -1,9 +1,10 @@
 import type { BlankNode, Literal, NamedNode } from "@rdfjs/types";
 import { Either, Left } from "purify-ts";
-import { fromRdf } from "rdf-literal";
 import { AbstractTermValue } from "./AbstractTermValue.js";
 import type { Identifier } from "./Identifier.js";
-import { MistypedTermValueError } from "./MistypedTermValueError.js";
+import { LiteralDecoder } from "./LiteralDecoder.js";
+import type { MistypedTermValueError } from "./MistypedTermValueError.js";
+import type { Primitive } from "./Primitive.js";
 import { Resource } from "./Resource.js";
 import type { ValueError } from "./ValueError.js";
 import { Values } from "./Values.js";
@@ -15,25 +16,48 @@ export class TermValue extends AbstractTermValue<
   BlankNode | Literal | NamedNode
 > {
   /**
-   * Try to convert the term to a boolean literal.
+   * Try to convert the term to a bigint.
    */
-  toBoolean(): Either<MistypedTermValueError, boolean> {
-    return this.toPrimitive().chain((primitive) =>
-      typeof primitive === "boolean"
-        ? Either.of(primitive)
-        : Left(this.newMistypedValueError("boolean")),
-    );
+  toBigInt(): Either<MistypedTermValueError, bigint> {
+    return this.toLiteral()
+      .chain(LiteralDecoder.decodeBigIntLiteral)
+      .mapLeft(() => this.newMistypedValueError("bigint"));
   }
 
   /**
-   * Try to convert the term to a date literal.
+   * Try to convert the term to a boolean.
+   */
+  toBoolean(): Either<MistypedTermValueError, boolean> {
+    return this.toLiteral()
+      .chain(LiteralDecoder.decodeBooleanLiteral)
+      .mapLeft(() => this.newMistypedValueError("boolean"));
+  }
+
+  /**
+   * Try to convert the term to a date.
    */
   toDate(): Either<MistypedTermValueError, Date> {
-    return this.toPrimitive().chain((primitive) =>
-      primitive instanceof Date
-        ? Either.of(primitive)
-        : Left(this.newMistypedValueError("Date")),
-    );
+    return this.toLiteral()
+      .chain(LiteralDecoder.decodeDateLiteral)
+      .mapLeft(() => this.newMistypedValueError("date"));
+  }
+
+  /**
+   * Try to convert the term to a date-time.
+   */
+  toDateTime(): Either<MistypedTermValueError, Date> {
+    return this.toLiteral()
+      .chain(LiteralDecoder.decodeDateTimeLiteral)
+      .mapLeft(() => this.newMistypedValueError("date-time"));
+  }
+
+  /**
+   * Try to convert the term to a float.
+   */
+  toFloat(): Either<MistypedTermValueError, number> {
+    return this.toLiteral()
+      .chain(LiteralDecoder.decodeFloatLiteral)
+      .mapLeft(() => this.newMistypedValueError("float"));
   }
 
   /**
@@ -50,6 +74,15 @@ export class TermValue extends AbstractTermValue<
   }
 
   /**
+   * Try to convert the term to an int.
+   */
+  toInt(): Either<MistypedTermValueError, number> {
+    return this.toLiteral()
+      .chain(LiteralDecoder.decodeIntLiteral)
+      .mapLeft(() => this.newMistypedValueError("int"));
+  }
+
+  /**
    * Try to convert the term to an RDF list.
    */
   toList(): Either<ValueError, readonly TermValue[]> {
@@ -57,7 +90,7 @@ export class TermValue extends AbstractTermValue<
   }
 
   /**
-   * Try to convert the term to a literal.
+   * Try to convert the term to a Literal.
    */
   toLiteral(): Either<MistypedTermValueError, Literal> {
     return this.term.termType === "Literal"
@@ -66,46 +99,21 @@ export class TermValue extends AbstractTermValue<
   }
 
   /**
-   * Try to convert the term to a number literal.
+   * Try to convert the term to a number.
    */
   toNumber(): Either<MistypedTermValueError, number> {
-    return this.toPrimitive().chain((primitive) =>
-      typeof primitive === "number"
-        ? Either.of(primitive)
-        : Left(this.newMistypedValueError("number")),
-    );
+    return this.toLiteral()
+      .chain(LiteralDecoder.decodeNumberLiteral)
+      .mapLeft(() => this.newMistypedValueError("number"));
   }
 
   /**
    * Try to convert the term to a JavaScript primitive (boolean | Date | number | string).
    */
-  toPrimitive(): Either<
-    MistypedTermValueError,
-    boolean | Date | number | string
-  > {
-    if (this.term.termType !== "Literal") {
-      return Left(
-        new MistypedTermValueError({
-          actualValue: this.term,
-          expectedValueType: "Literal",
-          focusResource: this.focusResource,
-          predicate: this.predicate,
-        }),
-      );
-    }
-
-    try {
-      return Either.of(fromRdf(this.term, true));
-    } catch {
-      return Left(
-        new MistypedTermValueError({
-          actualValue: this.term,
-          expectedValueType: "primitive",
-          focusResource: this.focusResource,
-          predicate: this.predicate,
-        }),
-      );
-    }
+  toPrimitive(): Either<MistypedTermValueError, Primitive> {
+    return this.toLiteral()
+      .chain(LiteralDecoder.decodePrimitiveLiteral)
+      .mapLeft(() => this.newMistypedValueError("primitive"));
   }
 
   /**
@@ -121,11 +129,9 @@ export class TermValue extends AbstractTermValue<
    * Try to convert the term to a string literal.
    */
   override toString(): Either<MistypedTermValueError, string> {
-    return this.toPrimitive().chain((primitive) =>
-      typeof primitive === "string"
-        ? Either.of(primitive as string)
-        : Left(this.newMistypedValueError("string")),
-    );
+    return this.toLiteral()
+      .chain(LiteralDecoder.decodeStringLiteral)
+      .mapLeft(() => this.newMistypedValueError("string"));
   }
 
   /**
