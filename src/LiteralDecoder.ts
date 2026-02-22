@@ -98,40 +98,6 @@ export namespace LiteralDecoder {
     return Either.encase(() => Number.parseFloat(literal.value));
   }
 
-  // function decodeGDayValue(literal: Literal): Either<Error, Date> {
-  //   if (!literal.value.match(/^[0-9]+$/)) {
-  //     return Left(new LiteralValueError(literal));
-  //   }
-
-  //   return Either.of(new Date(0, 0, Number.parseInt(literal.value, 10)));
-  // }
-
-  // function decodeGMonthDayValue(literal: Literal): Either<Error, Date> {
-  //   if (!literal.value.match(/^[0-9]+-[0-9][0-9]$/)) {
-  //     return Left(new LiteralValueError(literal));
-  //   }
-
-  //   const valueSplit = literal.value.split("-");
-  //   return Either.of(
-  //     new Date(0, parseInt(valueSplit[0], 10) - 1, parseInt(valueSplit[1], 10)),
-  //   );
-  // }
-
-  // function decodeGYearValue(literal: Literal): Either<Error, Date> {
-  //   if (!literal.value.match(/^[0-9]+$/)) {
-  //     return Left(new LiteralValueError(literal));
-  //   }
-
-  //   return Either.of(new Date(`${literal.value}-01-01`));
-  // }
-
-  // function decodeGYearMonthValue(literal: Literal): Either<Error, Date> {
-  //   if (!literal.value.match(/^[0-9]+-[0-9][0-9]$/)) {
-  //     return Left(new LiteralValueError(literal));
-  //   }
-  //   return Either.of(new Date(`${literal.value}-01`));
-  // }
-
   export function decodeIntLike(
     literal: Literal,
   ): Either<Error, bigint | number> {
