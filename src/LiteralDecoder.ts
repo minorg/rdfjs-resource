@@ -1,8 +1,7 @@
 import type { Literal, NamedNode } from "@rdfjs/types";
 import { Either, Left } from "purify-ts";
-import { numericXsdDatatypeRanges } from "./numericXsdDatatypeRanges.js";
+import { literalDatatypes } from "./literalDatatypes.js";
 import type { Primitive } from "./Primitive.js";
-import { xsd } from "./vocabularies.js";
 
 /**
  * Decode other types from RDF/JS Literals.
@@ -10,101 +9,23 @@ import { xsd } from "./vocabularies.js";
  * Partially adapted from rdf-literal.js (https://github.com/rubensworks/rdf-literal.js), MIT license.
  */
 export namespace LiteralDecoder {
-  export function decodeBoolean(literal: Literal): Either<Error, boolean> {
-    if (isBooleanDatatype(literal.datatype)) {
-      return decodeBooleanValue(literal);
+  export function decodeBigIntLiteral(literal: Literal): Either<Error, bigint> {
+    if (literalDatatypes[literal.datatype.value]?.kind === "bigint") {
+      return decodeBigIntLiteralValue(literal);
     }
-    return Left(new UnrecognizedLiteralDatatypeError(literal));
+    return Left(new LiteralDatatypeError(literal));
   }
 
-  function decodeBooleanValue(literal: Literal): Either<Error, boolean> {
-    switch (literal.value) {
-      case "false":
-      case "0":
-        return Either.of(false);
-      case "true":
-      case "1":
-        return Either.of(true);
-      default:
-        return Left(new LiteralValueError(literal));
-    }
-  }
-
-  export function decodeDate(literal: Literal): Either<Error, Date> {
-    if (isDateDatatype(literal.datatype)) {
-      return decodeDateValue(literal);
-    }
-    return Left(new UnrecognizedLiteralDatatypeError(literal));
-  }
-
-  function decodeDateValue(literal: Literal): Either<Error, Date> {
-    if (!literal.value.match(/^[0-9]+-[0-9][0-9]-[0-9][0-9]Z?$/)) {
-      return Left(new LiteralValueError(literal));
-    }
-
-    return Either.of(new Date(literal.value));
-  }
-
-  export function decodeDateTime(literal: Literal): Either<Error, Date> {
-    if (isDateTimeDatatype(literal.datatype)) {
-      return decodeDateTimeValue(literal);
-    }
-    return Left(new UnrecognizedLiteralDatatypeError(literal));
-  }
-
-  function decodeDateTimeValue(literal: Literal): Either<Error, Date> {
-    if (
-      !literal.value.match(
-        /^[0-9]+-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9](\.[0-9][0-9][0-9])?((Z?)|([+-][0-9][0-9]:[0-9][0-9]))$/,
-      )
-    ) {
-      return Left(new LiteralValueError(literal));
-    }
-
-    return Either.of(new Date(literal.value));
-  }
-
-  export function decodeFloatLike(literal: Literal): Either<Error, number> {
-    if (isFloatLikeDatatype(literal.datatype)) {
-      return decodeFloatLikeValue(literal);
-    }
-
-    return Left(new UnrecognizedLiteralDatatypeError(literal));
-  }
-
-  function decodeFloatLikeValue(literal: Literal): Either<Error, number> {
-    return Either.encase(() => Number.parseFloat(literal.value));
-  }
-
-  export function decodeIntLike(
-    literal: Literal,
-  ): Either<Error, bigint | number> {
-    if (isIntLikeDatatype(literal.datatype)) {
-      return decodeIntLikeValue(literal);
-    }
-    return Left(new UnrecognizedLiteralDatatypeError(literal));
-  }
-
-  function decodeIntLikeValue(
-    literal: Literal,
-  ): Either<Error, bigint | number> {
+  function decodeBigIntLiteralValue(literal: Literal): Either<Error, bigint> {
     return Either.encase(() => {
-      let value: bigint | number;
-      switch (literal.datatype.value) {
-        case "http://www.w3.org/2001/XMLSchema#long":
-        case "http://www.w3.org/2001/XMLSchema#unsignedLong":
-          value = BigInt(literal.value);
-          break;
-        default:
-          value = Number.parseInt(literal.value, 10);
+      const value = BigInt(literal.value);
+
+      const literalDatatype = literalDatatypes[literal.datatype.value];
+      if (literalDatatype?.kind !== "bigint") {
+        throw new LiteralDatatypeError(literal);
       }
 
-      const range = numericXsdDatatypeRanges[literal.datatype.value];
-      if (!range) {
-        throw new UnrecognizedLiteralDatatypeError(literal);
-      }
-
-      const [min, max] = range;
+      const [min, max] = literalDatatype.range;
       if (
         (min !== undefined && value < min) ||
         (max !== undefined && value > max)
@@ -119,122 +40,167 @@ export namespace LiteralDecoder {
     });
   }
 
-  export function decodeNumber(
+  export function decodeBooleanLiteral(
+    literal: Literal,
+  ): Either<Error, boolean> {
+    if (literalDatatypes[literal.datatype.value]?.kind === "boolean") {
+      return decodeBooleanLiteralValue(literal);
+    }
+    return Left(new LiteralDatatypeError(literal));
+  }
+
+  function decodeBooleanLiteralValue(literal: Literal): Either<Error, boolean> {
+    switch (literal.value) {
+      case "false":
+      case "0":
+        return Either.of(false);
+      case "true":
+      case "1":
+        return Either.of(true);
+      default:
+        return Left(new LiteralValueError(literal));
+    }
+  }
+
+  export function decodeDateLiteral(literal: Literal): Either<Error, Date> {
+    if (literalDatatypes[literal.datatype.value]?.kind === "date") {
+      return decodeDateLiteralValue(literal);
+    }
+    return Left(new LiteralDatatypeError(literal));
+  }
+
+  function decodeDateLiteralValue(literal: Literal): Either<Error, Date> {
+    if (!literal.value.match(/^[0-9]+-[0-9][0-9]-[0-9][0-9]Z?$/)) {
+      return Left(new LiteralValueError(literal));
+    }
+
+    return Either.of(new Date(literal.value));
+  }
+
+  export function decodeDateTimeLiteral(literal: Literal): Either<Error, Date> {
+    if (literalDatatypes[literal.datatype.value]?.kind === "datetime") {
+      return decodeDateTimeLiteralValue(literal);
+    }
+    return Left(new LiteralDatatypeError(literal));
+  }
+
+  function decodeDateTimeLiteralValue(literal: Literal): Either<Error, Date> {
+    if (
+      !literal.value.match(
+        /^[0-9]+-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9](\.[0-9][0-9][0-9])?((Z?)|([+-][0-9][0-9]:[0-9][0-9]))$/,
+      )
+    ) {
+      return Left(new LiteralValueError(literal));
+    }
+
+    return Either.of(new Date(literal.value));
+  }
+
+  export function decodeFloatLiteral(literal: Literal): Either<Error, number> {
+    if (literalDatatypes[literal.datatype.value]?.kind === "float") {
+      return decodeFloatLiteralValue(literal);
+    }
+
+    return Left(new LiteralDatatypeError(literal));
+  }
+
+  function decodeFloatLiteralValue(literal: Literal): Either<Error, number> {
+    return Either.encase(() => Number.parseFloat(literal.value));
+  }
+
+  export function decodeIntLiteral(literal: Literal): Either<Error, number> {
+    if (literalDatatypes[literal.datatype.value]?.kind === "int") {
+      return decodeIntLiteralValue(literal);
+    }
+    return Left(new LiteralDatatypeError(literal));
+  }
+
+  function decodeIntLiteralValue(literal: Literal): Either<Error, number> {
+    return Either.encase(() => {
+      const value = Number.parseInt(literal.value, 10);
+
+      const literalDatatype = literalDatatypes[literal.datatype.value];
+      if (literalDatatype?.kind !== "int") {
+        throw new LiteralDatatypeError(literal);
+      }
+
+      const [min, max] = literalDatatype.range;
+      if (
+        (min !== undefined && value < min) ||
+        (max !== undefined && value > max)
+      ) {
+        throw new LiteralValueError(
+          literal,
+          `value (${value}) outside range [${min}, ${max}] of ${literal.datatype.value}`,
+        );
+      }
+
+      return value;
+    });
+  }
+
+  export function decodeNumberLiteral(
     literal: Literal,
   ): Either<Error, bigint | number> {
-    if (isFloatLikeDatatype(literal.datatype)) {
-      return decodeFloatLikeValue(literal);
+    if (literalDatatypes[literal.datatype.value]?.kind === "float") {
+      return decodeFloatLiteralValue(literal);
     }
-    if (isIntLikeDatatype(literal.datatype)) {
-      return decodeIntLikeValue(literal);
+    if (literalDatatypes[literal.datatype.value]?.kind === "int") {
+      return decodeIntLiteralValue(literal);
     }
-    return Left(new UnrecognizedLiteralDatatypeError(literal));
+    return Left(new LiteralDatatypeError(literal));
   }
 
   export function decodePrimitive(literal: Literal): Either<Error, Primitive> {
-    if (isBooleanDatatype(literal.datatype)) {
-      return decodeBooleanValue(literal);
+    const literalDatatype = literalDatatypes[literal.datatype.value];
+    if (!literalDatatype) {
+      return Left(new LiteralDatatypeError(literal));
     }
-    if (isDateDatatype(literal.datatype)) {
-      return decodeDateValue(literal);
+
+    switch (literalDatatype.kind) {
+      case "bigdecimal":
+        return Left(
+          new LiteralDatatypeError(
+            literal,
+            "unable to decode bigdecimal Literal",
+          ),
+        );
+      case "bigint":
+        return decodeBigIntLiteralValue(literal);
+      case "boolean":
+        return decodeBooleanLiteralValue(literal);
+      case "date":
+        return decodeDateLiteralValue(literal);
+      case "datetime":
+        return decodeDateTimeLiteralValue(literal);
+      case "float":
+        return decodeFloatLiteralValue(literal);
+      case "int":
+        return decodeIntLiteralValue(literal);
+      case "string":
+        return decodeStringLiteralValue(literal);
     }
-    if (isDateTimeDatatype(literal.datatype)) {
-      return decodeDateTimeValue(literal);
-    }
-    if (isFloatLikeDatatype(literal.datatype)) {
-      return decodeFloatLikeValue(literal);
-    }
-    if (isIntLikeDatatype(literal.datatype)) {
-      return decodeIntLikeValue(literal);
-    }
-    if (isStringLikeDatatype(literal.datatype)) {
-      return decodeStringLikeValue(literal);
-    }
-    return Left(new UnrecognizedLiteralDatatypeError(literal));
   }
 
-  export function decodeStringLike(literal: Literal): Either<Error, string> {
-    if (isStringLikeDatatype(literal.datatype)) {
-      return decodeStringLikeValue(literal);
+  export function decodeStringLiteral(literal: Literal): Either<Error, string> {
+    if (literalDatatypes[literal.datatype.value]?.kind === "string") {
+      return decodeStringLiteralValue(literal);
     }
-    return Left(new UnrecognizedLiteralDatatypeError(literal));
+    return Left(new LiteralDatatypeError(literal));
   }
 
-  function decodeStringLikeValue(literal: Literal): Either<Error, string> {
+  function decodeStringLiteralValue(literal: Literal): Either<Error, string> {
     return Either.of(literal.value);
   }
 
-  function isBooleanDatatype(datatype: NamedNode): boolean {
-    return datatype.value === xsd.boolean.value;
-  }
-
-  function isDateDatatype(datatype: NamedNode): boolean {
-    return datatype.value === xsd.date.value;
-  }
-
-  function isDateTimeDatatype(datatype: NamedNode): boolean {
-    switch (datatype.value) {
-      case "http://www.w3.org/2001/XMLSchema#dateTime":
-      case "http://www.w3.org/2001/XMLSchema#dateTimeStamp":
-        return true;
-      default:
-        return false;
-    }
-  }
-
-  function isFloatLikeDatatype(datatype: NamedNode): boolean {
-    switch (datatype.value) {
-      case "http://www.w3.org/2001/XMLSchema#decimal":
-      case "http://www.w3.org/2001/XMLSchema#double":
-      case "http://www.w3.org/2001/XMLSchema#float":
-        return true;
-      default:
-        return false;
-    }
-  }
-
-  function isIntLikeDatatype(datatype: NamedNode): boolean {
-    switch (datatype.value) {
-      case "http://www.w3.org/2001/XMLSchema#byte":
-      case "http://www.w3.org/2001/XMLSchema#int":
-      case "http://www.w3.org/2001/XMLSchema#integer":
-      case "http://www.w3.org/2001/XMLSchema#long":
-      case "http://www.w3.org/2001/XMLSchema#negativeInteger":
-      case "http://www.w3.org/2001/XMLSchema#nonNegativeInteger":
-      case "http://www.w3.org/2001/XMLSchema#nonPositiveInteger":
-      case "http://www.w3.org/2001/XMLSchema#positiveInteger":
-      case "http://www.w3.org/2001/XMLSchema#short":
-      case "http://www.w3.org/2001/XMLSchema#unsignedByte":
-      case "http://www.w3.org/2001/XMLSchema#unsignedInt":
-      case "http://www.w3.org/2001/XMLSchema#unsignedLong":
-      case "http://www.w3.org/2001/XMLSchema#unsignedShort":
-        return true;
-      default:
-        return false;
-    }
-  }
-
-  function isStringLikeDatatype(datatype: NamedNode): boolean {
-    switch (datatype.value) {
-      case "http://www.w3.org/1999/02/22-rdf-syntax-ns#dirLangString":
-      case "http://www.w3.org/1999/02/22-rdf-syntax-ns#langString":
-      case "http://www.w3.org/2001/XMLSchema#anyURI":
-      case "http://www.w3.org/2001/XMLSchema#base64Binary":
-      case "http://www.w3.org/2001/XMLSchema#duration":
-      case "http://www.w3.org/2001/XMLSchema#hexBinary":
-      case "http://www.w3.org/2001/XMLSchema#language":
-      case "http://www.w3.org/2001/XMLSchema#Name":
-      case "http://www.w3.org/2001/XMLSchema#NCName":
-      case "http://www.w3.org/2001/XMLSchema#NMTOKEN":
-      case "http://www.w3.org/2001/XMLSchema#NOTATION":
-      case "http://www.w3.org/2001/XMLSchema#normalizedString":
-      case "http://www.w3.org/2001/XMLSchema#QName":
-      case "http://www.w3.org/2001/XMLSchema#string":
-      case "http://www.w3.org/2001/XMLSchema#time":
-      case "http://www.w3.org/2001/XMLSchema#token":
-        return true;
-      default:
-        return false;
+  class LiteralDatatypeError extends Error {
+    constructor(
+      readonly literal: Literal,
+      message?: string,
+    ) {
+      super(
+        message ?? `unrecognized Literal datatype: ${literal.datatype.value}`,
+      );
     }
   }
 
@@ -244,23 +210,6 @@ export namespace LiteralDecoder {
       message?: string,
     ) {
       super(message);
-    }
-  }
-
-  class UnexpectedLiteralDatatypeError extends Error {
-    constructor(
-      readonly literal: Literal,
-      readonly expectedDatatype: NamedNode,
-    ) {
-      super(
-        `expected ${expectedDatatype.value} Literal, actual ${literal.datatype.value}`,
-      );
-    }
-  }
-
-  class UnrecognizedLiteralDatatypeError extends Error {
-    constructor(readonly literal: Literal) {
-      super(`unrecognized Literal datatype: ${literal.datatype.value}`);
     }
   }
 }
