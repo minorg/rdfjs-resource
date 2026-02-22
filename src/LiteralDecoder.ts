@@ -52,34 +52,14 @@ export namespace LiteralDecoder {
     return Either.of(new Date(literal.value));
   }
 
-  export function decodeDateLike(literal: Literal): Either<Error, Date> {
+  export function decodeDateTime(literal: Literal): Either<Error, Date> {
     switch (literal.datatype.value) {
-      case "http://www.w3.org/2001/XMLSchema#date":
-        return decodeDateValue(literal);
-
       case "http://www.w3.org/2001/XMLSchema#dateTime":
       case "http://www.w3.org/2001/XMLSchema#dateTimeStamp":
         return decodeDateTimeValue(literal);
-
-      // case "http://www.w3.org/2001/XMLSchema#gDay":
-      //   return decodeGDayValue(literal);
-
-      // case "http://www.w3.org/2001/XMLSchema#gMonthDay":
-      //   return decodeGMonthDayValue(literal);
-
-      // case "http://www.w3.org/2001/XMLSchema#gYear":
-      //   return decodeGYearValue(literal);
-
-      // case "http://www.w3.org/2001/XMLSchema#gYearMonth":
-      //   return decodeGYearMonthValue(literal);
-
       default:
         return Left(new UnrecognizedLiteralDatatypeError(literal));
     }
-  }
-
-  export function decodeDateTime(literal: Literal): Either<Error, Date> {
-    return checkDatatype(literal, xsd.dateTime).chain(decodeDateTimeValue);
   }
 
   function decodeDateTimeValue(literal: Literal): Either<Error, Date> {
@@ -211,8 +191,11 @@ export namespace LiteralDecoder {
     if (isBooleanDatatype(literal.datatype)) {
       return decodeBooleanValue(literal);
     }
-    if (isDateLikeDatatype(literal.datatype)) {
-      return decodeDateLike(literal);
+    if (isDateDatatype(literal.datatype)) {
+      return decodeDateValue(literal);
+    }
+    if (isDateTimeDatatype(literal.datatype)) {
+      return decodeDateTimeValue(literal);
     }
     if (isFloatLikeDatatype(literal.datatype)) {
       return decodeFloatLikeValue(literal);
@@ -241,9 +224,12 @@ export namespace LiteralDecoder {
     return datatype.value === xsd.boolean.value;
   }
 
-  function isDateLikeDatatype(datatype: NamedNode): boolean {
+  function isDateDatatype(datatype: NamedNode): boolean {
+    return datatype.value === xsd.date.value;
+  }
+
+  function isDateTimeDatatype(datatype: NamedNode): boolean {
     switch (datatype.value) {
-      case "http://www.w3.org/2001/XMLSchema#date":
       case "http://www.w3.org/2001/XMLSchema#dateTime":
       case "http://www.w3.org/2001/XMLSchema#dateTimeStamp":
         return true;
