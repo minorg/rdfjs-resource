@@ -9,36 +9,65 @@ import type { Primitive } from "./Primitive.js";
  * Partially adapted from rdf-literal.js (https://github.com/rubensworks/rdf-literal.js), MIT license.
  */
 export namespace LiteralDecoder {
-  export function decodeBigIntLiteral(literal: Literal): Either<Error, bigint> {
-    if (literalDatatypeDefinitions[literal.datatype.value]?.kind === "bigint") {
-      return decodeBigIntLiteralValue(literal);
+  const BIGINT_NUMBER_MAX_SAFE_INTEGER = BigInt(Number.MAX_SAFE_INTEGER);
+  const BIGINT_NUMBER_MIN_SAFE_INTEGER = BigInt(Number.MIN_SAFE_INTEGER);
+
+  function convertBigintToNumber(
+    literal: Literal,
+    value: bigint,
+  ): Either<Error, number> {
+    if (
+      value >= BIGINT_NUMBER_MIN_SAFE_INTEGER &&
+      value <= BIGINT_NUMBER_MAX_SAFE_INTEGER
+    ) {
+      return Either.of(Number(value));
     }
-    return Left(new LiteralDatatypeError(literal));
+
+    return Left(
+      new LiteralValueError(
+        literal,
+        `bigint ${value} is outside number's safe integer range [${Number.MIN_SAFE_INTEGER}, ${Number.MAX_SAFE_INTEGER}]`,
+      ),
+    );
+  }
+
+  function convertNumberToBigint(
+    literal: Literal,
+    value: number,
+  ): Either<Error, bigint> {
+    if (Number.isInteger(value)) {
+      return Either.of(BigInt(value));
+    }
+    return Left(
+      new LiteralValueError(literal, `number ${value} is not an integer`),
+    );
+  }
+
+  export function decodeBigIntLiteral(literal: Literal): Either<Error, bigint> {
+    const literalDatatypeDefinition =
+      literalDatatypeDefinitions[literal.datatype.value];
+    if (!literalDatatypeDefinition) {
+      return Left(new LiteralDatatypeError(literal));
+    }
+
+    switch (literalDatatypeDefinition.kind) {
+      case "bigint":
+        return decodeBigIntLiteralValue(literal);
+      case "float":
+        return decodeFloatLiteralValue(literal).chain((value) =>
+          convertNumberToBigint(literal, value),
+        );
+      case "int":
+        return decodeIntLiteralValue(literal).chain((value) =>
+          convertNumberToBigint(literal, value),
+        );
+      default:
+        return Left(new LiteralDatatypeError(literal));
+    }
   }
 
   function decodeBigIntLiteralValue(literal: Literal): Either<Error, bigint> {
-    return Either.encase(() => {
-      const value = BigInt(literal.value);
-
-      const literalDatatypeDefinition =
-        literalDatatypeDefinitions[literal.datatype.value];
-      if (literalDatatypeDefinition?.kind !== "bigint") {
-        throw new LiteralDatatypeError(literal);
-      }
-
-      const [min, max] = literalDatatypeDefinition.range;
-      if (
-        (min !== undefined && value < min) ||
-        (max !== undefined && value > max)
-      ) {
-        throw new LiteralValueError(
-          literal,
-          `value (${value}) outside range [${min}, ${max}] of ${literal.datatype.value}`,
-        );
-      }
-
-      return value;
-    });
+    return Either.encase(() => BigInt(literal.value));
   }
 
   export function decodeBooleanLiteral(
@@ -102,57 +131,92 @@ export namespace LiteralDecoder {
   }
 
   export function decodeFloatLiteral(literal: Literal): Either<Error, number> {
-    if (literalDatatypeDefinitions[literal.datatype.value]?.kind === "float") {
-      return decodeFloatLiteralValue(literal);
+    const literalDatatypeDefinition =
+      literalDatatypeDefinitions[literal.datatype.value];
+    if (!literalDatatypeDefinition) {
+      return Left(new LiteralDatatypeError(literal));
     }
 
-    return Left(new LiteralDatatypeError(literal));
+    switch (literalDatatypeDefinition.kind) {
+      case "bigint":
+        return decodeBigIntLiteral(literal).chain((value) =>
+          convertBigintToNumber(literal, value),
+        );
+      case "float":
+      case "int":
+        return decodeFloatLiteralValue(literal);
+      default:
+        return Left(new LiteralDatatypeError(literal));
+    }
   }
 
   function decodeFloatLiteralValue(literal: Literal): Either<Error, number> {
-    return Either.encase(() => Number.parseFloat(literal.value));
-  }
-
-  export function decodeIntLiteral(literal: Literal): Either<Error, number> {
-    if (literalDatatypeDefinitions[literal.datatype.value]?.kind === "int") {
-      return decodeIntLiteralValue(literal);
-    }
-    return Left(new LiteralDatatypeError(literal));
-  }
-
-  function decodeIntLiteralValue(literal: Literal): Either<Error, number> {
     return Either.encase(() => {
-      const value = Number.parseInt(literal.value, 10);
-
-      const literalDatatypeDefinition =
-        literalDatatypeDefinitions[literal.datatype.value];
-      if (literalDatatypeDefinition?.kind !== "int") {
-        throw new LiteralDatatypeError(literal);
+      switch (literal.value.toUpperCase()) {
+        case "NAN":
+          return NaN;
+        case "INF":
+        case "+INF":
+          return Infinity;
+        case "-INF":
+          return -Infinity;
       }
 
-      const [min, max] = literalDatatypeDefinition.range;
-      if (
-        (min !== undefined && value < min) ||
-        (max !== undefined && value > max)
-      ) {
-        throw new LiteralValueError(
-          literal,
-          `value (${value}) outside range [${min}, ${max}] of ${literal.datatype.value}`,
-        );
+      const value = Number.parseFloat(literal.value);
+      if (Number.isNaN(value)) {
+        throw new LiteralValueError(literal, "not a number");
       }
-
       return value;
     });
   }
 
+  export function decodeIntLiteral(literal: Literal): Either<Error, number> {
+    const literalDatatypeDefinition =
+      literalDatatypeDefinitions[literal.datatype.value];
+    if (!literalDatatypeDefinition) {
+      return Left(new LiteralDatatypeError(literal));
+    }
+
+    switch (literalDatatypeDefinition.kind) {
+      case "bigint":
+        return decodeBigIntLiteral(literal).chain((value) =>
+          convertBigintToNumber(literal, value),
+        );
+      case "float":
+      case "int":
+        return decodeIntLiteralValue(literal);
+      default:
+        return Left(new LiteralDatatypeError(literal));
+    }
+  }
+
+  function decodeIntLiteralValue(literal: Literal): Either<Error, number> {
+    return decodeFloatLiteralValue(literal).chain((value) => {
+      if (Number.isInteger(value)) {
+        return Either.of(value);
+      }
+      return Left(new LiteralValueError(literal, `${value} is not an integer`));
+    });
+  }
+
   export function decodeNumberLiteral(literal: Literal): Either<Error, number> {
-    if (literalDatatypeDefinitions[literal.datatype.value]?.kind === "float") {
-      return decodeFloatLiteralValue(literal);
+    const literalDatatypeDefinition =
+      literalDatatypeDefinitions[literal.datatype.value];
+    if (!literalDatatypeDefinition) {
+      return Left(new LiteralDatatypeError(literal));
     }
-    if (literalDatatypeDefinitions[literal.datatype.value]?.kind === "int") {
-      return decodeIntLiteralValue(literal);
+    switch (literalDatatypeDefinition.kind) {
+      case "bigint":
+        return decodeBigIntLiteralValue(literal).chain((value) =>
+          convertBigintToNumber(literal, value),
+        );
+      case "float":
+        return decodeFloatLiteralValue(literal);
+      case "int":
+        return decodeIntLiteralValue(literal);
+      default:
+        return Left(new LiteralDatatypeError(literal));
     }
-    return Left(new LiteralDatatypeError(literal));
   }
 
   export function decodePrimitiveLiteral(

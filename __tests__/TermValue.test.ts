@@ -14,7 +14,7 @@ describe("TermValue", () => {
     const values = [...testResource.values(predicate)].flatMap((value) =>
       value.toBigInt().toMaybe().toList(),
     );
-    expect(values).toHaveLength(7);
+    expect(values).toHaveLength(13);
   });
 
   it("toBlankNode", ({ expect }) => {
@@ -51,7 +51,7 @@ describe("TermValue", () => {
     const values = [...testResource.values(predicate)].flatMap((value) =>
       value.toFloat().toMaybe().toList(),
     );
-    expect(values).toHaveLength(2);
+    expect(values).toHaveLength(13);
   });
 
   it("toIdentifier", ({ expect }) => {
@@ -71,7 +71,7 @@ describe("TermValue", () => {
     const values = [...testResource.values(predicate)].flatMap((value) =>
       value.toInt().toMaybe().toList(),
     );
-    expect(values).toHaveLength(6);
+    expect(values).toHaveLength(11);
   });
 
   it("toIri", ({ expect }) => {
@@ -94,7 +94,7 @@ describe("TermValue", () => {
     const values = [...testResource.values(predicate)].flatMap((value) =>
       value.toNumber().toMaybe().toList(),
     );
-    expect(values).toHaveLength(8);
+    expect(values).toHaveLength(13);
   });
 
   it("toPrimitive", ({ expect }) => {
