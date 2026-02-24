@@ -67,7 +67,8 @@ export const literalDatatypeDefinitions: Record<
   // 64-bit
   "http://www.w3.org/2001/XMLSchema#double": {
     kind: "float",
-    range: [Number.MIN_VALUE, Number.MAX_VALUE],
+    // Number.MIN_VALUE is the smallest positive number greater than 0
+    range: [-Number.MAX_VALUE, Number.MAX_VALUE],
   },
 
   // Arbitrary precision decimal
