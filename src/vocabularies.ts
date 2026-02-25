@@ -43,6 +43,9 @@ export namespace xsd {
   export const float = DataFactory.namedNode(
     "http://www.w3.org/2001/XMLSchema#float",
   );
+  export const int = DataFactory.namedNode(
+    "http://www.w3.org/2001/XMLSchema#int",
+  );
   export const integer = DataFactory.namedNode(
     "http://www.w3.org/2001/XMLSchema#integer",
   );
