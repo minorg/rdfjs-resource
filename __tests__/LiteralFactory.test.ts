@@ -123,22 +123,22 @@ describe("LiteralFactory", () => {
   describe("date", () => {
     it("no datatype", () => {
       expectEquals(
-        sut.date(new Date(2026, 0, 1)),
-        DataFactory.literal("2026-01-01T05:00:00.000Z", xsd.dateTime),
+        sut.date(new Date(Date.UTC(2026, 0, 1, 0, 0, 0))),
+        DataFactory.literal("2026-01-01T00:00:00.000Z", xsd.dateTime),
       );
     });
 
     it("xsd:date", () => {
       expectEquals(
-        sut.date(new Date(2026, 0, 1), xsd.date),
+        sut.date(new Date(Date.UTC(2026, 0, 1)), xsd.date),
         DataFactory.literal("2026-01-01", xsd.date),
       );
     });
 
     it("xsd:dateTime", () => {
       expectEquals(
-        sut.date(new Date(2026, 0, 1, 12, 30, 1, 1), xsd.dateTime),
-        DataFactory.literal("2026-01-01T17:30:01.001Z", xsd.dateTime),
+        sut.date(new Date(Date.UTC(2026, 0, 1, 12, 30, 1, 1)), xsd.dateTime),
+        DataFactory.literal("2026-01-01T12:30:01.001Z", xsd.dateTime),
       );
     });
 
@@ -239,8 +239,8 @@ describe("LiteralFactory", () => {
 
     it("no datatype: Date", () => {
       expectEquals(
-        sut.primitive(new Date(2026, 0, 1)),
-        DataFactory.literal("2026-01-01T05:00:00.000Z", xsd.dateTime),
+        sut.primitive(new Date(Date.UTC(2026, 0, 1))),
+        DataFactory.literal("2026-01-01T00:00:00.000Z", xsd.dateTime),
       );
     });
 
