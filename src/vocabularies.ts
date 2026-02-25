@@ -25,6 +25,9 @@ export namespace xsd {
   export const boolean = DataFactory.namedNode(
     "http://www.w3.org/2001/XMLSchema#boolean",
   );
+  export const byte = DataFactory.namedNode(
+    "http://www.w3.org/2001/XMLSchema#byte",
+  );
   export const date = DataFactory.namedNode(
     "http://www.w3.org/2001/XMLSchema#date",
   );
@@ -52,7 +55,22 @@ export namespace xsd {
   export const long = DataFactory.namedNode(
     "http://www.w3.org/2001/XMLSchema#long",
   );
+  export const short = DataFactory.namedNode(
+    "http://www.w3.org/2001/XMLSchema#short",
+  );
+  export const string = DataFactory.namedNode(
+    "http://www.w3.org/2001/XMLSchema#string",
+  );
+  export const unsignedByte = DataFactory.namedNode(
+    "http://www.w3.org/2001/XMLSchema#unsignedByte",
+  );
+  export const unsignedInt = DataFactory.namedNode(
+    "http://www.w3.org/2001/XMLSchema#unsignedInt",
+  );
   export const unsignedLong = DataFactory.namedNode(
     "http://www.w3.org/2001/XMLSchema#unsignedLong",
+  );
+  export const unsignedShort = DataFactory.namedNode(
+    "http://www.w3.org/2001/XMLSchema#unsignedShort",
   );
 }

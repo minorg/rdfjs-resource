@@ -4,6 +4,12 @@ import { literalDatatypeDefinitions } from "./literalDatatypeDefinitions.js";
 import type { Primitive } from "./Primitive.js";
 import { xsd } from "./vocabularies.js";
 
+class DatatypeRangeError extends RangeError {
+  constructor(readonly datatype: NamedNode) {
+    super(`datatype out of range: ${datatype.value}`);
+  }
+}
+
 /**
  * Factory with methods for creating RDF/JS Literals from other types.
  */
@@ -18,7 +24,7 @@ export class LiteralFactory {
     const valueString = value.toString(10);
 
     if (!datatype) {
-      datatype = value >= 0 ? xsd.unsignedLong : xsd.long;
+      datatype = xsd.integer;
     }
 
     const datatypeDefinition = literalDatatypeDefinitions[datatype.value];
@@ -37,54 +43,69 @@ export class LiteralFactory {
               `value (${value}) outside range [${min}, ${max}] of ${datatype.value}`,
             );
           }
+          break;
         }
+        default:
+          throw new DatatypeRangeError(datatype);
       }
     }
 
     return this.dataFactory.literal(valueString, datatype);
   }
 
-  boolean(value: boolean, _datatype?: NamedNode): Literal {
-    return this.dataFactory.literal(value.toString(), xsd.boolean);
+  boolean(value: boolean, datatype?: NamedNode): Literal {
+    if (!datatype) {
+      datatype = xsd.boolean;
+    }
+    const datatypeDefinition = literalDatatypeDefinitions[datatype.value];
+    if (datatypeDefinition && datatypeDefinition.kind !== "boolean") {
+      throw new DatatypeRangeError(datatype);
+    }
+    return this.dataFactory.literal(value.toString(), datatype);
   }
 
   date(value: Date, datatype?: NamedNode): Literal {
     if (!datatype) {
-      datatype = xsd.date;
+      datatype = xsd.dateTime;
     }
 
-    switch (datatype.value) {
-      case "http://www.w3.org/2001/XMLSchema#date":
-        return this.dataFactory.literal(
-          value.toISOString().replace(/T.*$/, ""),
-          datatype,
-        );
-      case "http://www.w3.org/2001/XMLSchema#dateTime":
-      case "http://www.w3.org/2001/XMLSchema#dateTimeStamp":
-        return this.dataFactory.literal(value.toISOString(), datatype);
-      // case "http://www.w3.org/2001/XMLSchema#gDay":
-      //   return this.dataFactory.literal(
-      //     value.getUTCDate().toString(),
-      //     datatype,
-      //   );
-      // case "http://www.w3.org/2001/XMLSchema#gMonthDay":
-      //   return this.dataFactory.literal(
-      //     `${value.getUTCMonth() + 1}-${value.getUTCDate()}`,
-      //     datatype,
-      //   );
-      // case "http://www.w3.org/2001/XMLSchema#gYear":
-      //   return this.dataFactory.literal(
-      //     value.getUTCFullYear().toString(),
-      //     datatype,
-      //   );
-      // case "http://www.w3.org/2001/XMLSchema#gYearMonth":
-      //   return this.dataFactory.literal(
-      //     `${value.getUTCFullYear()}-${value.getUTCMonth() + 1}`,
-      //     datatype,
-      //   );
-      default:
-        throw new RangeError(`unrecognized date datatype ${datatype.value}`);
+    const datatypeDefinition = literalDatatypeDefinitions[datatype.value];
+    if (datatypeDefinition) {
+      switch (datatypeDefinition.kind) {
+        case "date":
+          return this.dataFactory.literal(
+            value.toISOString().replace(/T.*$/, ""),
+            datatype,
+          );
+        case "datetime":
+          return this.dataFactory.literal(value.toISOString(), datatype);
+        default:
+          throw new DatatypeRangeError(datatype);
+      }
     }
+
+    // case "http://www.w3.org/2001/XMLSchema#gDay":
+    //   return this.dataFactory.literal(
+    //     value.getUTCDate().toString(),
+    //     datatype,
+    //   );
+    // case "http://www.w3.org/2001/XMLSchema#gMonthDay":
+    //   return this.dataFactory.literal(
+    //     `${value.getUTCMonth() + 1}-${value.getUTCDate()}`,
+    //     datatype,
+    //   );
+    // case "http://www.w3.org/2001/XMLSchema#gYear":
+    //   return this.dataFactory.literal(
+    //     value.getUTCFullYear().toString(),
+    //     datatype,
+    //   );
+    // case "http://www.w3.org/2001/XMLSchema#gYearMonth":
+    //   return this.dataFactory.literal(
+    //     `${value.getUTCFullYear()}-${value.getUTCMonth() + 1}`,
+    //     datatype,
+    //   );
+
+    return this.dataFactory.literal(value.toISOString(), datatype);
   }
 
   number(value: number, datatype?: NamedNode): Literal {
@@ -99,8 +120,33 @@ export class LiteralFactory {
 
     if (!datatype) {
       if (Number.isInteger(value)) {
-        // Don't try to break this down further.
-        datatype = xsd.integer;
+        if (value < 0) {
+          datatype = [xsd.byte, xsd.short, xsd.int].find((checkDatatype) => {
+            const checkDatatypeDefinition =
+              literalDatatypeDefinitions[checkDatatype.value];
+            if (checkDatatypeDefinition?.kind !== "int") {
+              throw new Error("should never happen");
+            }
+            return value >= checkDatatypeDefinition.range[0];
+          });
+        } else {
+          datatype = [
+            xsd.unsignedByte,
+            xsd.unsignedShort,
+            xsd.unsignedInt,
+          ].find((checkDatatype) => {
+            const checkDatatypeDefinition =
+              literalDatatypeDefinitions[checkDatatype.value];
+            if (checkDatatypeDefinition?.kind !== "int") {
+              throw new Error("should never happen");
+            }
+            return value <= checkDatatypeDefinition.range[1];
+          });
+        }
+
+        if (!datatype) {
+          datatype = xsd.integer;
+        }
       } else {
         datatype = xsd.double;
       }
@@ -108,29 +154,31 @@ export class LiteralFactory {
 
     const datatypeDefinition = literalDatatypeDefinitions[datatype.value];
     if (datatypeDefinition) {
-      if (
-        (Number.isNaN(value) || value === Infinity || value === -Infinity) &&
-        datatypeDefinition.kind !== "float"
-      ) {
-        throw new RangeError(
-          `NaN/INF/-INF values only supported by xsd:double and xsd:float`,
-        );
-      }
-
-      switch (datatypeDefinition.kind) {
-        case "bigdecimal":
-        case "bigint":
-        case "float":
-        case "int": {
-          const [min, max] = datatypeDefinition.range;
-          if (
-            (min !== undefined && value < min) ||
-            (max !== undefined && value > max)
-          ) {
-            throw new RangeError(
-              `value (${value}) outside range [${min}, ${max}] of ${datatype.value}`,
-            );
+      if (Number.isNaN(value) || value === Infinity || value === -Infinity) {
+        if (datatypeDefinition.kind !== "float") {
+          throw new RangeError(
+            `NaN/INF/-INF values only supported by xsd:double and xsd:float`,
+          );
+        }
+      } else {
+        switch (datatypeDefinition.kind) {
+          case "bigdecimal":
+          case "bigint":
+          case "float":
+          case "int": {
+            const [min, max] = datatypeDefinition.range;
+            if (
+              (min !== undefined && value < min) ||
+              (max !== undefined && value > max)
+            ) {
+              throw new RangeError(
+                `value (${value}) outside range [${min}, ${max}] of ${datatype.value}`,
+              );
+            }
+            break;
           }
+          default:
+            throw new DatatypeRangeError(datatype);
         }
       }
     }
@@ -161,7 +209,7 @@ export class LiteralFactory {
     if (datatype) {
       const datatypeDefinition = literalDatatypeDefinitions[datatype.value];
       if (datatypeDefinition && datatypeDefinition.kind !== "string") {
-        throw new RangeError(`not a string datatype ${datatype.value}`);
+        throw new DatatypeRangeError(datatype);
       }
     }
 
