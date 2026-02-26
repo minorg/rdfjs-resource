@@ -12,7 +12,7 @@ export namespace LiteralDecoder {
   const BIGINT_NUMBER_MAX_SAFE_INTEGER = BigInt(Number.MAX_SAFE_INTEGER);
   const BIGINT_NUMBER_MIN_SAFE_INTEGER = BigInt(Number.MIN_SAFE_INTEGER);
 
-  function convertBigintToNumber(
+  function convertBigIntToNumber(
     literal: Literal,
     value: bigint,
   ): Either<Error, number> {
@@ -31,7 +31,7 @@ export namespace LiteralDecoder {
     );
   }
 
-  function convertNumberToBigint(
+  function convertNumberToBigInt(
     literal: Literal,
     value: number,
   ): Either<Error, bigint> {
@@ -55,11 +55,11 @@ export namespace LiteralDecoder {
         return decodeBigIntLiteralValue(literal);
       case "float":
         return decodeFloatLiteralValue(literal).chain((value) =>
-          convertNumberToBigint(literal, value),
+          convertNumberToBigInt(literal, value),
         );
       case "int":
         return decodeIntLiteralValue(literal).chain((value) =>
-          convertNumberToBigint(literal, value),
+          convertNumberToBigInt(literal, value),
         );
       default:
         return Left(new LiteralDatatypeError(literal));
@@ -140,7 +140,7 @@ export namespace LiteralDecoder {
     switch (literalDatatypeDefinition.kind) {
       case "bigint":
         return decodeBigIntLiteral(literal).chain((value) =>
-          convertBigintToNumber(literal, value),
+          convertBigIntToNumber(literal, value),
         );
       case "float":
       case "int":
@@ -180,7 +180,7 @@ export namespace LiteralDecoder {
     switch (literalDatatypeDefinition.kind) {
       case "bigint":
         return decodeBigIntLiteral(literal).chain((value) =>
-          convertBigintToNumber(literal, value),
+          convertBigIntToNumber(literal, value),
         );
       case "float":
       case "int":
@@ -208,7 +208,7 @@ export namespace LiteralDecoder {
     switch (literalDatatypeDefinition.kind) {
       case "bigint":
         return decodeBigIntLiteralValue(literal).chain((value) =>
-          convertBigintToNumber(literal, value),
+          convertBigIntToNumber(literal, value),
         );
       case "float":
         return decodeFloatLiteralValue(literal);
