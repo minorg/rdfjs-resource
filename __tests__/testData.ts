@@ -39,8 +39,8 @@ const literals = {
 
   // Numeric - decimal & floating point
   // decimal: DataFactory.literal("10.5", xsd.decimal),
-  float: DataFactory.literal("3.14", xsd.float),
-  double: DataFactory.literal("2.718281828459045", xsd.double),
+  float: DataFactory.literal("3.14e0", xsd.float),
+  double: DataFactory.literal("2.718281828459045e0", xsd.double),
 
   // Date & time
   date: DataFactory.literal("2002-09-24", xsd.date),

@@ -56,7 +56,7 @@ describe("LiteralFactory", () => {
     it("xsd:double", () => {
       expectEquals(
         sut.bigint(1n, xsd.double),
-        DataFactory.literal("1", xsd.double),
+        DataFactory.literal("1e0", xsd.double),
       );
     });
 
@@ -166,7 +166,7 @@ describe("LiteralFactory", () => {
     });
 
     it("no datatype: double", () => {
-      expectEquals(sut.number(1.1), DataFactory.literal("1.1", xsd.double));
+      expectEquals(sut.number(1.1), DataFactory.literal("1.1e0", xsd.double));
     });
 
     it("no datatype: NaN", () => {
@@ -197,13 +197,20 @@ describe("LiteralFactory", () => {
       xsd.unsignedInt,
       xsd.unsignedLong,
       xsd.integer,
-      xsd.float,
-      xsd.double,
     ]) {
       it(datatype.value, () => {
         expectEquals(
           sut.number(1, datatype),
           DataFactory.literal("1", datatype),
+        );
+      });
+    }
+
+    for (const datatype of [xsd.float, xsd.double]) {
+      it(datatype.value, () => {
+        expectEquals(
+          sut.number(1, datatype),
+          DataFactory.literal("1e0", datatype),
         );
       });
     }
@@ -245,7 +252,10 @@ describe("LiteralFactory", () => {
     });
 
     it("no datatype: number", () => {
-      expectEquals(sut.primitive(1.1), DataFactory.literal("1.1", xsd.double));
+      expectEquals(
+        sut.primitive(1.1),
+        DataFactory.literal("1.1e0", xsd.double),
+      );
     });
 
     it("no datatype: string", () => {

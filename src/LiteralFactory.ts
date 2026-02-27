@@ -21,36 +21,7 @@ export class LiteralFactory {
   }
 
   bigint(value: bigint, datatype?: NamedNode): Literal {
-    const valueString = value.toString(10);
-
-    if (!datatype) {
-      datatype = xsd.integer;
-    }
-
-    const datatypeDefinition = literalDatatypeDefinitions[datatype.value];
-    if (datatypeDefinition) {
-      switch (datatypeDefinition.kind) {
-        case "bigdecimal":
-        case "bigint":
-        case "float":
-        case "int": {
-          const [min, max] = datatypeDefinition.range;
-          if (
-            (min !== undefined && value < min) ||
-            (max !== undefined && value > max)
-          ) {
-            throw new RangeError(
-              `value (${value}) outside range [${min}, ${max}] of ${datatype.value}`,
-            );
-          }
-          break;
-        }
-        default:
-          throw new DatatypeRangeError(datatype);
-      }
-    }
-
-    return this.dataFactory.literal(valueString, datatype);
+    return this.numeric(value, datatype ?? xsd.integer);
   }
 
   boolean(value: boolean, datatype?: NamedNode): Literal {
@@ -109,15 +80,6 @@ export class LiteralFactory {
   }
 
   number(value: number, datatype?: NamedNode): Literal {
-    let valueString = value.toString(10);
-    if (Number.isNaN(value)) {
-      valueString = "NaN";
-    } else if (value === Infinity) {
-      valueString = "INF";
-    } else if (value === -Infinity) {
-      valueString = "-INF";
-    }
-
     if (!datatype) {
       if (Number.isInteger(value)) {
         if (value < 0) {
@@ -152,6 +114,12 @@ export class LiteralFactory {
       }
     }
 
+    return this.numeric(value, datatype);
+  }
+
+  private numeric(value: bigint | number, datatype: NamedNode): Literal {
+    let valueString: string | undefined;
+
     const datatypeDefinition = literalDatatypeDefinitions[datatype.value];
     if (datatypeDefinition) {
       if (Number.isNaN(value) || value === Infinity || value === -Infinity) {
@@ -180,6 +148,33 @@ export class LiteralFactory {
           default:
             throw new DatatypeRangeError(datatype);
         }
+
+        if (datatypeDefinition.kind === "float") {
+          // Convert the number to scientific notation so Turtle will recognize it as an double without ^^
+          // Example: 1 -> 1e0
+
+          // Assume this coercion to number won't lose anything since we checked the range above.
+          let [mantissa, exponent] = Number(value).toExponential().split("e");
+          exponent = exponent.replace(/^\+/, "").replace(/^(-?)0+(\d)/, "$1$2");
+
+          valueString = `${mantissa}e${exponent}`;
+        }
+      }
+    }
+
+    if (!valueString) {
+      if (typeof value === "number") {
+        if (Number.isNaN(value)) {
+          valueString = "NaN";
+        } else if (value === Infinity) {
+          valueString = "INF";
+        } else if (value === -Infinity) {
+          valueString = "-INF";
+        }
+      }
+
+      if (!valueString) {
+        valueString = value.toString(10);
       }
     }
 
