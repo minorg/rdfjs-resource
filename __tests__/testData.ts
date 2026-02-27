@@ -1,6 +1,6 @@
+import DataFactory from "@rdfjs/data-model";
 import type { Quad, Quad_Object, Variable } from "@rdfjs/types";
 import { xsd } from "@tpluscode/rdf-ns-builders";
-import { DataFactory } from "n3";
 
 const literals = {
   // String types

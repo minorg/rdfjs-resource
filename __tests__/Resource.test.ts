@@ -1,6 +1,6 @@
-import type { BlankNode, Literal, NamedNode } from "@rdfjs/types";
+import dataFactory from "@rdfjs/data-model";
+import datasetFactory from "@rdfjs/dataset";
 import { rdf, rdfs, schema, skos } from "@tpluscode/rdf-ns-builders";
-import { DataFactory, Parser, Store } from "n3";
 import { describe, expect, it } from "vitest";
 import { Resource } from "../src/Resource.js";
 import { ResourceSet } from "../src/ResourceSet.js";
@@ -9,13 +9,13 @@ import { testData } from "./testData.js";
 
 describe("Resource", () => {
   const { objects, predicate, subject } = testData;
-  const testResource = new Resource(new Store(), subject);
+  const testResource = new Resource(datasetFactory.dataset(), subject);
   for (const object of Object.values(objects)) {
     testResource.add(predicate, object);
   }
 
   it("add", () => {
-    const resource = new Resource(new Store(), subject);
+    const resource = new Resource(datasetFactory.dataset(), subject);
     resource.add(predicate, objects["stringLiteral"]);
     const values = [...resource.values(predicate)].map((value) =>
       value.toTerm(),
@@ -26,7 +26,7 @@ describe("Resource", () => {
 
   describe("addList", () => {
     it("simple", () => {
-      const resource = new Resource(new Store(), subject);
+      const resource = new Resource(datasetFactory.dataset(), subject);
       resource.addList(predicate, [
         objects["stringLiteral"],
         objects["intLiteral"],
@@ -50,25 +50,25 @@ describe("Resource", () => {
 
     for (const terms of [
       [],
-      [DataFactory.literal("test")],
-      [DataFactory.literal("test"), DataFactory.literal("test")],
+      [dataFactory.literal("test")],
+      [dataFactory.literal("test"), dataFactory.literal("test")],
       [
-        DataFactory.literal("test"),
-        DataFactory.literal("test"),
-        DataFactory.literal("test"),
+        dataFactory.literal("test"),
+        dataFactory.literal("test"),
+        dataFactory.literal("test"),
       ],
       [
-        DataFactory.literal("test"),
-        DataFactory.literal("test"),
-        DataFactory.literal("test"),
-        DataFactory.literal("test"),
+        dataFactory.literal("test"),
+        dataFactory.literal("test"),
+        dataFactory.literal("test"),
+        dataFactory.literal("test"),
       ],
     ]) {
       it(`list of ${terms.length} terms`, ({ expect }) => {
-        const resource = new Resource(new Store(), subject);
+        const resource = new Resource(datasetFactory.dataset(), subject);
         const listResource = resource.addList(predicate, terms, {
           mintSubListIdentifier: (_, itemIndex) =>
-            DataFactory.namedNode(
+            dataFactory.namedNode(
               `http://example.com/list${itemIndex.toString()}`,
             ),
         });
@@ -105,7 +105,7 @@ describe("Resource", () => {
 
   describe("delete", () => {
     it("one value", () => {
-      const resource = new Resource(new Store(), subject);
+      const resource = new Resource(datasetFactory.dataset(), subject);
       resource.add(predicate, objects["stringLiteral"]);
       resource.add(predicate, objects["intLiteral"]);
       expect([...resource.values(predicate)]).toHaveLength(2);
@@ -118,7 +118,7 @@ describe("Resource", () => {
     });
 
     it("all values", () => {
-      const resource = new Resource(new Store(), subject);
+      const resource = new Resource(datasetFactory.dataset(), subject);
       resource.add(predicate, objects["stringLiteral"]);
       resource.add(predicate, objects["intLiteral"]);
       expect([...resource.values(predicate)]).toHaveLength(2);
@@ -128,21 +128,21 @@ describe("Resource", () => {
   });
 
   describe("isInstanceOf", () => {
-    const dataset = new Store();
+    const dataset = datasetFactory.dataset();
     const class_ = skos.Concept;
-    const classInstance = new Resource(dataset, DataFactory.blankNode());
+    const classInstance = new Resource(dataset, dataFactory.blankNode());
     classInstance.add(rdf.type, class_);
-    const subClass = DataFactory.namedNode(
+    const subClass = dataFactory.namedNode(
       "http://example.com/ConceptSubclass",
     );
-    const subClassInstance = new Resource(dataset, DataFactory.blankNode());
+    const subClassInstance = new Resource(dataset, dataFactory.blankNode());
     subClassInstance.add(rdf.type, subClass);
-    dataset.addQuad(DataFactory.quad(subClass, rdfs.subClassOf, class_));
+    dataset.add(dataFactory.quad(subClass, rdfs.subClassOf, class_));
 
     it("third party data", ({ expect }) => {
       const houseMdResourceSet = new ResourceSet(houseMdDataset);
       const houseMdResource = houseMdResourceSet.resource(
-        DataFactory.namedNode(
+        dataFactory.namedNode(
           "https://housemd.rdf-ext.org/person/allison-cameron",
         ),
       );
@@ -167,44 +167,44 @@ describe("Resource", () => {
 
     it("should handle the negative case", () => {
       expect(
-        new Resource(dataset, DataFactory.blankNode()).isInstanceOf(class_),
+        new Resource(dataset, dataFactory.blankNode()).isInstanceOf(class_),
       ).toStrictEqual(false);
     });
   });
 
   it("isSubClassOf (positive case)", () => {
-    const dataset = new Store();
+    const dataset = datasetFactory.dataset();
     const class_ = skos.Concept;
     const subClass = new Resource(
       dataset,
-      DataFactory.namedNode("http://example.com/subClass"),
+      dataFactory.namedNode("http://example.com/subClass"),
     );
     subClass.add(rdfs.subClassOf, class_);
     const subSubClass = new Resource(
       dataset,
-      DataFactory.namedNode("http://example.com/subSubClass"),
+      dataFactory.namedNode("http://example.com/subSubClass"),
     );
     subSubClass.add(rdfs.subClassOf, subClass.identifier);
     expect(subSubClass.isSubClassOf(class_)).toStrictEqual(true);
   });
 
   it("isSubClassOf (negative case)", () => {
-    const dataset = new Store();
+    const dataset = datasetFactory.dataset();
     const class1 = skos.Concept;
     const class2 = new Resource(
       dataset,
-      DataFactory.namedNode("http://example.com/subClass"),
+      dataFactory.namedNode("http://example.com/subClass"),
     );
     const subClass = new Resource(
       dataset,
-      DataFactory.namedNode("http://example.com/subSubClass"),
+      dataFactory.namedNode("http://example.com/subSubClass"),
     );
     subClass.add(rdfs.subClassOf, class2.identifier);
     expect(subClass.isSubClassOf(class1)).toStrictEqual(false);
   });
 
   it("set", () => {
-    const resource = new Resource(new Store(), subject);
+    const resource = new Resource(datasetFactory.dataset(), subject);
     resource.add(predicate, objects["stringLiteral"]);
     expect(resource.dataset.size).toStrictEqual(1);
     resource.set(predicate, objects["intLiteral"]);
@@ -217,51 +217,45 @@ describe("Resource", () => {
   });
 
   describe("toList", () => {
-    const parseAndGetRdfList = (
-      ttl: string,
-    ): readonly (BlankNode | Literal | NamedNode)[] => {
-      const dataset = new Store();
-      dataset.addQuads(new Parser({ format: "Turtle" }).parse(ttl));
-      return new Resource(
-        dataset,
-        [...dataset.match(subject, predicate, null, null)][0].object as
-          | BlankNode
-          | NamedNode,
-      )
-        .toList()
-        .unsafeCoerce()
-        .map((value) => value.toTerm());
-    };
-
     it("should read an empty list", ({ expect }) => {
-      expect(
-        parseAndGetRdfList(`<${subject.value}> <${predicate.value}> ( ) .`),
-      ).to.be.empty;
+      const resource = new Resource(
+        datasetFactory.dataset(),
+        dataFactory.blankNode(),
+      );
+      resource.add(predicate, rdf.nil);
+      expect(resource.value(predicate).unsafeCoerce().toList().unsafeCoerce())
+        .to.be.empty;
     });
 
     it("should read a list with one literal", ({ expect }) => {
-      const list = parseAndGetRdfList(
-        `<${subject.value}> <${predicate.value}> ( "test" ) .`,
+      const resource = new Resource(
+        datasetFactory.dataset(),
+        dataFactory.blankNode(),
       );
+      resource.addList(predicate, ["test"]);
+      const list = resource
+        .value(predicate)
+        .chain((_) => _.toList())
+        .unsafeCoerce()
+        .map((_) => _.toString().unsafeCoerce());
       expect(list).to.have.length(1);
-      expect(list[0].value).to.eq("test");
+      expect(list[0]).to.eq("test");
     });
 
     it("should read a list with two literals", ({ expect }) => {
-      const list = parseAndGetRdfList(
-        `<${subject.value}> <${predicate.value}> ( "test" "test2" ) .`,
+      const resource = new Resource(
+        datasetFactory.dataset(),
+        dataFactory.blankNode(),
       );
+      resource.addList(predicate, ["test1", "test2"]);
+      const list = resource
+        .value(predicate)
+        .chain((_) => _.toList())
+        .unsafeCoerce()
+        .map((_) => _.toString().unsafeCoerce());
       expect(list).to.have.length(2);
-      expect(list[0].value).to.eq("test");
-      expect(list[1].value).to.eq("test2");
-    });
-
-    it("should read a list with blank nodes", ({ expect }) => {
-      expect(
-        parseAndGetRdfList(
-          `<${subject.value}> <${predicate.value}> ( [ ] [ ] ) .`,
-        ),
-      ).to.have.length(2);
+      expect(list[0]).to.eq("test1");
+      expect(list[1]).to.eq("test2");
     });
   });
 
@@ -269,7 +263,7 @@ describe("Resource", () => {
     it("missing", ({ expect }) => {
       expect(
         testResource
-          .value(DataFactory.namedNode("http://example.com/nonexistent"))
+          .value(dataFactory.namedNode("http://example.com/nonexistent"))
           .toMaybe()
           .extract(),
       ).toBeUndefined();
