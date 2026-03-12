@@ -60,7 +60,7 @@ export class DatasetObjectValues extends DatasetValues<TermValue> {
       this.focusResource.identifier,
       this.predicate,
       null,
-      null,
+      this.graph,
     )) {
       switch (quad.object.termType) {
         case "BlankNode":

@@ -169,6 +169,7 @@ export class Resource<
     class_: NamedNode,
     options?: {
       excludeSubclasses?: boolean;
+      graph?: Exclude<Quad_Graph, Variable>;
       instanceOfPredicate?: NamedNode;
       subClassOfPredicate?: NamedNode;
     },
@@ -176,6 +177,7 @@ export class Resource<
     return isInstanceOfRecursive({
       class_,
       dataset: this.dataset,
+      graph: options?.graph,
       instance: this.identifier,
       visitedClasses: new TermSet<NamedNode>(),
     });
@@ -183,11 +185,13 @@ export class Resource<
     function isInstanceOfRecursive({
       class_,
       dataset,
+      graph,
       instance,
       visitedClasses,
     }: {
       class_: NamedNode;
       dataset: DatasetCore;
+      graph: Exclude<Quad_Graph, Variable> | undefined;
       instance: BlankNode | NamedNode;
       visitedClasses: TermSet<NamedNode>;
     }): boolean {
@@ -195,6 +199,7 @@ export class Resource<
         instance,
         options?.instanceOfPredicate ?? rdf.type,
         class_,
+        graph,
       )) {
         return true;
       }
@@ -210,7 +215,7 @@ export class Resource<
         null,
         options?.subClassOfPredicate ?? rdfs.subClassOf,
         class_,
-        null,
+        graph,
       )) {
         if (quad.subject.termType !== "NamedNode") {
           continue;
@@ -222,6 +227,7 @@ export class Resource<
           isInstanceOfRecursive({
             class_: quad.subject,
             dataset,
+            graph,
             instance,
             visitedClasses,
           })
@@ -237,12 +243,14 @@ export class Resource<
   isSubClassOf(
     class_: NamedNode,
     options?: {
+      graph?: Exclude<Quad_Graph, Variable>;
       subClassOfPredicate?: NamedNode;
     },
   ): boolean {
     return isSubClassOfRecursive({
       class_,
       dataset: this.dataset,
+      graph: options?.graph,
       thisIdentifier: this.identifier,
       visitedClasses: new TermSet<NamedNode>(),
     });
@@ -250,11 +258,13 @@ export class Resource<
     function isSubClassOfRecursive({
       class_,
       dataset,
+      graph,
       thisIdentifier,
       visitedClasses,
     }: {
       class_: NamedNode;
       dataset: DatasetCore;
+      graph: Exclude<Quad_Graph, Variable> | undefined;
       thisIdentifier: BlankNode | NamedNode;
       visitedClasses: TermSet<NamedNode>;
     }): boolean {
@@ -262,6 +272,7 @@ export class Resource<
         thisIdentifier,
         options?.subClassOfPredicate ?? rdfs.subClassOf,
         class_,
+        graph,
       )) {
         return true;
       }
@@ -273,7 +284,7 @@ export class Resource<
         null,
         options?.subClassOfPredicate ?? rdfs.subClassOf,
         class_,
-        null,
+        graph,
       )) {
         if (quad.subject.termType !== "NamedNode") {
           continue;
@@ -285,6 +296,7 @@ export class Resource<
           isSubClassOfRecursive({
             class_: quad.subject,
             dataset,
+            graph,
             thisIdentifier,
             visitedClasses,
           })
@@ -312,16 +324,23 @@ export class Resource<
   /**
    * Consider the resource itself as an RDF list.
    */
-  toList(): Either<Resource.ValueError, readonly Resource.TermValue[]> {
+  toList(options?: {
+    graph?: Exclude<Quad_Graph, Variable>;
+  }): Either<Resource.ValueError, readonly Resource.TermValue[]> {
     if (this.identifier.equals(rdf.nil)) {
       return Either.of([]);
     }
 
     const firstObjects = [
       ...new TermSet(
-        [...this.dataset.match(this.identifier, rdf.first, null)].map(
-          (quad) => quad.object,
-        ),
+        [
+          ...this.dataset.match(
+            this.identifier,
+            rdf.first,
+            null,
+            options?.graph,
+          ),
+        ].map((quad) => quad.object),
       ),
     ];
     if (firstObjects.length === 0) {
@@ -361,9 +380,14 @@ export class Resource<
 
     const restObjects = [
       ...new TermSet(
-        [...this.dataset.match(this.identifier, rdf.rest, null)].map(
-          (quad) => quad.object,
-        ),
+        [
+          ...this.dataset.match(
+            this.identifier,
+            rdf.rest,
+            null,
+            options?.graph,
+          ),
+        ].map((quad) => quad.object),
       ),
     ];
     if (restObjects.length === 0) {
@@ -408,7 +432,7 @@ export class Resource<
       }),
     ]).chain((items) =>
       new Resource(this.dataset, restObject)
-        .toList()
+        .toList({ graph: options?.graph })
         .map((restItems) => items.concat(restItems)),
     );
   }
@@ -416,8 +440,11 @@ export class Resource<
   /**
    * Get the first matching value of dataset statements (this.identifier, predicate, value).
    */
-  value(predicate: NamedNode): Either<Resource.ValueError, Resource.TermValue> {
-    return this.values(predicate).head();
+  value(
+    predicate: NamedNode,
+    options?: { graph?: Exclude<Quad_Graph, Variable> },
+  ): Either<Resource.ValueError, Resource.TermValue> {
+    return this.values(predicate, options).head();
   }
 
   /**
@@ -425,8 +452,9 @@ export class Resource<
    */
   valueOf(
     predicate: NamedNode,
+    options?: { graph?: Exclude<Quad_Graph, Variable> },
   ): Either<Resource.ValueError, Resource.IdentifierValue> {
-    return this.valuesOf(predicate).head();
+    return this.valuesOf(predicate, options).head();
   }
 
   /**
@@ -434,10 +462,11 @@ export class Resource<
    */
   values(
     predicate: NamedNode,
-    options?: { unique?: boolean },
+    options?: { graph?: Exclude<Quad_Graph, Variable>; unique?: boolean },
   ): Resource.Values<Resource.TermValue> {
     return new DatasetObjectValues({
       focusResource: this,
+      graph: options?.graph ?? null,
       predicate,
       unique: !!options?.unique,
     });
@@ -448,10 +477,11 @@ export class Resource<
    */
   valuesOf(
     predicate: NamedNode,
-    options?: { unique: true },
+    options?: { graph?: Exclude<Quad_Graph, Variable>; unique: true },
   ): Resource.Values<Resource.IdentifierValue> {
     return new DatasetSubjectValues({
       focusResource: this,
+      graph: options?.graph ?? null,
       predicate,
       unique: !!options?.unique,
     });
