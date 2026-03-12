@@ -477,7 +477,7 @@ export class Resource<
    */
   valuesOf(
     predicate: NamedNode,
-    options?: { graph?: Exclude<Quad_Graph, Variable>; unique: true },
+    options?: { graph?: Exclude<Quad_Graph, Variable>; unique?: boolean },
   ): Resource.Values<Resource.IdentifierValue> {
     return new DatasetSubjectValues({
       focusResource: this,
