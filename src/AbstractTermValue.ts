@@ -1,4 +1,11 @@
-import type { BlankNode, Literal, NamedNode } from "@rdfjs/types";
+import type {
+  BlankNode,
+  DataFactory,
+  Literal,
+  NamedNode,
+  Quad_Graph,
+  Variable,
+} from "@rdfjs/types";
 import { Either, Left } from "purify-ts";
 import { MistypedTermValueError } from "./MistypedTermValueError.js";
 import { Resource } from "./Resource.js";
@@ -6,19 +13,23 @@ import { Resource } from "./Resource.js";
 export abstract class AbstractTermValue<
   TermT extends BlankNode | Literal | NamedNode,
 > {
+  protected readonly dataFactory: DataFactory;
   protected readonly focusResource: Resource;
   protected readonly predicate: NamedNode;
   protected readonly term: TermT;
 
   constructor({
+    dataFactory,
     focusResource,
     predicate,
     term,
   }: {
+    dataFactory: DataFactory;
     focusResource: Resource;
     predicate: NamedNode;
     term: TermT;
   }) {
+    this.dataFactory = dataFactory;
     this.focusResource = focusResource;
     this.predicate = predicate;
     this.term = term;
@@ -49,10 +60,15 @@ export abstract class AbstractTermValue<
   /**
    * Try to convert the term to a named resource.
    */
-  toNamedResource(): Either<MistypedTermValueError, Resource<NamedNode>> {
+  toNamedResource(options?: {
+    graph?: Exclude<Quad_Graph, Variable>;
+  }): Either<MistypedTermValueError, Resource<NamedNode>> {
     return this.toIri().map(
       (identifier) =>
-        new Resource<NamedNode>(this.focusResource.dataset, identifier),
+        new Resource<NamedNode>(this.focusResource.dataset, identifier, {
+          dataFactory: this.dataFactory,
+          graph: options?.graph,
+        }),
     );
   }
 

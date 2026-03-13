@@ -69,8 +69,10 @@ describe("Resource", () => {
 
   describe("addList", () => {
     it("simple", () => {
-      const resource = new Resource(datasetFactory.dataset(), subject);
+      const dataset = datasetFactory.dataset();
+      const resource = new Resource(dataset, subject);
       resource.addList(predicate, [literals.string, literals.int]);
+      expect(dataset.size).toStrictEqual(5);
       expect([...resource.values(predicate)]).toHaveLength(1);
       const list = resource
         .value(predicate)
@@ -141,6 +143,20 @@ describe("Resource", () => {
         });
       });
     }
+
+    it("named graph", ({ expect }) => {
+      const dataset = datasetFactory.dataset();
+      const resource = new Resource(dataset, subject);
+      resource.addList(predicate, [literals.string, literals.int], { graph });
+      expect(
+        [...dataset].filter((quad) =>
+          quad.graph.equals(dataFactory.defaultGraph()),
+        ),
+      ).toHaveLength(0);
+      expect(
+        [...dataset].filter((quad) => quad.graph.equals(graph)),
+      ).toHaveLength(5);
+    });
   });
 
   describe("delete", () => {
