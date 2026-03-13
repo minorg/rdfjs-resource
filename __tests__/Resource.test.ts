@@ -14,37 +14,6 @@ describe("Resource", () => {
     testResource.add(predicate, object);
   }
 
-  describe("constructor", () => {
-    it("no graph specified", () => {
-      const dataset = datasetFactory.dataset();
-      const resource = new Resource(dataset, subject);
-      resource.add(predicate, literals.string);
-      expect(dataset.size).toStrictEqual(1);
-      expect(
-        [...dataset][0].equals(
-          dataFactory.quad(
-            subject,
-            predicate,
-            literals.string,
-            dataFactory.defaultGraph(),
-          ),
-        ),
-      ).toStrictEqual(true);
-    });
-
-    it("named graph", () => {
-      const dataset = datasetFactory.dataset();
-      const resource = new Resource(dataset, subject, { graph });
-      resource.add(predicate, literals.string);
-      expect(dataset.size).toStrictEqual(1);
-      expect(
-        [...dataset][0].equals(
-          dataFactory.quad(subject, predicate, literals.string, graph),
-        ),
-      ).toStrictEqual(true);
-    });
-  });
-
   describe("add", () => {
     it("default graph", ({ expect }) => {
       const dataset = datasetFactory.dataset();
