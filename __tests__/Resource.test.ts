@@ -15,7 +15,7 @@ describe("Resource", () => {
   }
 
   describe("constructor", () => {
-    it("default graph", () => {
+    it("no graph specified", () => {
       const dataset = datasetFactory.dataset();
       const resource = new Resource(dataset, subject);
       resource.add(predicate, literals.string);
@@ -37,16 +37,6 @@ describe("Resource", () => {
       const resource = new Resource(dataset, subject, { graph });
       resource.add(predicate, literals.string);
       expect(dataset.size).toStrictEqual(1);
-      expect(
-        [...dataset][0].equals(
-          dataFactory.quad(
-            subject,
-            predicate,
-            literals.string,
-            dataFactory.defaultGraph(),
-          ),
-        ),
-      ).toStrictEqual(false);
       expect(
         [...dataset][0].equals(
           dataFactory.quad(subject, predicate, literals.string, graph),

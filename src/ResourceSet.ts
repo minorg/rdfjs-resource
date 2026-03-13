@@ -17,19 +17,24 @@ import { rdf, rdfs } from "./vocabularies.js";
  */
 export class ResourceSet {
   private readonly dataFactory: DataFactory;
+  private readonly graph?: Exclude<Quad_Graph, Variable>;
 
   constructor(
     readonly dataset: DatasetCore,
-    options?: { dataFactory?: DataFactory },
+    options?: {
+      dataFactory?: DataFactory;
+      graph?: Exclude<Quad_Graph, Variable>;
+    },
   ) {
     this.dataFactory = options?.dataFactory ?? DefaultDataFactory;
+    this.graph = options?.graph;
   }
 
   *instancesOf(
     class_: NamedNode,
     options?: {
       excludeSubclasses?: boolean;
-      graph?: Exclude<Quad_Graph, Variable> | null;
+      graph?: Exclude<Quad_Graph, Variable>;
       instanceOfPredicate?: NamedNode;
       subClassOfPredicate?: NamedNode;
     },
@@ -44,15 +49,18 @@ export class ResourceSet {
     options?: Parameters<ResourceSet["instancesOf"]>[1],
   ): Generator<Resource<NamedNode>> {
     for (const identifier of this.instanceIdentifiers(class_, options)) {
-      if (identifier.termType === "NamedNode") yield this.resource(identifier);
+      if (identifier.termType === "NamedNode")
+        yield this.resource(identifier, { graph: options?.graph });
     }
   }
 
   resource<IdentifierT extends Resource.Identifier>(
     identifier: IdentifierT,
+    options?: { graph?: Exclude<Quad_Graph, Variable> },
   ): Resource<IdentifierT> {
     return new Resource(this.dataset, identifier, {
       dataFactory: this.dataFactory,
+      graph: options?.graph ?? this.graph,
     });
   }
 
@@ -63,6 +71,7 @@ export class ResourceSet {
     yield* instanceIdentifiersRecursive({
       class_,
       dataset: this.dataset,
+      graph: options?.graph ?? this.graph,
       visitedClasses: new TermSet<NamedNode>(),
       yieldedInstanceIdentifiers: new TermSet<BlankNode | NamedNode>(),
     });
@@ -70,11 +79,13 @@ export class ResourceSet {
     function* instanceIdentifiersRecursive({
       class_,
       dataset,
+      graph,
       visitedClasses,
       yieldedInstanceIdentifiers,
     }: {
       class_: NamedNode;
       dataset: DatasetCore;
+      graph: Exclude<Quad_Graph, Variable> | undefined;
       visitedClasses: TermSet<NamedNode>;
       yieldedInstanceIdentifiers: TermSet<BlankNode | NamedNode>;
     }): Generator<BlankNode | NamedNode> {
@@ -83,7 +94,7 @@ export class ResourceSet {
         null,
         options?.instanceOfPredicate ?? rdf.type,
         class_,
-        options?.graph,
+        graph,
       )) {
         switch (quad.subject.termType) {
           case "BlankNode":
@@ -109,7 +120,7 @@ export class ResourceSet {
         null,
         options?.subClassOfPredicate ?? rdfs.subClassOf,
         class_,
-        options?.graph,
+        graph,
       )) {
         if (quad.subject.termType !== "NamedNode") {
           continue;
@@ -120,6 +131,7 @@ export class ResourceSet {
         yield* instanceIdentifiersRecursive({
           class_: quad.subject,
           dataset,
+          graph,
           visitedClasses,
           yieldedInstanceIdentifiers,
         });
