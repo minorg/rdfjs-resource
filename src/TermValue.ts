@@ -94,7 +94,7 @@ export class TermValue extends AbstractTermValue<
   toList(options?: {
     graph?: Exclude<Quad_Graph, Variable>;
   }): Either<ValueError, readonly TermValue[]> {
-    return this.toResource({ graph: options?.graph }).chain((resource) =>
+    return this.toResource().chain((resource) =>
       resource.toList({ graph: options?.graph }),
     );
   }
@@ -129,14 +129,11 @@ export class TermValue extends AbstractTermValue<
   /**
    * Try to convert the term to a resource (identified by a blank node or IRI).
    */
-  toResource(options?: {
-    graph?: Exclude<Quad_Graph, Variable>;
-  }): Either<MistypedTermValueError, Resource> {
+  toResource(): Either<MistypedTermValueError, Resource> {
     return this.toIdentifier().map(
       (identifier) =>
         new Resource(this.focusResource.dataset, identifier, {
           dataFactory: this.dataFactory,
-          graph: options?.graph,
         }),
     );
   }

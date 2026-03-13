@@ -49,18 +49,15 @@ export class ResourceSet {
     options?: Parameters<ResourceSet["instancesOf"]>[1],
   ): Generator<Resource<NamedNode>> {
     for (const identifier of this.instanceIdentifiers(class_, options)) {
-      if (identifier.termType === "NamedNode")
-        yield this.resource(identifier, { graph: options?.graph });
+      if (identifier.termType === "NamedNode") yield this.resource(identifier);
     }
   }
 
   resource<IdentifierT extends Resource.Identifier>(
     identifier: IdentifierT,
-    options?: { graph?: Exclude<Quad_Graph, Variable> },
   ): Resource<IdentifierT> {
     return new Resource(this.dataset, identifier, {
       dataFactory: this.dataFactory,
-      graph: options?.graph ?? this.graph,
     });
   }
 

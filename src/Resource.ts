@@ -39,11 +39,9 @@ export class Resource<
     readonly identifier: IdentifierT,
     options?: {
       dataFactory?: DataFactory;
-      graph?: Exclude<Quad_Graph, Variable>;
     },
   ) {
     this.dataFactory = options?.dataFactory ?? DefaultDataFactory;
-    this.graph = options?.graph;
     this.literalFactory = new LiteralFactory({ dataFactory: this.dataFactory });
   }
 
@@ -79,13 +77,10 @@ export class Resource<
     items: Iterable<AddableValue>,
     options?: Parameters<Resource["addListItems"]>[1],
   ): Resource {
-    const graph = options?.graph ?? this.graph;
-
     const itemsArray = [...items];
     if (itemsArray.length === 0) {
       return new Resource(this.dataset, rdf.nil, {
         dataFactory: this.dataFactory,
-        graph,
       });
     }
 
@@ -95,11 +90,14 @@ export class Resource<
     const listResource = new Resource(
       this.dataset,
       mintSubListIdentifier(itemsArray[0], 0),
-      { dataFactory: this.dataFactory, graph },
+      { dataFactory: this.dataFactory },
     );
-    listResource.addListItems(itemsArray, { mintSubListIdentifier });
+    listResource.addListItems(itemsArray, {
+      graph: options?.graph,
+      mintSubListIdentifier,
+    });
 
-    this.add(predicate, listResource.identifier, graph);
+    this.add(predicate, listResource.identifier, options?.graph);
 
     return listResource;
   }
@@ -132,7 +130,7 @@ export class Resource<
         const newHead = new Resource(
           this.dataset,
           mintSubListIdentifier(item, itemIndex),
-          { dataFactory: this.dataFactory, graph },
+          { dataFactory: this.dataFactory },
         );
         addSubListResourceValues(newHead);
         currentHead.add(rdf.rest, newHead.identifier, graph);
@@ -449,7 +447,6 @@ export class Resource<
     ]).chain((items) =>
       new Resource(this.dataset, restObject, {
         dataFactory: this.dataFactory,
-        graph,
       })
         .toList({ graph })
         .map((restItems) => items.concat(restItems)),
