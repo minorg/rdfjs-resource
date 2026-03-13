@@ -17,6 +17,7 @@ export class DatasetSubjectValues extends DatasetValues<IdentifierValue> {
           continue;
         }
         yield new IdentifierValue({
+          dataFactory: this.dataFactory,
           focusResource: this.focusResource,
           predicate: this.predicate,
           term: nonUniqueIdentifier,
@@ -26,6 +27,7 @@ export class DatasetSubjectValues extends DatasetValues<IdentifierValue> {
     } else {
       for (const nonUniqueIdentifier of this.nonUniqueIdentifierIterator()) {
         yield new IdentifierValue({
+          dataFactory: this.dataFactory,
           focusResource: this.focusResource,
           predicate: this.predicate,
           term: nonUniqueIdentifier,

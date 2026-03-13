@@ -25,6 +25,7 @@ export class DatasetObjectValues extends DatasetValues<TermValue> {
           continue;
         }
         yield new TermValue({
+          dataFactory: this.dataFactory,
           focusResource: this.focusResource,
           predicate: this.predicate,
           term: nonUniqueTerm,
@@ -34,6 +35,7 @@ export class DatasetObjectValues extends DatasetValues<TermValue> {
     } else {
       for (const nonUniqueTerm of this.nonUniqueTermIterator()) {
         yield new TermValue({
+          dataFactory: this.dataFactory,
           focusResource: this.focusResource,
           predicate: this.predicate,
           term: nonUniqueTerm,

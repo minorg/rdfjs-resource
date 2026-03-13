@@ -484,6 +484,7 @@ export class Resource<
     options?: { graph?: Exclude<Quad_Graph, Variable>; unique?: boolean },
   ): Resource.Values<Resource.TermValue> {
     return new DatasetObjectValues({
+      dataFactory: this.dataFactory,
       focusResource: this,
       graph: options?.graph ?? this.graph ?? null,
       predicate,
@@ -499,6 +500,7 @@ export class Resource<
     options?: { graph?: Exclude<Quad_Graph, Variable>; unique?: boolean },
   ): Resource.Values<Resource.IdentifierValue> {
     return new DatasetSubjectValues({
+      dataFactory: this.dataFactory,
       focusResource: this,
       graph: options?.graph ?? this.graph ?? null,
       predicate,
