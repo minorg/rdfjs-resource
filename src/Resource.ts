@@ -31,14 +31,19 @@ export class Resource<
   IdentifierT extends Resource.Identifier = Resource.Identifier,
 > {
   private readonly dataFactory: DataFactory;
+  private readonly graph?: Exclude<Quad_Graph, Variable>;
   private readonly literalFactory: LiteralFactory;
 
   constructor(
     readonly dataset: DatasetCore,
     readonly identifier: IdentifierT,
-    options?: { dataFactory?: DataFactory },
+    options?: {
+      dataFactory?: DataFactory;
+      graph?: Exclude<Quad_Graph, Variable>;
+    },
   ) {
     this.dataFactory = options?.dataFactory ?? DefaultDataFactory;
+    this.graph = options?.graph;
     this.literalFactory = new LiteralFactory({ dataFactory: this.dataFactory });
   }
 
@@ -52,7 +57,12 @@ export class Resource<
   ): this {
     for (const term of this.addableValuesToTerms(object)) {
       this.dataset.add(
-        this.dataFactory.quad(this.identifier, predicate, term, graph),
+        this.dataFactory.quad(
+          this.identifier,
+          predicate,
+          term,
+          graph ?? this.graph,
+        ),
       );
     }
     return this;
@@ -107,7 +117,7 @@ export class Resource<
   ): this {
     const addSubListResourceValues =
       options?.addSubListResourceValues ?? (() => {});
-    const graph = options?.graph;
+    const graph = options?.graph ?? this.graph;
     const mintSubListIdentifier =
       options?.mintSubListIdentifier ?? (() => this.dataFactory.blankNode());
 
@@ -149,14 +159,24 @@ export class Resource<
   ): this {
     if (!object) {
       for (const quad of [
-        ...this.dataset.match(this.identifier, predicate, null, graph),
+        ...this.dataset.match(
+          this.identifier,
+          predicate,
+          null,
+          graph ?? this.graph,
+        ),
       ]) {
         this.dataset.delete(quad);
       }
     } else {
       for (const term of this.addableValuesToTerms(object)) {
         for (const quad of [
-          ...this.dataset.match(this.identifier, predicate, term, graph),
+          ...this.dataset.match(
+            this.identifier,
+            predicate,
+            term,
+            graph ?? this.graph,
+          ),
         ]) {
           this.dataset.delete(quad);
         }
@@ -177,7 +197,7 @@ export class Resource<
     return isInstanceOfRecursive({
       class_,
       dataset: this.dataset,
-      graph: options?.graph,
+      graph: options?.graph ?? this.graph,
       instance: this.identifier,
       visitedClasses: new TermSet<NamedNode>(),
     });
@@ -250,7 +270,7 @@ export class Resource<
     return isSubClassOfRecursive({
       class_,
       dataset: this.dataset,
-      graph: options?.graph,
+      graph: options?.graph ?? this.graph,
       thisIdentifier: this.identifier,
       visitedClasses: new TermSet<NamedNode>(),
     });
@@ -331,16 +351,13 @@ export class Resource<
       return Either.of([]);
     }
 
+    const graph = options?.graph ?? this.graph;
+
     const firstObjects = [
       ...new TermSet(
-        [
-          ...this.dataset.match(
-            this.identifier,
-            rdf.first,
-            null,
-            options?.graph,
-          ),
-        ].map((quad) => quad.object),
+        [...this.dataset.match(this.identifier, rdf.first, null, graph)].map(
+          (quad) => quad.object,
+        ),
       ),
     ];
     if (firstObjects.length === 0) {
@@ -380,14 +397,9 @@ export class Resource<
 
     const restObjects = [
       ...new TermSet(
-        [
-          ...this.dataset.match(
-            this.identifier,
-            rdf.rest,
-            null,
-            options?.graph,
-          ),
-        ].map((quad) => quad.object),
+        [...this.dataset.match(this.identifier, rdf.rest, null, graph)].map(
+          (quad) => quad.object,
+        ),
       ),
     ];
     if (restObjects.length === 0) {
@@ -432,7 +444,7 @@ export class Resource<
       }),
     ]).chain((items) =>
       new Resource(this.dataset, restObject)
-        .toList({ graph: options?.graph })
+        .toList({ graph })
         .map((restItems) => items.concat(restItems)),
     );
   }
@@ -466,7 +478,7 @@ export class Resource<
   ): Resource.Values<Resource.TermValue> {
     return new DatasetObjectValues({
       focusResource: this,
-      graph: options?.graph ?? null,
+      graph: options?.graph ?? this.graph ?? null,
       predicate,
       unique: !!options?.unique,
     });
@@ -481,7 +493,7 @@ export class Resource<
   ): Resource.Values<Resource.IdentifierValue> {
     return new DatasetSubjectValues({
       focusResource: this,
-      graph: options?.graph ?? null,
+      graph: options?.graph ?? this.graph ?? null,
       predicate,
       unique: !!options?.unique,
     });

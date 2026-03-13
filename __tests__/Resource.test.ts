@@ -8,29 +8,79 @@ import { houseMdDataset } from "./houseMdDataset.js";
 import { testData } from "./testData.js";
 
 describe("Resource", () => {
-  const { literals, objects, predicate, subject } = testData;
+  const { graph, literals, objects, predicate, subject } = testData;
   const testResource = new Resource(datasetFactory.dataset(), subject);
   for (const object of Object.values(objects)) {
     testResource.add(predicate, object);
   }
 
-  it("add", () => {
-    const resource = new Resource(datasetFactory.dataset(), subject);
-    resource.add(predicate, objects["stringLiteral"]);
-    const values = [...resource.values(predicate)].map((value) =>
-      value.toTerm(),
-    );
-    expect(values).toHaveLength(1);
-    expect(values[0].equals(objects["stringLiteral"])).toBe(true);
+  describe("constructor", () => {
+    it("default graph", () => {
+      const dataset = datasetFactory.dataset();
+      const resource = new Resource(dataset, subject);
+      resource.add(predicate, literals.string);
+      expect(dataset.size).toStrictEqual(1);
+      expect(
+        [...dataset][0].equals(
+          dataFactory.quad(
+            subject,
+            predicate,
+            literals.string,
+            dataFactory.defaultGraph(),
+          ),
+        ),
+      ).toStrictEqual(true);
+    });
+
+    it("named graph", () => {
+      const dataset = datasetFactory.dataset();
+      const resource = new Resource(dataset, subject, { graph });
+      resource.add(predicate, literals.string);
+      expect(dataset.size).toStrictEqual(1);
+      expect(
+        [...dataset][0].equals(
+          dataFactory.quad(
+            subject,
+            predicate,
+            literals.string,
+            dataFactory.defaultGraph(),
+          ),
+        ),
+      ).toStrictEqual(false);
+      expect(
+        [...dataset][0].equals(
+          dataFactory.quad(subject, predicate, literals.string, graph),
+        ),
+      ).toStrictEqual(true);
+    });
+  });
+
+  describe("add", () => {
+    it("default graph", ({ expect }) => {
+      const resource = new Resource(datasetFactory.dataset(), subject);
+      resource.add(predicate, literals.string);
+      const values = [...resource.values(predicate)].map((value) =>
+        value.toTerm(),
+      );
+      expect(values).toHaveLength(1);
+      expect(values[0].equals(literals.string)).toBe(true);
+    });
+
+    it("named graph", ({ expect }) => {
+      const resource = new Resource(datasetFactory.dataset(), subject);
+      resource.add(predicate, literals.string, graph);
+      const values = [...resource.values(predicate, { graph })].map((value) =>
+        value.toTerm(),
+      );
+      expect(values).toHaveLength(1);
+      expect(values[0].equals(literals.string)).toBe(true);
+    });
   });
 
   describe("addList", () => {
     it("simple", () => {
       const resource = new Resource(datasetFactory.dataset(), subject);
-      resource.addList(predicate, [
-        objects["stringLiteral"],
-        objects["intLiteral"],
-      ]);
+      resource.addList(predicate, [literals.string, literals.int]);
       expect([...resource.values(predicate)]).toHaveLength(1);
       const list = resource
         .value(predicate)
@@ -41,10 +91,10 @@ describe("Resource", () => {
         .orDefault([]);
       expect(list).toHaveLength(2);
       expect(
-        list.some((element) => element.equals(objects["stringLiteral"])),
+        list.some((element) => element.equals(literals.string)),
       ).toStrictEqual(true);
       expect(
-        list.some((element) => element.equals(objects["intLiteral"])),
+        list.some((element) => element.equals(literals.int)),
       ).toStrictEqual(true);
     });
 
@@ -106,29 +156,28 @@ describe("Resource", () => {
   describe("delete", () => {
     it("one value", () => {
       const resource = new Resource(datasetFactory.dataset(), subject);
-      resource.add(predicate, objects["stringLiteral"]);
-      resource.add(predicate, objects["intLiteral"]);
+      resource.add(predicate, literals.string);
+      resource.add(predicate, literals.int);
       expect([...resource.values(predicate)]).toHaveLength(2);
-      resource.delete(predicate, objects["intLiteral"]);
+      resource.delete(predicate, literals.int);
       const values = [...resource.values(predicate)].map((value) =>
         value.toTerm(),
       );
       expect(values).toHaveLength(1);
-      expect(values[0].equals(objects["stringLiteral"])).toBe(true);
+      expect(values[0].equals(literals.string)).toBe(true);
     });
 
     it("all values", () => {
       const resource = new Resource(datasetFactory.dataset(), subject);
-      resource.add(predicate, objects["stringLiteral"]);
-      resource.add(predicate, objects["intLiteral"]);
+      resource.add(predicate, literals.string);
+      resource.add(predicate, literals.int);
       expect([...resource.values(predicate)]).toHaveLength(2);
       resource.delete(predicate);
       expect([...resource.values(predicate)]).toHaveLength(0);
     });
 
-    it("with explicit graph", ({ expect }) => {
+    it("named graph", ({ expect }) => {
       const testResource = new Resource(datasetFactory.dataset(), subject);
-      const graph = dataFactory.namedNode("http://example.com/graph");
       testResource.add(predicate, literals.string, graph);
       testResource.add(predicate, literals.string);
       testResource.add(predicate, literals.boolean); // In default graph
@@ -230,15 +279,15 @@ describe("Resource", () => {
 
   it("set", () => {
     const resource = new Resource(datasetFactory.dataset(), subject);
-    resource.add(predicate, objects["stringLiteral"]);
+    resource.add(predicate, literals.string);
     expect(resource.dataset.size).toStrictEqual(1);
-    resource.set(predicate, objects["intLiteral"]);
+    resource.set(predicate, literals.int);
     expect(resource.dataset.size).toStrictEqual(1);
     const values = [...resource.values(predicate)].map((value) =>
       value.toTerm(),
     );
     expect(values).toHaveLength(1);
-    expect(values[0].equals(objects["intLiteral"])).toBe(true);
+    expect(values[0].equals(literals.int)).toBe(true);
   });
 
   describe("toList", () => {
@@ -327,9 +376,8 @@ describe("Resource", () => {
       }
     });
 
-    it("with explicit graph", ({ expect }) => {
+    it("named graph", ({ expect }) => {
       const testResource = new Resource(datasetFactory.dataset(), subject);
-      const graph = dataFactory.namedNode("http://example.com/graph");
       testResource.add(predicate, literals.string, graph);
       testResource.add(predicate, literals.boolean); // In default graph
       testResource.add(
@@ -347,6 +395,23 @@ describe("Resource", () => {
       expect(actualValues[0].toTerm().equals(literals.string)).toStrictEqual(
         true,
       );
+    });
+
+    it("unique (default graph)", ({ expect }) => {
+      expect(
+        testResource.values(predicate, { unique: true }).toArray(),
+      ).toHaveLength(Object.values(objects).length);
+    });
+
+    it("unique (multiple graphs", ({ expect }) => {
+      // Same object, different graphs
+      const testResource = new Resource(datasetFactory.dataset(), subject);
+      testResource.add(predicate, literals.string);
+      testResource.add(predicate, literals.string, graph);
+      expect(testResource.values(predicate).toArray()).toHaveLength(2);
+      expect(
+        testResource.values(predicate, { unique: true }).toArray(),
+      ).toHaveLength(1);
     });
   });
 
