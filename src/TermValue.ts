@@ -1,4 +1,10 @@
-import type { BlankNode, Literal, NamedNode } from "@rdfjs/types";
+import type {
+  BlankNode,
+  Literal,
+  NamedNode,
+  Quad_Graph,
+  Variable,
+} from "@rdfjs/types";
 import { Either, Left } from "purify-ts";
 import { AbstractTermValue } from "./AbstractTermValue.js";
 import type { Identifier } from "./Identifier.js";
@@ -85,8 +91,12 @@ export class TermValue extends AbstractTermValue<
   /**
    * Try to convert the term to an RDF list.
    */
-  toList(): Either<ValueError, readonly TermValue[]> {
-    return this.toResource().chain((resource) => resource.toList());
+  toList(options?: {
+    graph?: Exclude<Quad_Graph, Variable>;
+  }): Either<ValueError, readonly TermValue[]> {
+    return this.toResource({ graph: options?.graph }).chain((resource) =>
+      resource.toList({ graph: options?.graph }),
+    );
   }
 
   /**
@@ -119,9 +129,15 @@ export class TermValue extends AbstractTermValue<
   /**
    * Try to convert the term to a resource (identified by a blank node or IRI).
    */
-  toResource(): Either<MistypedTermValueError, Resource> {
+  toResource(options?: {
+    graph?: Exclude<Quad_Graph, Variable>;
+  }): Either<MistypedTermValueError, Resource> {
     return this.toIdentifier().map(
-      (identifier) => new Resource(this.focusResource.dataset, identifier),
+      (identifier) =>
+        new Resource(this.focusResource.dataset, identifier, {
+          dataFactory: this.dataFactory,
+          graph: options?.graph,
+        }),
     );
   }
 

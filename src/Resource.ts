@@ -31,14 +31,19 @@ export class Resource<
   IdentifierT extends Resource.Identifier = Resource.Identifier,
 > {
   private readonly dataFactory: DataFactory;
+  private readonly graph?: Exclude<Quad_Graph, Variable>;
   private readonly literalFactory: LiteralFactory;
 
   constructor(
     readonly dataset: DatasetCore,
     readonly identifier: IdentifierT,
-    options?: { dataFactory?: DataFactory },
+    options?: {
+      dataFactory?: DataFactory;
+      graph?: Exclude<Quad_Graph, Variable>;
+    },
   ) {
     this.dataFactory = options?.dataFactory ?? DefaultDataFactory;
+    this.graph = options?.graph;
     this.literalFactory = new LiteralFactory({ dataFactory: this.dataFactory });
   }
 
@@ -52,7 +57,12 @@ export class Resource<
   ): this {
     for (const term of this.addableValuesToTerms(object)) {
       this.dataset.add(
-        this.dataFactory.quad(this.identifier, predicate, term, graph),
+        this.dataFactory.quad(
+          this.identifier,
+          predicate,
+          term,
+          graph ?? this.graph,
+        ),
       );
     }
     return this;
@@ -69,10 +79,13 @@ export class Resource<
     items: Iterable<AddableValue>,
     options?: Parameters<Resource["addListItems"]>[1],
   ): Resource {
+    const graph = options?.graph ?? this.graph;
+
     const itemsArray = [...items];
     if (itemsArray.length === 0) {
       return new Resource(this.dataset, rdf.nil, {
         dataFactory: this.dataFactory,
+        graph,
       });
     }
 
@@ -82,11 +95,11 @@ export class Resource<
     const listResource = new Resource(
       this.dataset,
       mintSubListIdentifier(itemsArray[0], 0),
-      { dataFactory: this.dataFactory },
+      { dataFactory: this.dataFactory, graph },
     );
     listResource.addListItems(itemsArray, { mintSubListIdentifier });
 
-    this.add(predicate, listResource.identifier);
+    this.add(predicate, listResource.identifier, graph);
 
     return listResource;
   }
@@ -107,7 +120,7 @@ export class Resource<
   ): this {
     const addSubListResourceValues =
       options?.addSubListResourceValues ?? (() => {});
-    const graph = options?.graph;
+    const graph = options?.graph ?? this.graph;
     const mintSubListIdentifier =
       options?.mintSubListIdentifier ?? (() => this.dataFactory.blankNode());
 
@@ -119,7 +132,7 @@ export class Resource<
         const newHead = new Resource(
           this.dataset,
           mintSubListIdentifier(item, itemIndex),
-          { dataFactory: this.dataFactory },
+          { dataFactory: this.dataFactory, graph },
         );
         addSubListResourceValues(newHead);
         currentHead.add(rdf.rest, newHead.identifier, graph);
@@ -149,14 +162,24 @@ export class Resource<
   ): this {
     if (!object) {
       for (const quad of [
-        ...this.dataset.match(this.identifier, predicate, null, graph),
+        ...this.dataset.match(
+          this.identifier,
+          predicate,
+          null,
+          graph ?? this.graph,
+        ),
       ]) {
         this.dataset.delete(quad);
       }
     } else {
       for (const term of this.addableValuesToTerms(object)) {
         for (const quad of [
-          ...this.dataset.match(this.identifier, predicate, term, graph),
+          ...this.dataset.match(
+            this.identifier,
+            predicate,
+            term,
+            graph ?? this.graph,
+          ),
         ]) {
           this.dataset.delete(quad);
         }
@@ -169,6 +192,7 @@ export class Resource<
     class_: NamedNode,
     options?: {
       excludeSubclasses?: boolean;
+      graph?: Exclude<Quad_Graph, Variable>;
       instanceOfPredicate?: NamedNode;
       subClassOfPredicate?: NamedNode;
     },
@@ -176,6 +200,7 @@ export class Resource<
     return isInstanceOfRecursive({
       class_,
       dataset: this.dataset,
+      graph: options?.graph ?? this.graph,
       instance: this.identifier,
       visitedClasses: new TermSet<NamedNode>(),
     });
@@ -183,11 +208,13 @@ export class Resource<
     function isInstanceOfRecursive({
       class_,
       dataset,
+      graph,
       instance,
       visitedClasses,
     }: {
       class_: NamedNode;
       dataset: DatasetCore;
+      graph: Exclude<Quad_Graph, Variable> | undefined;
       instance: BlankNode | NamedNode;
       visitedClasses: TermSet<NamedNode>;
     }): boolean {
@@ -195,6 +222,7 @@ export class Resource<
         instance,
         options?.instanceOfPredicate ?? rdf.type,
         class_,
+        graph,
       )) {
         return true;
       }
@@ -210,7 +238,7 @@ export class Resource<
         null,
         options?.subClassOfPredicate ?? rdfs.subClassOf,
         class_,
-        null,
+        graph,
       )) {
         if (quad.subject.termType !== "NamedNode") {
           continue;
@@ -222,6 +250,7 @@ export class Resource<
           isInstanceOfRecursive({
             class_: quad.subject,
             dataset,
+            graph,
             instance,
             visitedClasses,
           })
@@ -237,12 +266,14 @@ export class Resource<
   isSubClassOf(
     class_: NamedNode,
     options?: {
+      graph?: Exclude<Quad_Graph, Variable>;
       subClassOfPredicate?: NamedNode;
     },
   ): boolean {
     return isSubClassOfRecursive({
       class_,
       dataset: this.dataset,
+      graph: options?.graph ?? this.graph,
       thisIdentifier: this.identifier,
       visitedClasses: new TermSet<NamedNode>(),
     });
@@ -250,11 +281,13 @@ export class Resource<
     function isSubClassOfRecursive({
       class_,
       dataset,
+      graph,
       thisIdentifier,
       visitedClasses,
     }: {
       class_: NamedNode;
       dataset: DatasetCore;
+      graph: Exclude<Quad_Graph, Variable> | undefined;
       thisIdentifier: BlankNode | NamedNode;
       visitedClasses: TermSet<NamedNode>;
     }): boolean {
@@ -262,6 +295,7 @@ export class Resource<
         thisIdentifier,
         options?.subClassOfPredicate ?? rdfs.subClassOf,
         class_,
+        graph,
       )) {
         return true;
       }
@@ -273,7 +307,7 @@ export class Resource<
         null,
         options?.subClassOfPredicate ?? rdfs.subClassOf,
         class_,
-        null,
+        graph,
       )) {
         if (quad.subject.termType !== "NamedNode") {
           continue;
@@ -285,6 +319,7 @@ export class Resource<
           isSubClassOfRecursive({
             class_: quad.subject,
             dataset,
+            graph,
             thisIdentifier,
             visitedClasses,
           })
@@ -312,14 +347,18 @@ export class Resource<
   /**
    * Consider the resource itself as an RDF list.
    */
-  toList(): Either<Resource.ValueError, readonly Resource.TermValue[]> {
+  toList(options?: {
+    graph?: Exclude<Quad_Graph, Variable>;
+  }): Either<Resource.ValueError, readonly Resource.TermValue[]> {
     if (this.identifier.equals(rdf.nil)) {
       return Either.of([]);
     }
 
+    const graph = options?.graph ?? this.graph;
+
     const firstObjects = [
       ...new TermSet(
-        [...this.dataset.match(this.identifier, rdf.first, null)].map(
+        [...this.dataset.match(this.identifier, rdf.first, null, graph)].map(
           (quad) => quad.object,
         ),
       ),
@@ -361,7 +400,7 @@ export class Resource<
 
     const restObjects = [
       ...new TermSet(
-        [...this.dataset.match(this.identifier, rdf.rest, null)].map(
+        [...this.dataset.match(this.identifier, rdf.rest, null, graph)].map(
           (quad) => quad.object,
         ),
       ),
@@ -402,13 +441,17 @@ export class Resource<
 
     return Either.of<Resource.ValueError, readonly Resource.TermValue[]>([
       new Resource.TermValue({
+        dataFactory: this.dataFactory,
         focusResource: this,
         predicate: rdf.first,
         term: firstObject,
       }),
     ]).chain((items) =>
-      new Resource(this.dataset, restObject)
-        .toList()
+      new Resource(this.dataset, restObject, {
+        dataFactory: this.dataFactory,
+        graph,
+      })
+        .toList({ graph })
         .map((restItems) => items.concat(restItems)),
     );
   }
@@ -416,8 +459,11 @@ export class Resource<
   /**
    * Get the first matching value of dataset statements (this.identifier, predicate, value).
    */
-  value(predicate: NamedNode): Either<Resource.ValueError, Resource.TermValue> {
-    return this.values(predicate).head();
+  value(
+    predicate: NamedNode,
+    options?: { graph?: Exclude<Quad_Graph, Variable> },
+  ): Either<Resource.ValueError, Resource.TermValue> {
+    return this.values(predicate, options).head();
   }
 
   /**
@@ -425,8 +471,9 @@ export class Resource<
    */
   valueOf(
     predicate: NamedNode,
+    options?: { graph?: Exclude<Quad_Graph, Variable> },
   ): Either<Resource.ValueError, Resource.IdentifierValue> {
-    return this.valuesOf(predicate).head();
+    return this.valuesOf(predicate, options).head();
   }
 
   /**
@@ -434,10 +481,12 @@ export class Resource<
    */
   values(
     predicate: NamedNode,
-    options?: { unique?: boolean },
+    options?: { graph?: Exclude<Quad_Graph, Variable>; unique?: boolean },
   ): Resource.Values<Resource.TermValue> {
     return new DatasetObjectValues({
+      dataFactory: this.dataFactory,
       focusResource: this,
+      graph: options?.graph ?? this.graph ?? null,
       predicate,
       unique: !!options?.unique,
     });
@@ -448,10 +497,12 @@ export class Resource<
    */
   valuesOf(
     predicate: NamedNode,
-    options?: { unique: true },
+    options?: { graph?: Exclude<Quad_Graph, Variable>; unique?: boolean },
   ): Resource.Values<Resource.IdentifierValue> {
     return new DatasetSubjectValues({
+      dataFactory: this.dataFactory,
       focusResource: this,
+      graph: options?.graph ?? this.graph ?? null,
       predicate,
       unique: !!options?.unique,
     });

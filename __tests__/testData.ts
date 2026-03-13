@@ -62,7 +62,7 @@ const literals = {
 
   // NOTATION (rarely used)
   notation: DataFactory.literal("notationName", xsd.NOTATION),
-};
+} as const;
 
 const objects: Record<string, Exclude<Quad_Object, Quad | Variable>> = {
   blankNode: DataFactory.blankNode(),
@@ -72,10 +72,12 @@ for (const [key, literal] of Object.entries(literals)) {
   objects[`${key}Literal`] = literal;
 }
 
+const graph = DataFactory.namedNode("http://example.com/graph");
 const predicate = DataFactory.namedNode("http://example.com/predicate");
 const subject = DataFactory.namedNode("http://example.com/subject");
 
 export const testData = {
+  graph,
   literals,
   objects,
   predicate,

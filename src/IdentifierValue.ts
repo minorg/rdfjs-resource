@@ -1,3 +1,4 @@
+import type { Quad_Graph, Variable } from "@rdfjs/types";
 import { AbstractTermValue } from "./AbstractTermValue.js";
 import type { Identifier } from "./Identifier.js";
 import { Resource } from "./Resource.js";
@@ -10,7 +11,10 @@ export class IdentifierValue extends AbstractTermValue<Identifier> {
     return this.term;
   }
 
-  toResource(): Resource {
-    return new Resource(this.focusResource.dataset, this.term);
+  toResource(options?: { graph?: Exclude<Quad_Graph, Variable> }): Resource {
+    return new Resource(this.focusResource.dataset, this.term, {
+      dataFactory: this.dataFactory,
+      graph: options?.graph,
+    });
   }
 }
