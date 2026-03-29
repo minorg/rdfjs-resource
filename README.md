@@ -17,7 +17,7 @@ npm i rdfjs-resource
 ### Wrap an RDF/JS `BlankNode` or `NamedNode` in a `Resource`
 
 ```
-const resource = new Resource({ dataset: theDataset, identifier: theNode });
+const resource = new Resource(dataset, identifier);
 ```
 
 ### Retrieve a value (object) of the `Resource`
@@ -32,34 +32,11 @@ const value = resource.value(rdf.type).toNumber().orDefault(0);
 
 See the `Resource.test.ts` for additional usage.
 
-### `MutableResource`
-
-`Resource` instances are immutable. To create a mutable resource, you have to supply an [RDF/JS DataFactory](https://rdf.js.org/data-model-spec/) as well as a graph identifier (`BlankNode | DefaultGraph | NamedNode`) to add/delete quads to/from in the supplied `DatasetCore`.
-
-```
-import { rdf } from "@tpluscode/rdf-ns-builders";
-
-const mutableResource = new MutableResource({
-  dataFactory: DataFactory,
-  dataset,
-  identifier: DataFactory.namedNode("http://example.com/subject"),
-  mutateGraph: DataFactory.defaultGraph(),
-});
-
-mutableResource.add(rdf.type, rdf.Resource);
-```
-
 ### `ResourceSet`
 
 For convenience, you can wrap a `DatasetCore` in a `ResourceSet`, then instantiate `Resource`s from that:
 
 ```
-const resourceSet = new ResourceSet({ dataset });
+const resourceSet = new ResourceSet(dataset);
 resourceSet.resource(identifier).value(rdf.type);
 ```
-
-### Named `Resource`
-
-`Resource` and `MutableResource` take a type parameter for the `identifier` specified in the resource's constructor. The parameter defaults to `BlankNode | NamedNode`.
-
-It's often useful to only deal in named resources (`Resource<NamedNode>`). The `ResourceSet` abstraction provides a `namedResource` factory method for convenience. `MutableResourceSet` provides a similar `namedMutableResource` factory method.
