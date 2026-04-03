@@ -1,37 +1,40 @@
+import dataFactory from "@rdfjs/data-model";
+import datasetFactory from "@rdfjs/dataset";
 import type { NamedNode, Quad_Graph, Variable } from "@rdfjs/types";
-import { sh } from "@tpluscode/rdf-ns-builders";
 
 import { Either, Left } from "purify-ts";
 import { Resource } from "./Resource.js";
+import { ResourceSet } from "./ResourceSet.js";
+import { sh } from "./vocabularies.js";
 
-export interface AlternativePath {
+interface AlternativePath {
   readonly termType: "AlternativePath";
   readonly members: readonly PropertyPath[];
 }
 
-export interface InversePath {
+interface InversePath {
   readonly termType: "InversePath";
   readonly path: PropertyPath;
 }
 
-export interface OneOrMorePath {
+interface OneOrMorePath {
   readonly termType: "OneOrMorePath";
   readonly path: PropertyPath;
 }
 
 export type PredicatePath = NamedNode;
 
-export interface SequencePath {
+interface SequencePath {
   readonly termType: "SequencePath";
   readonly members: readonly PropertyPath[];
 }
 
-export interface ZeroOrMorePath {
+interface ZeroOrMorePath {
   readonly termType: "ZeroOrMorePath";
   readonly path: PropertyPath;
 }
 
-export interface ZeroOrOnePath {
+interface ZeroOrOnePath {
   readonly termType: "ZeroOrOnePath";
   readonly path: PropertyPath;
 }
@@ -169,15 +172,63 @@ export namespace PropertyPath {
     return true;
   }
 
-  export function isPropertyPath(): boolean {
-    return false;
-  }
-
   export function $toRdf(
-    _propertyPath: PropertyPath,
-    _options?: any,
+    propertyPath: PropertyPath,
+    options?: {
+      graph?: Exclude<Quad_Graph, Variable>;
+      resourceSet?: ResourceSet;
+    },
   ): Resource {
-    throw new Error("not implemented");
+    const graph = options?.graph;
+    const resourceSet =
+      options?.resourceSet ??
+      new ResourceSet(datasetFactory.dataset(), { dataFactory: dataFactory });
+
+    if (propertyPath.termType === "NamedNode") {
+      return resourceSet.resource(propertyPath);
+    }
+
+    const resource = resourceSet.resource(dataFactory.blankNode());
+
+    switch (propertyPath.termType) {
+      case "AlternativePath":
+      case "SequencePath": {
+        const members = propertyPath.members.map(
+          (member) =>
+            PropertyPath.$toRdf(member, { graph, resourceSet }).identifier,
+        );
+        if (propertyPath.termType === "AlternativePath") {
+          resource.addList(sh.alternativePath, members, { graph });
+        } else {
+          resource.addListItems(members, { graph });
+        }
+        return resource;
+      }
+    }
+
+    let predicate: NamedNode;
+    switch (propertyPath.termType) {
+      case "InversePath":
+        predicate = sh.inversePath;
+        break;
+      case "OneOrMorePath":
+        predicate = sh.oneOrMorePath;
+        break;
+      case "ZeroOrMorePath":
+        predicate = sh.zeroOrMorePath;
+        break;
+      case "ZeroOrOnePath":
+        predicate = sh.zeroOrOnePath;
+        break;
+    }
+
+    resource.add(
+      predicate,
+      PropertyPath.$toRdf(propertyPath.path, { graph, resourceSet }).identifier,
+      graph,
+    );
+
+    return resource;
   }
 
   export const $schema = {};
