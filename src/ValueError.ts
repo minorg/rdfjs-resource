@@ -1,17 +1,17 @@
-import type { NamedNode } from "@rdfjs/types";
+import type { PropertyPath } from "./PropertyPath.js";
 import type { Resource } from "./Resource.js";
 
 export abstract class ValueError extends Error {
   readonly focusResource: Resource;
-  readonly predicate: NamedNode;
+  readonly propertyPath: PropertyPath;
 
   constructor({
     focusResource,
     message,
-    predicate,
-  }: { focusResource: Resource; message: string; predicate: NamedNode }) {
+    propertyPath,
+  }: { focusResource: Resource; message: string; propertyPath: PropertyPath }) {
     super(message);
     this.focusResource = focusResource;
-    this.predicate = predicate;
+    this.propertyPath = propertyPath;
   }
 }

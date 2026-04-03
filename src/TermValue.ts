@@ -153,7 +153,7 @@ export class TermValue extends AbstractTermValue<
   toValues(): Values<TermValue> {
     return Values.fromValue({
       focusResource: this.focusResource,
-      predicate: this.predicate,
+      propertyPath: this.propertyPath,
       value: this,
     });
   }

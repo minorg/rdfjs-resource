@@ -6,7 +6,7 @@ import { TermValue } from "./TermValue.js";
 /**
  * Private implementation of Values that iterates over a DatasetCore.
  *
- * Instances of this class are returned from value/values, so focusResource is the subject of the predicate and we're looking for objects.
+ * Instances of this class are returned from value/values, so focusResource is the subject of the propertyPath and we're looking for objects.
  */
 export class DatasetObjectValues extends DatasetValues<TermValue> {
   override get length(): number {
@@ -27,7 +27,7 @@ export class DatasetObjectValues extends DatasetValues<TermValue> {
         yield new TermValue({
           dataFactory: this.dataFactory,
           focusResource: this.focusResource,
-          predicate: this.predicate,
+          propertyPath: this.propertyPath,
           term: nonUniqueTerm,
         });
         uniqueTerms.add(nonUniqueTerm);
@@ -37,7 +37,7 @@ export class DatasetObjectValues extends DatasetValues<TermValue> {
         yield new TermValue({
           dataFactory: this.dataFactory,
           focusResource: this.focusResource,
-          predicate: this.predicate,
+          propertyPath: this.propertyPath,
           term: nonUniqueTerm,
         });
       }
@@ -48,7 +48,7 @@ export class DatasetObjectValues extends DatasetValues<TermValue> {
     // if (this.inverse) {
     //   for (const quad of this.focusdataset.match(
     //     null,
-    //     this.predicate,
+    //     this.propertyPath,
     //     this.focusidentifier,
     //   )) {
     //     switch (quad.subject.termType) {
@@ -60,7 +60,7 @@ export class DatasetObjectValues extends DatasetValues<TermValue> {
     // } else {
     for (const quad of this.focusResource.dataset.match(
       this.focusResource.identifier,
-      this.predicate,
+      this.propertyPath,
       null,
       this.graph,
     )) {

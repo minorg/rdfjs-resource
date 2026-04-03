@@ -366,7 +366,7 @@ export class Resource<
         new Resource.ListStructureError({
           focusResource: this,
           message: "list has no rdf:first statements",
-          predicate: rdf.first,
+          propertyPath: rdf.first,
         }),
       );
     }
@@ -375,7 +375,7 @@ export class Resource<
         new Resource.ListStructureError({
           focusResource: this,
           message: "list has multiple rdf:first statements",
-          predicate: rdf.first,
+          propertyPath: rdf.first,
         }),
       );
     }
@@ -391,7 +391,7 @@ export class Resource<
             actualValue: firstObject,
             expectedValueType: "BlankNode | Literal | NamedNode",
             focusResource: this,
-            predicate: rdf.first,
+            propertyPath: rdf.first,
           }),
         );
     }
@@ -408,7 +408,7 @@ export class Resource<
         new Resource.ListStructureError({
           focusResource: this,
           message: "list has no rdf:rest statements",
-          predicate: rdf.rest,
+          propertyPath: rdf.rest,
         }),
       );
     }
@@ -417,7 +417,7 @@ export class Resource<
         new Resource.ListStructureError({
           focusResource: this,
           message: "list has multiple rdf:rest statements",
-          predicate: rdf.rest,
+          propertyPath: rdf.rest,
         }),
       );
     }
@@ -432,7 +432,7 @@ export class Resource<
             actualValue: restObject,
             expectedValueType: "BlankNode | NamedNode",
             focusResource: this,
-            predicate: rdf.rest,
+            propertyPath: rdf.rest,
           }),
         );
     }
@@ -441,7 +441,7 @@ export class Resource<
       new Resource.TermValue({
         dataFactory: this.dataFactory,
         focusResource: this,
-        predicate: rdf.first,
+        propertyPath: rdf.first,
         term: firstObject,
       }),
     ]).chain((items) =>
@@ -484,7 +484,7 @@ export class Resource<
       dataFactory: this.dataFactory,
       focusResource: this,
       graph: options?.graph ?? this.graph ?? null,
-      predicate,
+      propertyPath: predicate,
       unique: !!options?.unique,
     });
   }
@@ -500,7 +500,7 @@ export class Resource<
       dataFactory: this.dataFactory,
       focusResource: this,
       graph: options?.graph ?? this.graph ?? null,
-      predicate,
+      propertyPath: predicate,
       unique: !!options?.unique,
     });
   }

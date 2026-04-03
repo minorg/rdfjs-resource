@@ -1,20 +1,20 @@
-import type { NamedNode } from "@rdfjs/types";
 import { Identifier } from "./Identifier.js";
+import { PropertyPath } from "./PropertyPath.js";
 import type { Resource } from "./Resource.js";
 import { ValueError } from "./ValueError.js";
 
 export class MissingValueError extends ValueError {
   constructor({
     focusResource,
-    predicate,
+    propertyPath,
   }: {
     focusResource: Resource;
-    predicate: NamedNode;
+    propertyPath: PropertyPath;
   }) {
     super({
       focusResource,
-      message: `${Identifier.toString(focusResource.identifier)} missing ${predicate.value}`,
-      predicate,
+      message: `${Identifier.toString(focusResource.identifier)} missing ${PropertyPath.$toString(propertyPath)}`,
+      propertyPath,
     });
   }
 }

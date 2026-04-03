@@ -22,7 +22,7 @@ interface OneOrMorePath {
   readonly path: PropertyPath;
 }
 
-export type PredicatePath = NamedNode;
+type PredicatePath = NamedNode;
 
 interface SequencePath {
   readonly termType: "SequencePath";
@@ -172,6 +172,21 @@ export namespace PropertyPath {
     return true;
   }
 
+  export function $toString(propertyPath: PropertyPath): string {
+    switch (propertyPath.termType) {
+      case "AlternativePath":
+      case "SequencePath":
+        return `${propertyPath.termType}([${propertyPath.members.map(PropertyPath.toString).join(", ")}])`;
+      case "InversePath":
+      case "OneOrMorePath":
+      case "ZeroOrMorePath":
+      case "ZeroOrOnePath":
+        return `${propertyPath.termType}(${PropertyPath.$toString(propertyPath.path)})`;
+      case "NamedNode":
+        return `PredicatePath(${propertyPath.value})`;
+    }
+  }
+
   export function $toRdf(
     propertyPath: PropertyPath,
     options?: {
@@ -230,6 +245,4 @@ export namespace PropertyPath {
 
     return resource;
   }
-
-  export const $schema = {};
 }

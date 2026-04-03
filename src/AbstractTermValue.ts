@@ -1,6 +1,7 @@
 import type { BlankNode, DataFactory, Literal, NamedNode } from "@rdfjs/types";
 import { Either, Left } from "purify-ts";
 import { MistypedTermValueError } from "./MistypedTermValueError.js";
+import type { PropertyPath } from "./PropertyPath.js";
 import { Resource } from "./Resource.js";
 
 export abstract class AbstractTermValue<
@@ -8,23 +9,23 @@ export abstract class AbstractTermValue<
 > {
   protected readonly dataFactory: DataFactory;
   protected readonly focusResource: Resource;
-  protected readonly predicate: NamedNode;
+  protected readonly propertyPath: PropertyPath;
   protected readonly term: TermT;
 
   constructor({
     dataFactory,
     focusResource,
-    predicate,
+    propertyPath,
     term,
   }: {
     dataFactory: DataFactory;
     focusResource: Resource;
-    predicate: NamedNode;
+    propertyPath: PropertyPath;
     term: TermT;
   }) {
     this.dataFactory = dataFactory;
     this.focusResource = focusResource;
-    this.predicate = predicate;
+    this.propertyPath = propertyPath;
     this.term = term;
   }
 
@@ -73,7 +74,7 @@ export abstract class AbstractTermValue<
       actualValue: this.term,
       expectedValueType,
       focusResource: this.focusResource,
-      predicate: this.predicate,
+      propertyPath: this.propertyPath,
     });
   }
 }

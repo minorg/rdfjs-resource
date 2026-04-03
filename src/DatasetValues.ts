@@ -16,16 +16,16 @@ export abstract class DatasetValues<ValueT> extends Values<ValueT> {
     dataFactory,
     focusResource,
     graph,
-    predicate,
+    propertyPath,
     unique,
   }: {
     dataFactory: DataFactory;
     focusResource: Resource;
     graph: Exclude<Quad_Graph, Variable> | null;
-    predicate: NamedNode;
+    propertyPath: NamedNode;
     unique: boolean;
   }) {
-    super({ focusResource, predicate });
+    super({ focusResource, propertyPath });
     this.dataFactory = dataFactory;
     this.graph = graph;
     this.unique = unique;

@@ -6,6 +6,7 @@ import type {
   Variable,
 } from "@rdfjs/types";
 import { Identifier } from "./Identifier.js";
+import { PropertyPath } from "./PropertyPath.js";
 import type { Resource } from "./Resource.js";
 import { ValueError } from "./ValueError.js";
 
@@ -17,17 +18,17 @@ export class MistypedTermValueError extends ValueError {
     actualValue,
     expectedValueType,
     focusResource,
-    predicate,
+    propertyPath,
   }: {
     actualValue: BlankNode | Literal | NamedNode | Quad | Variable;
     expectedValueType: string;
     focusResource: Resource;
-    predicate: NamedNode;
+    propertyPath: PropertyPath;
   }) {
     super({
       focusResource,
-      message: `expected ${Identifier.toString(focusResource.identifier)} ${predicate.value} to be a ${expectedValueType}, was ${actualValue.termType}`,
-      predicate,
+      message: `expected ${Identifier.toString(focusResource.identifier)} ${PropertyPath.$toString(propertyPath)} to be a ${expectedValueType}, was ${actualValue.termType}`,
+      propertyPath,
     });
     this.actualValue = actualValue;
     this.expectedValueType = expectedValueType;

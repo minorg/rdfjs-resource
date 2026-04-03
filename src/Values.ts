@@ -1,8 +1,7 @@
-import type { NamedNode } from "@rdfjs/types";
-
 import { Either, Left } from "purify-ts";
 
 import { MissingValueError } from "./MissingValueError.js";
+import type { PropertyPath } from "./PropertyPath.js";
 import type { Resource } from "./Resource.js";
 import type { ValueError } from "./ValueError.js";
 
@@ -11,27 +10,27 @@ import type { ValueError } from "./ValueError.js";
  *
  * Resource.values and .valuesOf return instances of this class instead of a simple array of values in order to
  * (1) preserve the focus resource that .values/.valuesOf was invoked on, in case of errors
- * (2) preserve the predicate that .values/.valuesOf was invoked with, in case of errors
+ * (2) preserve the propertyPath that .values/.valuesOf was invoked with, in case of errors
  * (3) return purify types from methods like .find instead of null or undefined
  * (4) add some methods that aren't on arrays, like .chainMap and .head
  *
  * The class doesn't try to implement the entire Array interface. Methods are added as needed by downstream code.
  */
 export abstract class Values<ValueT> implements Iterable<ValueT> {
-  protected readonly focusResource: Resource;
-  protected readonly predicate: NamedNode;
+  readonly focusResource: Resource;
+  readonly propertyPath: PropertyPath;
 
   abstract readonly length: number;
 
   protected constructor({
     focusResource,
-    predicate,
+    propertyPath,
   }: {
     focusResource: Resource;
-    predicate: NamedNode;
+    propertyPath: PropertyPath;
   }) {
     this.focusResource = focusResource;
-    this.predicate = predicate;
+    this.propertyPath = propertyPath;
   }
 
   /**
@@ -39,7 +38,7 @@ export abstract class Values<ValueT> implements Iterable<ValueT> {
    */
   static fromArray<ValueT>(parameters: {
     focusResource: Resource;
-    predicate: NamedNode;
+    propertyPath: PropertyPath;
     values: readonly ValueT[];
   }): Values<ValueT> {
     return new ArrayValues(parameters);
@@ -50,7 +49,7 @@ export abstract class Values<ValueT> implements Iterable<ValueT> {
    */
   static fromValue<ValueT>(parameters: {
     focusResource: Resource;
-    predicate: NamedNode;
+    propertyPath: PropertyPath;
     value: ValueT;
   }) {
     return new SingletonValues(parameters);
@@ -83,8 +82,8 @@ export abstract class Values<ValueT> implements Iterable<ValueT> {
     return Either.of(
       Values.fromArray({
         focusResource: this.focusResource,
+        propertyPath: this.propertyPath,
         values: newValues,
-        predicate: this.predicate,
       }),
     );
   }
@@ -95,7 +94,7 @@ export abstract class Values<ValueT> implements Iterable<ValueT> {
   concat(...values: readonly ValueT[]): Values<ValueT> {
     return Values.fromArray({
       focusResource: this.focusResource,
-      predicate: this.predicate,
+      propertyPath: this.propertyPath,
       values: this.toArray().concat(...values),
     });
   }
@@ -103,33 +102,35 @@ export abstract class Values<ValueT> implements Iterable<ValueT> {
   /**
    * Filter the values, returning a new Values instance.
    */
-  filter(predicate: (value: ValueT, index: number) => boolean): Values<ValueT> {
+  filter(
+    propertyPath: (value: ValueT, index: number) => boolean,
+  ): Values<ValueT> {
     const filteredValues: ValueT[] = [];
     let valueI = 0;
     for (const value of this) {
-      if (predicate(value, valueI)) {
+      if (propertyPath(value, valueI)) {
         filteredValues.push(value);
       }
       valueI++;
     }
     return Values.fromArray({
       focusResource: this.focusResource,
-      predicate: this.predicate,
+      propertyPath: this.propertyPath,
       values: filteredValues,
     });
   }
 
   /**
-   * Find a value that satisfies the given predicate.
+   * Find a value that satisfies the given propertyPath.
    *
-   * Return Right if a value satisfies the predicate, otherwise Left.
+   * Return Right if a value satisfies the propertyPath, otherwise Left.
    */
   find(
-    predicate: (value: ValueT, index: number) => boolean,
+    propertyPath: (value: ValueT, index: number) => boolean,
   ): Either<MissingValueError, ValueT> {
     let valueI = 0;
     for (const value of this) {
-      if (predicate(value, valueI)) {
+      if (propertyPath(value, valueI)) {
         return Either.of(value);
       }
       valueI++;
@@ -137,7 +138,7 @@ export abstract class Values<ValueT> implements Iterable<ValueT> {
     return Left(
       new MissingValueError({
         focusResource: this.focusResource,
-        predicate: this.predicate,
+        propertyPath: this.propertyPath,
       }),
     );
   }
@@ -150,7 +151,7 @@ export abstract class Values<ValueT> implements Iterable<ValueT> {
   flat<NewValueT>(): Values<NewValueT> {
     return Values.fromArray<NewValueT>({
       focusResource: this.focusResource,
-      predicate: this.predicate,
+      propertyPath: this.propertyPath,
       values: this.toArray().flat() as readonly NewValueT[],
     });
   }
@@ -169,7 +170,7 @@ export abstract class Values<ValueT> implements Iterable<ValueT> {
     }
     return Values.fromArray({
       focusResource: this.focusResource,
-      predicate: this.predicate,
+      propertyPath: this.propertyPath,
       values: newValues,
     });
   }
@@ -184,7 +185,7 @@ export abstract class Values<ValueT> implements Iterable<ValueT> {
     return Left(
       new MissingValueError({
         focusResource: this.focusResource,
-        predicate: this.predicate,
+        propertyPath: this.propertyPath,
       }),
     );
   }
@@ -203,7 +204,7 @@ export abstract class Values<ValueT> implements Iterable<ValueT> {
     }
     return Values.fromArray({
       focusResource: this.focusResource,
-      predicate: this.predicate,
+      propertyPath: this.propertyPath,
       values: newValues,
     });
   }
@@ -227,7 +228,7 @@ class ArrayValues<ValueT> extends Values<ValueT> {
     ...superParameters
   }: {
     focusResource: Resource;
-    predicate: NamedNode;
+    propertyPath: PropertyPath;
     values: readonly ValueT[];
   }) {
     super(superParameters);
@@ -260,7 +261,7 @@ class SingletonValues<ValueT> extends Values<ValueT> {
   constructor({
     value,
     ...superParameters
-  }: { focusResource: Resource; value: ValueT; predicate: NamedNode }) {
+  }: { focusResource: Resource; propertyPath: PropertyPath; value: ValueT }) {
     super(superParameters);
     this.value = value;
   }

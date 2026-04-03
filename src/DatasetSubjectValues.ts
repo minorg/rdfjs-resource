@@ -6,7 +6,7 @@ import { IdentifierValue } from "./IdentifierValue.js";
 /**
  * Implementation of Values that iterates over a DatasetCore.
  *
- * Instances of this class are returned from valueOf/valuesOf, so focusResource is the object of the predicate and we're looking for subjects.
+ * Instances of this class are returned from valueOf/valuesOf, so focusResource is the object of the propertyPath and we're looking for subjects.
  */
 export class DatasetSubjectValues extends DatasetValues<IdentifierValue> {
   override *[Symbol.iterator](): Iterator<IdentifierValue> {
@@ -19,7 +19,7 @@ export class DatasetSubjectValues extends DatasetValues<IdentifierValue> {
         yield new IdentifierValue({
           dataFactory: this.dataFactory,
           focusResource: this.focusResource,
-          predicate: this.predicate,
+          propertyPath: this.propertyPath,
           term: nonUniqueIdentifier,
         });
         uniqueIdentifiers.add(nonUniqueIdentifier);
@@ -29,7 +29,7 @@ export class DatasetSubjectValues extends DatasetValues<IdentifierValue> {
         yield new IdentifierValue({
           dataFactory: this.dataFactory,
           focusResource: this.focusResource,
-          predicate: this.predicate,
+          propertyPath: this.propertyPath,
           term: nonUniqueIdentifier,
         });
       }
@@ -39,7 +39,7 @@ export class DatasetSubjectValues extends DatasetValues<IdentifierValue> {
   private *nonUniqueIdentifierIterator(): Generator<BlankNode | NamedNode> {
     for (const quad of this.focusResource.dataset.match(
       null,
-      this.predicate,
+      this.propertyPath,
       this.focusResource.identifier,
       this.graph,
     )) {
