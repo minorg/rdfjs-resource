@@ -11,14 +11,13 @@ import type {
 } from "@rdfjs/types";
 
 import { Either, Left } from "purify-ts";
-import { DatasetObjectValues } from "./DatasetObjectValues.js";
-import { DatasetSubjectValues } from "./DatasetSubjectValues.js";
+import { DatasetValues } from "./DatasetValues.js";
 import { Identifier as _Identifier } from "./Identifier.js";
-import { IdentifierValue as _IdentifierValue } from "./IdentifierValue.js";
 import { ListStructureError as _ListStructureError } from "./ListStructureError.js";
 import { LiteralFactory } from "./LiteralFactory.js";
 import { MistypedTermValueError as _MistypedTermValueError } from "./MistypedTermValueError.js";
 import type { Primitive } from "./Primitive.js";
+import type { PropertyPath } from "./PropertyPath.js";
 import { TermValue as _TermValue } from "./TermValue.js";
 import { ValueError as _ValueError } from "./ValueError.js";
 import { Values as _Values } from "./Values.js";
@@ -454,53 +453,27 @@ export class Resource<
   }
 
   /**
-   * Get the first matching value of dataset statements (this.identifier, predicate, value).
+   * Get the first matching value for the property path.
    */
   value(
-    predicate: NamedNode,
+    propertyPath: PropertyPath,
     options?: { graph?: Exclude<Quad_Graph, Variable> },
   ): Either<Resource.ValueError, Resource.TermValue> {
-    return this.values(predicate, options).head();
+    return this.values(propertyPath, options).head();
   }
 
   /**
-   * Get the first matching subject of dataset statements (subject, predicate, this.identifier).
-   */
-  valueOf(
-    predicate: NamedNode,
-    options?: { graph?: Exclude<Quad_Graph, Variable> },
-  ): Either<Resource.ValueError, Resource.IdentifierValue> {
-    return this.valuesOf(predicate, options).head();
-  }
-
-  /**
-   * Get all values of dataset statements (this.identifier, predicate, value).
+   * Get all values for the property path.
    */
   values(
-    predicate: NamedNode,
+    propertyPath: PropertyPath,
     options?: { graph?: Exclude<Quad_Graph, Variable>; unique?: boolean },
   ): Resource.Values<Resource.TermValue> {
-    return new DatasetObjectValues({
+    return new DatasetValues({
       dataFactory: this.dataFactory,
       focusResource: this,
       graph: options?.graph ?? this.graph ?? null,
-      propertyPath: predicate,
-      unique: !!options?.unique,
-    });
-  }
-
-  /**
-   * Get the subject of dataset statements (subject, predicate, this.identifier).
-   */
-  valuesOf(
-    predicate: NamedNode,
-    options?: { graph?: Exclude<Quad_Graph, Variable>; unique?: boolean },
-  ): Resource.Values<Resource.IdentifierValue> {
-    return new DatasetSubjectValues({
-      dataFactory: this.dataFactory,
-      focusResource: this,
-      graph: options?.graph ?? this.graph ?? null,
-      propertyPath: predicate,
+      propertyPath,
       unique: !!options?.unique,
     });
   }
@@ -537,8 +510,6 @@ type AddableValue = BlankNode | Literal | NamedNode | Exclude<Primitive, Date>;
 export namespace Resource {
   export type Identifier = _Identifier;
   export const Identifier = _Identifier;
-  export type IdentifierValue = _IdentifierValue;
-  export const IdentifierValue = _IdentifierValue;
   export type ListStructureError = _ListStructureError;
   export const ListStructureError = _ListStructureError;
   export type MistypedTermValueError = _MistypedTermValueError;
