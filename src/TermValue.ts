@@ -128,15 +128,9 @@ export class TermValue<TermT extends Term = Term> extends Value<TermT> {
   toList(options?: {
     graph?: Exclude<Quad_Graph, Variable>;
   }): Either<ValueError, Values<Term>> {
-    return this.toResource()
-      .chain((resource) => resource.toList({ graph: options?.graph }))
-      .chain((list) =>
-        Values.fromArray({
-          focusResource: this.focusResource,
-          propertyPath: this.propertyPath,
-          values: list,
-        }),
-      );
+    return this.toResource().chain((resource) =>
+      resource.toList({ graph: options?.graph }),
+    );
   }
 
   /**
@@ -202,7 +196,7 @@ export class TermValue<TermT extends Term = Term> extends Value<TermT> {
   /**
    * Convert this value into a singleton sequence of values.
    */
-  toValues(): Values<Value<TermT>> {
+  toValues(): Values<TermT> {
     return Values.fromValue({
       focusResource: this.focusResource,
       propertyPath: this.propertyPath,

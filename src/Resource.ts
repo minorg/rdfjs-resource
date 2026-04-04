@@ -1,10 +1,8 @@
 import DefaultDataFactory from "@rdfjs/data-model";
 import TermSet from "@rdfjs/term-set";
 import type {
-  BlankNode,
   DataFactory,
   DatasetCore,
-  Literal,
   NamedNode,
   Quad_Graph,
   Variable,
@@ -444,19 +442,19 @@ export class Resource<
         );
     }
 
-    return Either.of<Resource.ValueError, Resource.Values<Term>[]>([
+    return Either.of<Resource.ValueError, Resource.Values<Term>>(
       new TermValue({
         dataFactory: this.dataFactory,
         focusResource: this,
         propertyPath: rdf.first,
         value: firstObject,
-      }),
-    ]).chain((items) =>
+      }).toValues(),
+    ).chain((items) =>
       new Resource(this.dataset, restObject, {
         dataFactory: this.dataFactory,
       })
         .toList({ graph })
-        .map((restItems) => items.concat(restItems)),
+        .map((restItems) => items.concat(...restItems)),
     );
   }
 

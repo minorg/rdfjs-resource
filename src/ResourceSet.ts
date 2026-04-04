@@ -1,7 +1,6 @@
 import DefaultDataFactory from "@rdfjs/data-model";
 import TermSet from "@rdfjs/term-set";
 import type {
-  BlankNode,
   DataFactory,
   DatasetCore,
   NamedNode,

@@ -62,10 +62,10 @@ export abstract class Values<T> implements Iterable<Value<T>> {
   /**
    * Create a Values instance from a single value.
    */
-  static fromValue<ValueT extends Value<unknown>>(parameters: {
+  static fromValue<T>(parameters: {
     focusResource: Resource;
     propertyPath: PropertyPath;
-    value: ValueT;
+    value: Value<T>;
   }) {
     return new SingletonValues(parameters);
   }
@@ -103,16 +103,16 @@ export abstract class Values<T> implements Iterable<Value<T>> {
     );
   }
 
-  // /**
-  //  * Concatenate another values of the same type to this Values, returning a new Values instance.
-  //  */
-  // concat(...values: readonly ValueT[]): Values<ValueT> {
-  //   return Values.fromArray({
-  //     focusResource: this.focusResource,
-  //     propertyPath: this.propertyPath,
-  //     values: this.toArray().concat(...values),
-  //   });
-  // }
+  /**
+   * Concatenate another values of the same type to this Values, returning a new Values instance.
+   */
+  concat(...values: readonly Value<T>[]): Values<T> {
+    return Values.fromArray({
+      focusResource: this.focusResource,
+      propertyPath: this.propertyPath,
+      values: this.toArray().concat(...values),
+    });
+  }
 
   /**
    * Filter the values, returning a new Values instance.
