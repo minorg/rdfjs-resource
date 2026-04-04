@@ -441,7 +441,7 @@ export class Resource<
         dataFactory: this.dataFactory,
         focusResource: this,
         propertyPath: rdf.first,
-        term: firstObject,
+        value: firstObject,
       }),
     ]).chain((items) =>
       new Resource(this.dataset, restObject, {

@@ -13,8 +13,8 @@ import type { Identifier } from "./Identifier.js";
 import { LiteralDecoder } from "./LiteralDecoder.js";
 import { MistypedTermValueError } from "./MistypedTermValueError.js";
 import type { Primitive } from "./Primitive.js";
-import type { PropertyPath } from "./PropertyPath.js";
 import { Resource } from "./Resource.js";
+import { Value } from "./Value.js";
 import type { ValueError } from "./ValueError.js";
 import { Values } from "./Values.js";
 
@@ -26,27 +26,21 @@ export class TermValue<
     | BlankNode
     | Literal
     | NamedNode,
-> {
+> extends Value<TermT> {
   private readonly dataFactory: DataFactory;
-  private readonly focusResource: Resource;
-  private readonly propertyPath: PropertyPath;
-  private readonly term: TermT;
 
   constructor({
     dataFactory,
-    focusResource,
-    propertyPath,
-    term,
-  }: {
-    dataFactory: DataFactory;
-    focusResource: Resource;
-    propertyPath: PropertyPath;
-    term: TermT;
-  }) {
+    ...superParameters
+  }: { dataFactory: DataFactory } & ConstructorParameters<
+    typeof Value<TermT>
+  >[0]) {
+    super(superParameters);
     this.dataFactory = dataFactory;
-    this.focusResource = focusResource;
-    this.propertyPath = propertyPath;
-    this.term = term;
+  }
+
+  private get term(): TermT {
+    return this.value;
   }
 
   /**
@@ -199,7 +193,7 @@ export class TermValue<
   /**
    * Try to convert the term to a string literal.
    */
-  toString(): Either<MistypedTermValueError, string> {
+  override toString(): Either<MistypedTermValueError, string> {
     return this.toLiteral()
       .chain(LiteralDecoder.decodeStringLiteral)
       .mapLeft(() => this.newMistypedValueError("string"));

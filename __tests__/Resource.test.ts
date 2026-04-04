@@ -330,7 +330,7 @@ describe("Resource", () => {
       expect(
         testResource
           .values(predicate)
-          .find((value) => value.termType === "NamedNode")
+          .find((value) => value.toTerm().termType === "NamedNode")
           .unsafeCoerce()
           .toIri()
           .toMaybe()
@@ -341,7 +341,7 @@ describe("Resource", () => {
     it("filtered", ({ expect }) => {
       const value = testResource
         .values(predicate)
-        .find((value) => value.termType === "NamedNode")
+        .find((value) => value.toTerm().termType === "NamedNode")
         .toMaybe()
         .extract();
       expect(value).toBeDefined();

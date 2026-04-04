@@ -15,9 +15,9 @@ import { TermValue } from "./TermValue.js";
 import { Values } from "./Values.js";
 
 export class DatasetValues extends Values<TermValue> {
-  protected readonly dataFactory: DataFactory;
-  protected readonly graph: Exclude<Quad_Graph, Variable> | null;
-  protected readonly unique: boolean;
+  private readonly dataFactory: DataFactory;
+  private readonly graph: Exclude<Quad_Graph, Variable> | null;
+  private readonly unique: boolean;
 
   constructor({
     dataFactory,
@@ -64,7 +64,7 @@ export class DatasetValues extends Values<TermValue> {
           dataFactory: this.dataFactory,
           focusResource: this.focusResource,
           propertyPath: this.propertyPath,
-          term: term,
+          value: term,
         });
         uniqueTerms.add(term);
       }
@@ -77,7 +77,7 @@ export class DatasetValues extends Values<TermValue> {
           dataFactory: this.dataFactory,
           focusResource: this.focusResource,
           propertyPath: this.propertyPath,
-          term,
+          value: term,
         });
       }
     }
