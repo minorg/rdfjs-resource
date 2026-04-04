@@ -3,6 +3,7 @@ import { Either, Left } from "purify-ts";
 import { MissingValueError } from "./MissingValueError.js";
 import type { PropertyPath } from "./PropertyPath.js";
 import type { Resource } from "./Resource.js";
+import type { Value } from "./Value.js";
 import type { ValueError } from "./ValueError.js";
 
 /**
@@ -16,7 +17,9 @@ import type { ValueError } from "./ValueError.js";
  *
  * The class doesn't try to implement the entire Array interface. Methods are added as needed by downstream code.
  */
-export abstract class Values<ValueT> implements Iterable<ValueT> {
+export abstract class Values<ValueT extends Value<unknown>>
+  implements Iterable<ValueT>
+{
   readonly focusResource: Resource;
   readonly propertyPath: PropertyPath;
 
@@ -36,7 +39,7 @@ export abstract class Values<ValueT> implements Iterable<ValueT> {
   /**
    * Create a Values instance from an array of values.
    */
-  static fromArray<ValueT>(parameters: {
+  static fromArray<ValueT extends Value<unknown>>(parameters: {
     focusResource: Resource;
     propertyPath: PropertyPath;
     values: readonly ValueT[];
@@ -47,7 +50,7 @@ export abstract class Values<ValueT> implements Iterable<ValueT> {
   /**
    * Create a Values instance from a single value.
    */
-  static fromValue<ValueT>(parameters: {
+  static fromValue<ValueT extends Value<unknown>>(parameters: {
     focusResource: Resource;
     propertyPath: PropertyPath;
     value: ValueT;
@@ -66,7 +69,7 @@ export abstract class Values<ValueT> implements Iterable<ValueT> {
    *
    * This is a combination of Either.chain and Either.map.
    */
-  chainMap<NewValueT>(
+  chainMap<NewValueT extends Value<unknown>>(
     callback: (value: ValueT, index: number) => Either<Error, NewValueT>,
   ): Either<Error, Values<NewValueT>> {
     const newValues: NewValueT[] = [];
@@ -148,7 +151,7 @@ export abstract class Values<ValueT> implements Iterable<ValueT> {
    *
    * Equivalent of Array.flat.
    */
-  flat<NewValueT>(): Values<NewValueT> {
+  flat<NewValueT extends Value<unknown>>(): Values<NewValueT> {
     return Values.fromArray<NewValueT>({
       focusResource: this.focusResource,
       propertyPath: this.propertyPath,
@@ -159,7 +162,7 @@ export abstract class Values<ValueT> implements Iterable<ValueT> {
   /**
    * Map each value to an array of values of a new type. Flatten those arrays and return the result as a new Values.
    */
-  flatMap<NewValueT>(
+  flatMap<NewValueT extends Value<unknown>>(
     callback: (value: ValueT, index: number) => ReadonlyArray<NewValueT>,
   ): Values<NewValueT> {
     const newValues: NewValueT[] = [];
@@ -193,7 +196,7 @@ export abstract class Values<ValueT> implements Iterable<ValueT> {
   /**
    * Map each value to a value of a new type and return a new Values with the mapped results.
    */
-  map<NewValueT>(
+  map<NewValueT extends Value<unknown>>(
     callback: (value: ValueT, index: number) => NewValueT,
   ): Values<NewValueT> {
     const newValues: NewValueT[] = [];
@@ -220,7 +223,7 @@ export abstract class Values<ValueT> implements Iterable<ValueT> {
  *
  * Must be in the same file to avoid circular dependencies.
  */
-class ArrayValues<ValueT> extends Values<ValueT> {
+class ArrayValues<ValueT extends Value<unknown>> extends Values<ValueT> {
   private readonly values: readonly ValueT[];
 
   constructor({
@@ -253,7 +256,7 @@ class ArrayValues<ValueT> extends Values<ValueT> {
  *
  * Must be in the same file to avoid circular dependencies.
  */
-class SingletonValues<ValueT> extends Values<ValueT> {
+class SingletonValues<ValueT extends Value<unknown>> extends Values<ValueT> {
   private readonly value: ValueT;
 
   override readonly length = 1;

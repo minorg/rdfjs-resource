@@ -19,6 +19,7 @@ import { MistypedTermValueError as _MistypedTermValueError } from "./MistypedTer
 import type { Primitive } from "./Primitive.js";
 import type { PropertyPath } from "./PropertyPath.js";
 import { TermValue as _TermValue } from "./TermValue.js";
+import { Value as _Value } from "./Value.js";
 import { ValueError as _ValueError } from "./ValueError.js";
 import { Values as _Values } from "./Values.js";
 import { rdf, rdfs } from "./vocabularies.js";
@@ -516,8 +517,10 @@ export namespace Resource {
   export const MistypedTermValueError = _MistypedTermValueError;
   export type TermValue = _TermValue;
   export const TermValue = _TermValue;
+  export const Value = _Value;
+  export type Value<T> = _Value<T>;
   export type ValueError = _ValueError;
   export const ValueError = _ValueError;
-  export type Values<ValueT> = _Values<ValueT>;
+  export type Values<ValueT extends Value<unknown>> = _Values<ValueT>;
   export const Values = _Values;
 }
