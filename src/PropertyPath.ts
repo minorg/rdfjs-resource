@@ -72,7 +72,7 @@ export namespace PropertyPath {
       return list.chain((values) => {
         const members: PropertyPath[] = [];
         for (const value of values) {
-          const memberResource = value.toResource().toMaybe();
+          const memberResource = value.toResourceValue().toMaybe();
           if (memberResource.isNothing()) {
             return Left(new Error("non-identifier in property path list"));
           }

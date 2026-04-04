@@ -12,13 +12,14 @@ import type {
 
 import { Either, Left } from "purify-ts";
 import { DatasetValues } from "./DatasetValues.js";
-import { Identifier as _Identifier } from "./Identifier.js";
+import { Identifier as _Identifier, type Identifier } from "./Identifier.js";
 import { ListStructureError as _ListStructureError } from "./ListStructureError.js";
 import { LiteralFactory } from "./LiteralFactory.js";
 import { MistypedTermValueError as _MistypedTermValueError } from "./MistypedTermValueError.js";
 import type { Primitive } from "./Primitive.js";
 import type { PropertyPath } from "./PropertyPath.js";
-import { TermValue as _TermValue } from "./TermValue.js";
+import type { Term } from "./Term.js";
+import { TermValue } from "./TermValue.js";
 import { Value as _Value } from "./Value.js";
 import { ValueError as _ValueError } from "./ValueError.js";
 import { Values as _Values } from "./Values.js";
@@ -113,7 +114,7 @@ export class Resource<
       mintSubListIdentifier?: (
         item: AddableValue,
         itemIndex: number,
-      ) => BlankNode | NamedNode;
+      ) => Identifier;
     },
   ): this {
     const addSubListResourceValues =
@@ -213,7 +214,7 @@ export class Resource<
       class_: NamedNode;
       dataset: DatasetCore;
       graph: Exclude<Quad_Graph, Variable> | undefined;
-      instance: BlankNode | NamedNode;
+      instance: Identifier;
       visitedClasses: TermSet<NamedNode>;
     }): boolean {
       for (const _ of dataset.match(
@@ -286,7 +287,7 @@ export class Resource<
       class_: NamedNode;
       dataset: DatasetCore;
       graph: Exclude<Quad_Graph, Variable> | undefined;
-      thisIdentifier: BlankNode | NamedNode;
+      thisIdentifier: Identifier;
       visitedClasses: TermSet<NamedNode>;
     }): boolean {
       for (const _ of dataset.match(
@@ -347,9 +348,15 @@ export class Resource<
    */
   toList(options?: {
     graph?: Exclude<Quad_Graph, Variable>;
-  }): Either<Resource.ValueError, readonly Resource.TermValue[]> {
+  }): Either<Resource.ValueError, Resource.Values<Term>> {
     if (this.identifier.equals(rdf.nil)) {
-      return Either.of([]);
+      return Either.of(
+        Resource.Values.fromArray({
+          focusResource: this,
+          propertyPath: rdf.nil,
+          values: [],
+        }),
+      );
     }
 
     const graph = options?.graph ?? this.graph;
@@ -437,8 +444,8 @@ export class Resource<
         );
     }
 
-    return Either.of<Resource.ValueError, readonly Resource.TermValue[]>([
-      new Resource.TermValue({
+    return Either.of<Resource.ValueError, Resource.Values<Term>[]>([
+      new TermValue({
         dataFactory: this.dataFactory,
         focusResource: this,
         propertyPath: rdf.first,
@@ -459,7 +466,7 @@ export class Resource<
   value(
     propertyPath: PropertyPath,
     options?: { graph?: Exclude<Quad_Graph, Variable> },
-  ): Either<Resource.ValueError, Resource.TermValue> {
+  ): Either<Resource.ValueError, Resource.Value<Term>> {
     return this.values(propertyPath, options).head();
   }
 
@@ -469,7 +476,7 @@ export class Resource<
   values(
     propertyPath: PropertyPath,
     options?: { graph?: Exclude<Quad_Graph, Variable>; unique?: boolean },
-  ): Resource.Values<Resource.TermValue> {
+  ): Resource.Values<Term> {
     return new DatasetValues({
       dataFactory: this.dataFactory,
       focusResource: this,
@@ -479,9 +486,7 @@ export class Resource<
     });
   }
 
-  private addableValueToTerm(
-    value: AddableValue,
-  ): BlankNode | Literal | NamedNode {
+  private addableValueToTerm(value: AddableValue): Term {
     switch (typeof value) {
       case "bigint":
         return this.literalFactory.bigint(value);
@@ -498,7 +503,7 @@ export class Resource<
 
   private addableValuesToTerms(
     values: AddableValue | readonly AddableValue[],
-  ): readonly (BlankNode | Literal | NamedNode)[] {
+  ): readonly Term[] {
     if (Array.isArray(values)) {
       return values.map((value) => this.addableValueToTerm(value));
     }
@@ -506,7 +511,7 @@ export class Resource<
   }
 }
 
-type AddableValue = BlankNode | Literal | NamedNode | Exclude<Primitive, Date>;
+type AddableValue = Term | Exclude<Primitive, Date>;
 
 export namespace Resource {
   export type Identifier = _Identifier;
@@ -515,12 +520,10 @@ export namespace Resource {
   export const ListStructureError = _ListStructureError;
   export type MistypedTermValueError = _MistypedTermValueError;
   export const MistypedTermValueError = _MistypedTermValueError;
-  export type TermValue = _TermValue;
-  export const TermValue = _TermValue;
   export const Value = _Value;
   export type Value<T> = _Value<T>;
   export type ValueError = _ValueError;
   export const ValueError = _ValueError;
-  export type Values<ValueT extends Value<unknown>> = _Values<ValueT>;
+  export type Values<T> = _Values<T>;
   export const Values = _Values;
 }

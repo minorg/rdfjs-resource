@@ -3,7 +3,6 @@ import type {
   BlankNode,
   DataFactory,
   DatasetCore,
-  Literal,
   NamedNode,
   Quad_Graph,
   Variable,
@@ -11,10 +10,11 @@ import type {
 
 import type { PropertyPath } from "./PropertyPath.js";
 import type { Resource } from "./Resource.js";
+import type { Term } from "./Term.js";
 import { TermValue } from "./TermValue.js";
 import { Values } from "./Values.js";
 
-export class DatasetValues extends Values<TermValue> {
+export class DatasetValues extends Values<Term> {
   private readonly dataFactory: DataFactory;
   private readonly graph: Exclude<Quad_Graph, Variable> | null;
   private readonly unique: boolean;
@@ -52,7 +52,7 @@ export class DatasetValues extends Values<TermValue> {
 
   override *[Symbol.iterator](): Iterator<TermValue> {
     if (this.unique) {
-      const uniqueTerms = new TermSet<BlankNode | Literal | NamedNode>();
+      const uniqueTerms = new TermSet<Term>();
       for (const term of this.terms({
         focusIdentifier: this.focusResource.identifier,
         propertyPath: this.propertyPath,
@@ -95,7 +95,7 @@ export class DatasetValues extends Values<TermValue> {
     inverse?: boolean;
     focusIdentifier: NamedNode | BlankNode;
     propertyPath: PropertyPath;
-  }): Iterable<BlankNode | Literal | NamedNode> {
+  }): Iterable<Term> {
     switch (propertyPath.termType) {
       case "AlternativePath": {
         for (const member of propertyPath.members) {
@@ -135,7 +135,7 @@ export class DatasetValues extends Values<TermValue> {
         break;
       }
       case "OneOrMorePath": {
-        const visited: TermSet<BlankNode | Literal | NamedNode> = new TermSet();
+        const visited: TermSet<Term> = new TermSet();
         const queue: (NamedNode | BlankNode)[] = [focusIdentifier];
         while (queue.length > 0) {
           // biome-ignore lint/style/noNonNullAssertion: .length > 0
@@ -162,12 +162,9 @@ export class DatasetValues extends Values<TermValue> {
         const members = inverse
           ? [...propertyPath.members].reverse()
           : propertyPath.members;
-        let reached: TermSet<BlankNode | Literal | NamedNode> = new TermSet([
-          focusIdentifier,
-        ]);
+        let reached: TermSet<Term> = new TermSet([focusIdentifier]);
         for (const member of members) {
-          const nextReached: TermSet<BlankNode | Literal | NamedNode> =
-            new TermSet();
+          const nextReached: TermSet<Term> = new TermSet();
           for (const node of reached) {
             if (
               node.termType === "NamedNode" ||
@@ -189,7 +186,7 @@ export class DatasetValues extends Values<TermValue> {
       }
       case "ZeroOrMorePath": {
         yield focusIdentifier;
-        const visited: TermSet<BlankNode | Literal | NamedNode> = new TermSet();
+        const visited: TermSet<Term> = new TermSet();
         const queue: (NamedNode | BlankNode)[] = [focusIdentifier];
         while (queue.length > 0) {
           // biome-ignore lint/style/noNonNullAssertion: .length > 0

@@ -17,9 +17,7 @@ import type { ValueError } from "./ValueError.js";
  *
  * The class doesn't try to implement the entire Array interface. Methods are added as needed by downstream code.
  */
-export abstract class Values<ValueT extends Value<unknown>>
-  implements Iterable<ValueT>
-{
+export abstract class Values<T> implements Iterable<Value<T>> {
   readonly focusResource: Resource;
   readonly propertyPath: PropertyPath;
 
@@ -37,13 +35,27 @@ export abstract class Values<ValueT extends Value<unknown>>
   }
 
   /**
-   * Create a Values instance from an array of values.
+   * Create a Values instance that is empty.
    */
-  static fromArray<ValueT extends Value<unknown>>(parameters: {
+  static empty<T>(parameters: {
     focusResource: Resource;
     propertyPath: PropertyPath;
-    values: readonly ValueT[];
-  }): Values<ValueT> {
+  }): Values<T> {
+    return new EmptyValues(parameters);
+  }
+
+  /**
+   * Create a Values instance from an array of values.
+   */
+  static fromArray<T>(parameters: {
+    focusResource: Resource;
+    propertyPath: PropertyPath;
+    values: readonly Value<T>[];
+  }): Values<T> {
+    if (Values.length === 0) {
+      return Values.empty(parameters);
+    }
+
     return new ArrayValues(parameters);
   }
 
@@ -58,7 +70,7 @@ export abstract class Values<ValueT extends Value<unknown>>
     return new SingletonValues(parameters);
   }
 
-  abstract [Symbol.iterator](): Iterator<ValueT>;
+  abstract [Symbol.iterator](): Iterator<Value<T>>;
 
   /**
    * For each value in the sequence, try to convert it to a new type / transform it using the provided callback.
@@ -69,17 +81,17 @@ export abstract class Values<ValueT extends Value<unknown>>
    *
    * This is a combination of Either.chain and Either.map.
    */
-  chainMap<NewValueT extends Value<unknown>>(
-    callback: (value: ValueT, index: number) => Either<Error, NewValueT>,
-  ): Either<Error, Values<NewValueT>> {
-    const newValues: NewValueT[] = [];
+  chainMap<NewT>(
+    callback: (value: Value<T>, index: number) => Either<Error, Value<NewT>>,
+  ): Either<Error, Values<NewT>> {
+    const newValues: Value<NewT>[] = [];
     let valueI = 0;
     for (const value of this) {
       const callbackResult = callback(value, valueI);
       if (callbackResult.isLeft()) {
         return callbackResult;
       }
-      newValues.push(callbackResult.extract() as NewValueT);
+      newValues.push(callbackResult.extract() as Value<NewT>);
       valueI++;
     }
     return Either.of(
@@ -91,24 +103,22 @@ export abstract class Values<ValueT extends Value<unknown>>
     );
   }
 
-  /**
-   * Concatenate another values of the same type to this Values, returning a new Values instance.
-   */
-  concat(...values: readonly ValueT[]): Values<ValueT> {
-    return Values.fromArray({
-      focusResource: this.focusResource,
-      propertyPath: this.propertyPath,
-      values: this.toArray().concat(...values),
-    });
-  }
+  // /**
+  //  * Concatenate another values of the same type to this Values, returning a new Values instance.
+  //  */
+  // concat(...values: readonly ValueT[]): Values<ValueT> {
+  //   return Values.fromArray({
+  //     focusResource: this.focusResource,
+  //     propertyPath: this.propertyPath,
+  //     values: this.toArray().concat(...values),
+  //   });
+  // }
 
   /**
    * Filter the values, returning a new Values instance.
    */
-  filter(
-    propertyPath: (value: ValueT, index: number) => boolean,
-  ): Values<ValueT> {
-    const filteredValues: ValueT[] = [];
+  filter(propertyPath: (value: Value<T>, index: number) => boolean): Values<T> {
+    const filteredValues: Value<T>[] = [];
     let valueI = 0;
     for (const value of this) {
       if (propertyPath(value, valueI)) {
@@ -129,8 +139,8 @@ export abstract class Values<ValueT extends Value<unknown>>
    * Return Right if a value satisfies the propertyPath, otherwise Left.
    */
   find(
-    propertyPath: (value: ValueT, index: number) => boolean,
-  ): Either<MissingValueError, ValueT> {
+    propertyPath: (value: Value<T>, index: number) => boolean,
+  ): Either<MissingValueError, Value<T>> {
     let valueI = 0;
     for (const value of this) {
       if (propertyPath(value, valueI)) {
@@ -151,21 +161,21 @@ export abstract class Values<ValueT extends Value<unknown>>
    *
    * Equivalent of Array.flat.
    */
-  flat<NewValueT extends Value<unknown>>(): Values<NewValueT> {
-    return Values.fromArray<NewValueT>({
+  flat<NewT>(): Values<NewT> {
+    return Values.fromArray<NewT>({
       focusResource: this.focusResource,
       propertyPath: this.propertyPath,
-      values: this.toArray().flat() as readonly NewValueT[],
+      values: this.toArray().flat() as unknown as readonly Value<NewT>[],
     });
   }
 
   /**
    * Map each value to an array of values of a new type. Flatten those arrays and return the result as a new Values.
    */
-  flatMap<NewValueT extends Value<unknown>>(
-    callback: (value: ValueT, index: number) => ReadonlyArray<NewValueT>,
-  ): Values<NewValueT> {
-    const newValues: NewValueT[] = [];
+  flatMap<NewT>(
+    callback: (value: Value<T>, index: number) => ReadonlyArray<Value<NewT>>,
+  ): Values<NewT> {
+    const newValues: Value<NewT>[] = [];
     let valueI = 0;
     for (const value of this) {
       newValues.push(...callback(value, valueI));
@@ -181,7 +191,7 @@ export abstract class Values<ValueT extends Value<unknown>>
   /**
    * Get the head of this sequence of values if the sequence is non-empty. Otherwise return Left.
    */
-  head(): Either<ValueError, ValueT> {
+  head(): Either<ValueError, Value<T>> {
     for (const value of this) {
       return Either.of(value);
     }
@@ -196,10 +206,10 @@ export abstract class Values<ValueT extends Value<unknown>>
   /**
    * Map each value to a value of a new type and return a new Values with the mapped results.
    */
-  map<NewValueT extends Value<unknown>>(
-    callback: (value: ValueT, index: number) => NewValueT,
-  ): Values<NewValueT> {
-    const newValues: NewValueT[] = [];
+  map<NewT>(
+    callback: (value: Value<T>, index: number) => Value<NewT>,
+  ): Values<NewT> {
+    const newValues: Value<NewT>[] = [];
     let valueI = 0;
     for (const value of this) {
       newValues.push(callback(value, valueI));
@@ -215,7 +225,7 @@ export abstract class Values<ValueT extends Value<unknown>>
   /**
    * Convert this values to an array of the values.
    */
-  abstract toArray(): readonly ValueT[];
+  abstract toArray(): readonly Value<T>[];
 }
 
 /**
@@ -223,8 +233,8 @@ export abstract class Values<ValueT extends Value<unknown>>
  *
  * Must be in the same file to avoid circular dependencies.
  */
-class ArrayValues<ValueT extends Value<unknown>> extends Values<ValueT> {
-  private readonly values: readonly ValueT[];
+class ArrayValues<T> extends Values<T> {
+  private readonly values: readonly Value<T>[];
 
   constructor({
     values,
@@ -232,7 +242,7 @@ class ArrayValues<ValueT extends Value<unknown>> extends Values<ValueT> {
   }: {
     focusResource: Resource;
     propertyPath: PropertyPath;
-    values: readonly ValueT[];
+    values: readonly Value<T>[];
   }) {
     super(superParameters);
     this.values = values;
@@ -242,12 +252,29 @@ class ArrayValues<ValueT extends Value<unknown>> extends Values<ValueT> {
     return this.values.length;
   }
 
-  override [Symbol.iterator](): Iterator<ValueT> {
+  override [Symbol.iterator](): Iterator<Value<T>> {
     return this.values[Symbol.iterator]();
   }
 
-  override toArray(): readonly ValueT[] {
+  override toArray(): readonly Value<T>[] {
     return this.values;
+  }
+}
+
+/**
+ * Private implementation of Resource.Values that is empty.
+ */
+class EmptyValues<T> extends Values<T> {
+  override get length(): number {
+    return 0;
+  }
+
+  override [Symbol.iterator](): Iterator<Value<T>> {
+    return this.toArray()[Symbol.iterator]();
+  }
+
+  override toArray(): readonly Value<T>[] {
+    return [];
   }
 }
 
@@ -256,24 +283,24 @@ class ArrayValues<ValueT extends Value<unknown>> extends Values<ValueT> {
  *
  * Must be in the same file to avoid circular dependencies.
  */
-class SingletonValues<ValueT extends Value<unknown>> extends Values<ValueT> {
-  private readonly value: ValueT;
+class SingletonValues<T> extends Values<T> {
+  private readonly value: Value<T>;
 
   override readonly length = 1;
 
   constructor({
     value,
     ...superParameters
-  }: { focusResource: Resource; propertyPath: PropertyPath; value: ValueT }) {
+  }: { focusResource: Resource; propertyPath: PropertyPath; value: Value<T> }) {
     super(superParameters);
     this.value = value;
   }
 
-  override *[Symbol.iterator](): Iterator<ValueT> {
+  override *[Symbol.iterator](): Iterator<Value<T>> {
     yield this.value;
   }
 
-  override toArray(): readonly ValueT[] {
+  override toArray(): readonly Value<T>[] {
     return [this.value];
   }
 }

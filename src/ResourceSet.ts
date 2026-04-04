@@ -8,7 +8,7 @@ import type {
   Quad_Graph,
   Variable,
 } from "@rdfjs/types";
-
+import type { Identifier } from "./Identifier.js";
 import { Resource } from "./Resource.js";
 import { rdf, rdfs } from "./vocabularies.js";
 
@@ -64,13 +64,13 @@ export class ResourceSet {
   private *instanceIdentifiers(
     class_: NamedNode,
     options?: Parameters<ResourceSet["instancesOf"]>[1],
-  ): Generator<BlankNode | NamedNode> {
+  ): Generator<Identifier> {
     yield* instanceIdentifiersRecursive({
       class_,
       dataset: this.dataset,
       graph: options?.graph ?? this.graph,
       visitedClasses: new TermSet<NamedNode>(),
-      yieldedInstanceIdentifiers: new TermSet<BlankNode | NamedNode>(),
+      yieldedInstanceIdentifiers: new TermSet<Identifier>(),
     });
 
     function* instanceIdentifiersRecursive({
@@ -84,8 +84,8 @@ export class ResourceSet {
       dataset: DatasetCore;
       graph: Exclude<Quad_Graph, Variable> | undefined;
       visitedClasses: TermSet<NamedNode>;
-      yieldedInstanceIdentifiers: TermSet<BlankNode | NamedNode>;
-    }): Generator<BlankNode | NamedNode> {
+      yieldedInstanceIdentifiers: TermSet<Identifier>;
+    }): Generator<Identifier> {
       // Get instanceQuads of the class
       for (const quad of dataset.match(
         null,
