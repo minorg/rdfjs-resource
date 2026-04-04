@@ -1,4 +1,3 @@
-import { Identifier } from "./Identifier.js";
 import type { PropertyPath } from "./PropertyPath.js";
 import type { Resource } from "./Resource.js";
 import { ValueError } from "./ValueError.js";
