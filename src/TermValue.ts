@@ -1,16 +1,19 @@
 import type {
   BlankNode,
+  DataFactory,
   Literal,
   NamedNode,
   Quad_Graph,
   Variable,
 } from "@rdfjs/types";
+
 import { Either, Left } from "purify-ts";
-import { AbstractTermValue } from "./AbstractTermValue.js";
+
 import type { Identifier } from "./Identifier.js";
 import { LiteralDecoder } from "./LiteralDecoder.js";
-import type { MistypedTermValueError } from "./MistypedTermValueError.js";
+import { MistypedTermValueError } from "./MistypedTermValueError.js";
 import type { Primitive } from "./Primitive.js";
+import type { PropertyPath } from "./PropertyPath.js";
 import { Resource } from "./Resource.js";
 import type { ValueError } from "./ValueError.js";
 import { Values } from "./Values.js";
@@ -18,9 +21,34 @@ import { Values } from "./Values.js";
 /**
  * Wraps a term (blank node or IRI or literal) with some methods for converting it to other types.
  */
-export class TermValue extends AbstractTermValue<
-  BlankNode | Literal | NamedNode
+export class TermValue<
+  TermT extends BlankNode | Literal | NamedNode =
+    | BlankNode
+    | Literal
+    | NamedNode,
 > {
+  private readonly dataFactory: DataFactory;
+  private readonly focusResource: Resource;
+  private readonly propertyPath: PropertyPath;
+  private readonly term: TermT;
+
+  constructor({
+    dataFactory,
+    focusResource,
+    propertyPath,
+    term,
+  }: {
+    dataFactory: DataFactory;
+    focusResource: Resource;
+    propertyPath: PropertyPath;
+    term: TermT;
+  }) {
+    this.dataFactory = dataFactory;
+    this.focusResource = focusResource;
+    this.propertyPath = propertyPath;
+    this.term = term;
+  }
+
   /**
    * Try to convert the term to a bigint.
    */
@@ -28,6 +56,15 @@ export class TermValue extends AbstractTermValue<
     return this.toLiteral()
       .chain(LiteralDecoder.decodeBigIntLiteral)
       .mapLeft(() => this.newMistypedValueError("bigint"));
+  }
+
+  /**
+   * Try to convert the term to a blank node.
+   */
+  toBlankNode(): Either<MistypedTermValueError, BlankNode> {
+    return this.term.termType === "BlankNode"
+      ? Either.of(this.term as BlankNode)
+      : Left(this.newMistypedValueError("BlankNode"));
   }
 
   /**
@@ -73,7 +110,7 @@ export class TermValue extends AbstractTermValue<
     switch (this.term.termType) {
       case "BlankNode":
       case "NamedNode":
-        return Either.of(this.term);
+        return Either.of(this.term satisfies Identifier);
       default:
         return Left(this.newMistypedValueError("BlankNode|NamedNode"));
     }
@@ -86,6 +123,15 @@ export class TermValue extends AbstractTermValue<
     return this.toLiteral()
       .chain(LiteralDecoder.decodeIntLiteral)
       .mapLeft(() => this.newMistypedValueError("int"));
+  }
+
+  /**
+   * Try to convert the term to an IRI / NamedNode.
+   */
+  toIri(): Either<MistypedTermValueError, NamedNode> {
+    return this.term.termType === "NamedNode"
+      ? Either.of(this.term as NamedNode)
+      : Left(this.newMistypedValueError("NamedNode"));
   }
 
   /**
@@ -104,8 +150,20 @@ export class TermValue extends AbstractTermValue<
    */
   toLiteral(): Either<MistypedTermValueError, Literal> {
     return this.term.termType === "Literal"
-      ? Either.of(this.term)
+      ? Either.of(this.term satisfies Literal)
       : Left(this.newMistypedValueError("Literal"));
+  }
+
+  /**
+   * Try to convert the term to a named resource.
+   */
+  toNamedResource(): Either<MistypedTermValueError, Resource<NamedNode>> {
+    return this.toIri().map(
+      (identifier) =>
+        new Resource<NamedNode>(this.focusResource.dataset, identifier, {
+          dataFactory: this.dataFactory,
+        }),
+    );
   }
 
   /**
@@ -141,10 +199,14 @@ export class TermValue extends AbstractTermValue<
   /**
    * Try to convert the term to a string literal.
    */
-  override toString(): Either<MistypedTermValueError, string> {
+  toString(): Either<MistypedTermValueError, string> {
     return this.toLiteral()
       .chain(LiteralDecoder.decodeStringLiteral)
       .mapLeft(() => this.newMistypedValueError("string"));
+  }
+
+  toTerm(): TermT {
+    return this.term;
   }
 
   /**
@@ -155,6 +217,17 @@ export class TermValue extends AbstractTermValue<
       focusResource: this.focusResource,
       propertyPath: this.propertyPath,
       value: this,
+    });
+  }
+
+  private newMistypedValueError(
+    expectedValueType: string,
+  ): MistypedTermValueError {
+    return new MistypedTermValueError({
+      actualValue: this.term,
+      expectedValueType,
+      focusResource: this.focusResource,
+      propertyPath: this.propertyPath,
     });
   }
 }
