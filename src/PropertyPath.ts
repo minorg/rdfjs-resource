@@ -73,11 +73,13 @@ export namespace PropertyPath {
       return list.chain((values) => {
         const members: PropertyPath[] = [];
         for (const value of values) {
-          const memberResource = value.toResourceValue().toMaybe();
-          if (memberResource.isNothing()) {
+          const memberResourceValue = value.toResourceValue().toMaybe();
+          if (memberResourceValue.isNothing()) {
             return Left(new Error("non-identifier in property path list"));
           }
-          const member = PropertyPath.$fromRdf(memberResource.unsafeCoerce());
+          const member = PropertyPath.$fromRdf(
+            memberResourceValue.unsafeCoerce().value,
+          );
           if (member.isLeft()) {
             return member;
           }

@@ -1,11 +1,4 @@
-import type {
-  BlankNode,
-  DataFactory,
-  Literal,
-  NamedNode,
-  Quad_Graph,
-  Variable,
-} from "@rdfjs/types";
+import type { BlankNode, DataFactory, Literal, NamedNode } from "@rdfjs/types";
 
 import { Either, Left } from "purify-ts";
 
@@ -16,8 +9,6 @@ import type { Primitive } from "./Primitive.js";
 import { Resource } from "./Resource.js";
 import type { Term } from "./Term.js";
 import { Value } from "./Value.js";
-import type { ValueError } from "./ValueError.js";
-import { Values } from "./Values.js";
 
 /**
  * Wraps a term (blank node or IRI or literal) with some methods for converting it to other types.
@@ -39,114 +30,67 @@ export class TermValue<TermT extends Term = Term> extends Value<TermT> {
     return this.value;
   }
 
-  /**
-   * Try to convert the term to a bigint.
-   */
-  toBigIntValue(): Either<MistypedTermValueError, Value<bigint>> {
+  override toBigIntValue(): Either<Error, Value<bigint>> {
     return this.toLiteral()
       .chain(LiteralDecoder.decodeBigIntLiteral)
       .map((value) => this.newValue(value))
-      .mapLeft(() => this.newMistypedValueError("bigint"));
+      .mapLeft(() => this.newMistypedTermValueError("bigint"));
   }
 
-  /**
-   * Try to convert the term to a blank node.
-   */
-  toBlankNodeValue(): Either<MistypedTermValueError, Value<BlankNode>> {
+  override toBlankNodeValue(): Either<Error, Value<BlankNode>> {
     return this.term.termType === "BlankNode"
       ? Either.of(this.newTermValue(this.term as BlankNode))
-      : Left(this.newMistypedValueError("BlankNode"));
+      : Left(this.newMistypedTermValueError("BlankNode"));
   }
 
-  /**
-   * Try to convert the term to a boolean.
-   */
-  toBooleanValue(): Either<MistypedTermValueError, Value<boolean>> {
+  override toBooleanValue(): Either<Error, Value<boolean>> {
     return this.toLiteral()
       .chain(LiteralDecoder.decodeBooleanLiteral)
       .map((value) => this.newValue(value))
-      .mapLeft(() => this.newMistypedValueError("boolean"));
+      .mapLeft(() => this.newMistypedTermValueError("boolean"));
   }
 
-  /**
-   * Try to convert the term to a date-time.
-   */
-  toDateTimeValue(): Either<MistypedTermValueError, Value<Date>> {
+  override toDateTimeValue(): Either<Error, Value<Date>> {
     return this.toLiteral()
       .chain(LiteralDecoder.decodeDateTimeLiteral)
       .map((value) => this.newValue(value))
-      .mapLeft(() => this.newMistypedValueError("date-time"));
+      .mapLeft(() => this.newMistypedTermValueError("date-time"));
   }
 
-  /**
-   * Try to convert the term to a date.
-   */
-  toDateValue(): Either<MistypedTermValueError, Value<Date>> {
+  override toDateValue(): Either<Error, Value<Date>> {
     return this.toLiteral()
       .chain(LiteralDecoder.decodeDateLiteral)
       .map((value) => this.newValue(value))
-      .mapLeft(() => this.newMistypedValueError("date"));
+      .mapLeft(() => this.newMistypedTermValueError("date"));
   }
 
-  /**
-   * Try to convert the term to a float.
-   */
-  toFloatValue(): Either<MistypedTermValueError, Value<number>> {
+  override toFloatValue(): Either<Error, Value<number>> {
     return this.toLiteral()
       .chain(LiteralDecoder.decodeFloatLiteral)
       .map((value) => this.newValue(value))
-      .mapLeft(() => this.newMistypedValueError("float"));
+      .mapLeft(() => this.newMistypedTermValueError("float"));
   }
 
-  /**
-   * Try to convert the term to an identifier (blank node or IRI).
-   */
-  toIdentifierValue(): Either<MistypedTermValueError, Value<Identifier>> {
+  override toIdentifierValue(): Either<Error, Value<Identifier>> {
     return this.toIdentifier().map((value) => this.newTermValue(value));
   }
 
-  /**
-   * Try to convert the term to an int.
-   */
-  toIntValue(): Either<MistypedTermValueError, Value<number>> {
+  override toIntValue(): Either<Error, Value<number>> {
     return this.toLiteral()
       .chain(LiteralDecoder.decodeIntLiteral)
       .map((value) => this.newValue(value))
-      .mapLeft(() => this.newMistypedValueError("int"));
+      .mapLeft(() => this.newMistypedTermValueError("int"));
   }
 
-  /**
-   * Try to convert the term to an IRI / NamedNode.
-   */
-  toIriValue(): Either<MistypedTermValueError, Value<NamedNode>> {
+  override toIriValue(): Either<Error, Value<NamedNode>> {
     return this.toIri().map((value) => this.newTermValue(value));
   }
 
-  /**
-   * Try to convert the term to an RDF list.
-   */
-  toList(options?: {
-    graph?: Exclude<Quad_Graph, Variable>;
-  }): Either<ValueError, Values<Term>> {
-    return this.toResource().chain((resource) =>
-      resource.toList({ graph: options?.graph }),
-    );
-  }
-
-  /**
-   * Try to convert the term to a Literal.
-   */
-  toLiteralValue(): Either<MistypedTermValueError, Value<Literal>> {
+  override toLiteralValue(): Either<Error, Value<Literal>> {
     return this.toLiteral().map((value) => this.newTermValue(value));
   }
 
-  /**
-   * Try to convert the term to a named resource.
-   */
-  toNamedResourceValue(): Either<
-    MistypedTermValueError,
-    Value<Resource<NamedNode>>
-  > {
+  override toNamedResourceValue(): Either<Error, Value<Resource<NamedNode>>> {
     return this.toIri().map((iri) =>
       this.newValue(
         new Resource<NamedNode>(this.focusResource.dataset, iri, {
@@ -156,55 +100,32 @@ export class TermValue<TermT extends Term = Term> extends Value<TermT> {
     );
   }
 
-  /**
-   * Try to convert the term to a number.
-   */
-  toNumberValue(): Either<MistypedTermValueError, Value<number>> {
+  override toNumberValue(): Either<Error, Value<number>> {
     return this.toLiteral()
       .chain(LiteralDecoder.decodeNumberLiteral)
       .map((value) => this.newValue(value))
-      .mapLeft(() => this.newMistypedValueError("number"));
+      .mapLeft(() => this.newMistypedTermValueError("number"));
   }
 
-  /**
-   * Try to convert the term to a JavaScript primitive (boolean | Date | number | string).
-   */
-  toPrimitiveValue(): Either<MistypedTermValueError, Value<Primitive>> {
+  override toPrimitiveValue(): Either<Error, Value<Primitive>> {
     return this.toLiteral()
       .chain(LiteralDecoder.decodePrimitiveLiteral)
       .map((value) => this.newValue(value))
-      .mapLeft(() => this.newMistypedValueError("primitive"));
+      .mapLeft(() => this.newMistypedTermValueError("primitive"));
   }
 
-  /**
-   * Try to convert the term to a resource (identified by a blank node or IRI).
-   */
-  toResourceValue(): Either<MistypedTermValueError, Value<Resource>> {
+  override toResourceValue(): Either<Error, Value<Resource>> {
     return this.toResource().map((value) => this.newValue(value));
   }
 
-  /**
-   * Try to convert the term to a string literal.
-   */
-  toStringValue(): Either<MistypedTermValueError, Value<string>> {
+  override toStringValue(): Either<Error, Value<string>> {
     return this.toLiteral()
       .chain(LiteralDecoder.decodeStringLiteral)
       .map((value) => this.newValue(value))
-      .mapLeft(() => this.newMistypedValueError("string"));
+      .mapLeft(() => this.newMistypedTermValueError("string"));
   }
 
-  /**
-   * Convert this value into a singleton sequence of values.
-   */
-  toValues(): Values<TermT> {
-    return Values.fromValue({
-      focusResource: this.focusResource,
-      propertyPath: this.propertyPath,
-      value: this,
-    });
-  }
-
-  private newMistypedValueError(
+  private newMistypedTermValueError(
     expectedValueType: string,
   ): MistypedTermValueError {
     return new MistypedTermValueError({
@@ -232,29 +153,29 @@ export class TermValue<TermT extends Term = Term> extends Value<TermT> {
     });
   }
 
-  private toIdentifier(): Either<MistypedTermValueError, Identifier> {
+  private toIdentifier(): Either<Error, Identifier> {
     switch (this.term.termType) {
       case "BlankNode":
       case "NamedNode":
         return Either.of(this.term as Identifier);
       default:
-        return Left(this.newMistypedValueError("BlankNode|NamedNode"));
+        return Left(this.newMistypedTermValueError("BlankNode|NamedNode"));
     }
   }
 
-  private toIri(): Either<MistypedTermValueError, NamedNode> {
+  private toIri(): Either<Error, NamedNode> {
     return this.term.termType === "NamedNode"
       ? Either.of(this.term as NamedNode)
-      : Left(this.newMistypedValueError("IRI"));
+      : Left(this.newMistypedTermValueError("IRI"));
   }
 
-  private toLiteral(): Either<MistypedTermValueError, Literal> {
+  private toLiteral(): Either<Error, Literal> {
     return this.term.termType === "Literal"
       ? Either.of(this.term satisfies Literal)
-      : Left(this.newMistypedValueError("Literal"));
+      : Left(this.newMistypedTermValueError("Literal"));
   }
 
-  private toResource(): Either<MistypedTermValueError, Resource> {
+  private toResource(): Either<Error, Resource> {
     return this.toIdentifier().map(
       (identifier) =>
         new Resource(this.focusResource.dataset, identifier, {
