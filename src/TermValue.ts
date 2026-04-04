@@ -14,6 +14,17 @@ export class TermValue<TermT extends Term = Term> extends Value<TermT> {
     return this.value;
   }
 
+  protected newMistypedTermValueError(
+    expectedValueType: string,
+  ): MistypedTermValueError {
+    return new MistypedTermValueError({
+      actualValue: this.term,
+      expectedValueType,
+      focusResource: this.focusResource,
+      propertyPath: this.propertyPath,
+    });
+  }
+
   protected override toBigInt(): Either<Error, bigint> {
     return this.toLiteral()
       .chain(LiteralDecoder.decodeBigIntLiteral)
@@ -96,14 +107,7 @@ export class TermValue<TermT extends Term = Term> extends Value<TermT> {
       .mapLeft(() => this.newMistypedTermValueError("string"));
   }
 
-  private newMistypedTermValueError(
-    expectedValueType: string,
-  ): MistypedTermValueError {
-    return new MistypedTermValueError({
-      actualValue: this.term,
-      expectedValueType,
-      focusResource: this.focusResource,
-      propertyPath: this.propertyPath,
-    });
+  protected override toTerm(): Either<Error, Term> {
+    return Either.of(this.value);
   }
 }

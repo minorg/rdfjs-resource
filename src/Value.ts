@@ -138,16 +138,12 @@ export abstract class Value<T> {
     return this.toNumber().map((value) => this.newPrimitiveValue(value));
   }
 
-  protected abstract toNumber(): Either<Error, number>;
-
   /**
    * Try to convert this value to a JavaScript primitive (boolean | Date | number | string).
    */
   toPrimitiveValue(): Either<Error, Value<Primitive>> {
     return this.toPrimitive().map((value) => this.newPrimitiveValue(value));
   }
-
-  protected abstract toPrimitive(): Either<Error, Primitive>;
 
   /**
    * Try to convert this value to a resource (identified by a blank node or IRI).
@@ -161,6 +157,13 @@ export abstract class Value<T> {
    */
   toStringValue(): Either<Error, Value<string>> {
     return this.toString().map((value) => this.newPrimitiveValue(value));
+  }
+
+  /**
+   * Try to convert this value to a term.
+   */
+  toTermValue(): Either<Error, Value<Term>> {
+    return this.toTerm().map((value) => this.newTermValue(value));
   }
 
   /**
@@ -203,6 +206,10 @@ export abstract class Value<T> {
     );
   }
 
+  protected abstract toNumber(): Either<Error, number>;
+
+  protected abstract toPrimitive(): Either<Error, Primitive>;
+
   protected toResource(): Either<Error, Resource> {
     return this.toIdentifier().map(
       (value) =>
@@ -213,6 +220,8 @@ export abstract class Value<T> {
   }
 
   protected abstract toString(): Either<Error, string>;
+
+  protected abstract toTerm(): Either<Error, Term>;
 
   private newPrimitiveValue<PrimitiveT extends Primitive>(
     value: PrimitiveT,
