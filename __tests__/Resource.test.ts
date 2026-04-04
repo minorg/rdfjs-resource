@@ -346,6 +346,23 @@ describe("Resource", () => {
         .extract();
       expect(value).toBeDefined();
     });
+
+    it("inverse path", ({ expect }) => {
+      const resourceValues = [...testResource.values(predicate)].flatMap(
+        (value) => value.toResource().toMaybe().toList(),
+      );
+      expect(resourceValues).toHaveLength(2);
+      for (const resourceValue of resourceValues) {
+        expect(
+          resourceValue
+            .value({ path: predicate, termType: "InversePath" })
+            .unsafeCoerce()
+            .toIdentifier()
+            .unsafeCoerce()
+            .equals(testResource.identifier),
+        ).toBe(true);
+      }
+    });
   });
 
   describe("values", () => {
@@ -396,35 +413,24 @@ describe("Resource", () => {
         testResource.values(predicate, { unique: true }).toArray(),
       ).toHaveLength(1);
     });
-  });
 
-  it("valueOf", ({ expect }) => {
-    const resourceValues = [...testResource.values(predicate)].flatMap(
-      (value) => value.toResource().toMaybe().toList(),
-    );
-    expect(resourceValues).toHaveLength(2);
-    for (const resourceValue of resourceValues) {
-      expect(
-        resourceValue
-          .valueOf(predicate)
-          .unsafeCoerce()
-          .toIdentifier()
-          .equals(testResource.identifier),
-      ).toBe(true);
-    }
-  });
-
-  it("valuesOf", ({ expect }) => {
-    const resourceValues = [...testResource.values(predicate)].flatMap(
-      (value) => value.toResource().toMaybe().toList(),
-    );
-    expect(resourceValues).toHaveLength(2);
-    for (const resourceValue of resourceValues) {
-      const valuesOf = [...resourceValue.valuesOf(predicate)];
-      expect(valuesOf).toHaveLength(1);
-      expect(valuesOf[0].toIdentifier().equals(testResource.identifier)).toBe(
-        true,
+    it("inverse path", ({ expect }) => {
+      const resourceValues = [...testResource.values(predicate)].flatMap(
+        (value) => value.toResource().toMaybe().toList(),
       );
-    }
+      expect(resourceValues).toHaveLength(2);
+      for (const resourceValue of resourceValues) {
+        const valuesOf = [
+          ...resourceValue.values({ termType: "InversePath", path: predicate }),
+        ];
+        expect(valuesOf).toHaveLength(1);
+        expect(
+          valuesOf[0]
+            .toIdentifier()
+            .unsafeCoerce()
+            .equals(testResource.identifier),
+        ).toBe(true);
+      }
+    });
   });
 });

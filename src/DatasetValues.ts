@@ -112,10 +112,15 @@ export class DatasetValues extends Values<TermValue> {
         break;
       }
       case "NamedNode": {
-        const [s, o] = inverse
+        const [subject, object] = inverse
           ? [null, focusIdentifier]
           : [focusIdentifier, null];
-        for (const quad of this.dataset.match(s, propertyPath, o)) {
+        for (const quad of this.dataset.match(
+          subject,
+          propertyPath,
+          object,
+          this.graph,
+        )) {
           const term = inverse ? quad.subject : quad.object;
           switch (term.termType) {
             case "BlankNode":
