@@ -270,6 +270,12 @@ export class TermWrapper<TermT extends Term = Term> {
       );
   }
 
+  toTerm(): Either<Error, TermT>;
+  toTerm<T extends TermT>(in_: readonly T[]): Either<Error, T>;
+  toTerm<T extends TermT>(in_?: readonly T[]): Either<Error, T | TermT> {
+    return this.constrainTerm(this.term, in_);
+  }
+
   /**
    * Convert this term into a singleton sequence of values.
    */
