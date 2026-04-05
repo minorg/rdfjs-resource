@@ -56,6 +56,7 @@ export namespace PropertyPath {
   export function $fromRdf(
     resource: Resource,
     options?: {
+      [index: string]: unknown;
       graph?: Exclude<Quad_Graph, Variable>;
     },
   ): Either<Error, PropertyPath> {
