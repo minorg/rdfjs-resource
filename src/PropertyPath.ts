@@ -173,6 +173,8 @@ export namespace PropertyPath {
     return true;
   }
 
+  export const $schema: Readonly<object> = {};
+
   export function $toString(propertyPath: PropertyPath): string {
     switch (propertyPath.termType) {
       case "AlternativePath":
