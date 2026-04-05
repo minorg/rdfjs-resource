@@ -6,7 +6,7 @@ import { describe, it } from "vitest";
 import { Resource } from "../src/Resource.js";
 import { testData } from "./testData.js";
 
-describe("TermWrapper", () => {
+describe("Value", () => {
   const { objects, predicate, subject } = testData;
   const testResource = new Resource(datasetFactory.dataset(), subject);
   for (const object of Object.values(objects)) {

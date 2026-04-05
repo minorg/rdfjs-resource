@@ -3,6 +3,7 @@ import { Either, Left } from "purify-ts";
 import { MissingValueError } from "./MissingValueError.js";
 import type { PropertyPath } from "./PropertyPath.js";
 import type { Resource } from "./Resource.js";
+import type { Value } from "./Value.js";
 import type { ValueError } from "./ValueError.js";
 
 /**
@@ -16,7 +17,7 @@ import type { ValueError } from "./ValueError.js";
  *
  * The class doesn't try to implement the entire Array interface. Methods are added as needed by downstream code.
  */
-export abstract class Values<T> implements Iterable<T> {
+export abstract class Values<T = Value> implements Iterable<T> {
   readonly focusResource: Resource;
   readonly propertyPath: PropertyPath;
 

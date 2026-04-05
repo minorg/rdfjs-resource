@@ -19,7 +19,7 @@ import { Resource } from "./Resource.js";
 import { Term } from "./Term.js";
 import { Values } from "./Values.js";
 
-export class TermWrapper<TermT extends Term = Term> {
+export class Value<TermT extends Term = Term> {
   private readonly dataFactory: DataFactory;
   private readonly focusResource: Resource;
   private readonly propertyPath: PropertyPath;
@@ -175,7 +175,7 @@ export class TermWrapper<TermT extends Term = Term> {
    */
   toList(options?: {
     graph?: Exclude<Quad_Graph, Variable>;
-  }): Either<Error, Values<TermWrapper>> {
+  }): Either<Error, Values<Value>> {
     return this.toResource().chain((resource) =>
       resource.toList({ graph: options?.graph }),
     );
@@ -279,7 +279,7 @@ export class TermWrapper<TermT extends Term = Term> {
   /**
    * Convert this term into a singleton sequence of values.
    */
-  toValues(): Values<TermWrapper<TermT>> {
+  toValues(): Values<Value<TermT>> {
     return Values.fromValue({
       focusResource: this.focusResource,
       propertyPath: this.propertyPath,

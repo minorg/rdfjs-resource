@@ -5,7 +5,7 @@ import type { NamedNode, Quad_Graph, Variable } from "@rdfjs/types";
 import { Either, Left } from "purify-ts";
 import { Resource } from "./Resource.js";
 import { ResourceSet } from "./ResourceSet.js";
-import type { TermWrapper } from "./TermWrapper.js";
+import type { Value } from "./Value.js";
 import { sh } from "./vocabularies.js";
 
 interface AlternativePath {
@@ -68,7 +68,7 @@ export namespace PropertyPath {
     // The other property path types are BlankNodes
 
     const getPropertyPathList = (
-      list: Either<Error, Resource.Values<TermWrapper>>,
+      list: Either<Error, Resource.Values<Value>>,
     ): Either<Error, readonly PropertyPath[]> => {
       return list.chain((values) => {
         const members: PropertyPath[] = [];

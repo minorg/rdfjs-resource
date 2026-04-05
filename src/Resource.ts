@@ -17,7 +17,7 @@ import { MistypedTermValueError as _MistypedTermValueError } from "./MistypedTer
 import type { Primitive } from "./Primitive.js";
 import type { PropertyPath } from "./PropertyPath.js";
 import type { Term } from "./Term.js";
-import { TermWrapper } from "./TermWrapper.js";
+import { Value as _Value } from "./Value.js";
 import { ValueError as _ValueError } from "./ValueError.js";
 import { Values as _Values } from "./Values.js";
 import { rdf, rdfs } from "./vocabularies.js";
@@ -345,7 +345,7 @@ export class Resource<
    */
   toList(options?: {
     graph?: Exclude<Quad_Graph, Variable>;
-  }): Either<Resource.ValueError, Resource.Values<TermWrapper>> {
+  }): Either<Resource.ValueError, Resource.Values> {
     if (this.identifier.equals(rdf.nil)) {
       return Either.of(
         Resource.Values.fromArray({
@@ -441,8 +441,8 @@ export class Resource<
         );
     }
 
-    return Either.of<Resource.ValueError, Resource.Values<TermWrapper<Term>>>(
-      new TermWrapper({
+    return Either.of<Resource.ValueError, Resource.Values<Resource.Value>>(
+      new Resource.Value({
         dataFactory: this.dataFactory,
         focusResource: this,
         propertyPath: rdf.first,
@@ -463,7 +463,7 @@ export class Resource<
   value(
     propertyPath: PropertyPath,
     options?: { graph?: Exclude<Quad_Graph, Variable> },
-  ): Either<Resource.ValueError, TermWrapper> {
+  ): Either<Resource.ValueError, Resource.Value> {
     return this.values(propertyPath, options).head();
   }
 
@@ -473,7 +473,7 @@ export class Resource<
   values(
     propertyPath: PropertyPath,
     options?: { graph?: Exclude<Quad_Graph, Variable>; unique?: boolean },
-  ): Resource.Values<TermWrapper> {
+  ): Resource.Values {
     return new DatasetValues({
       dataFactory: this.dataFactory,
       focusResource: this,
@@ -511,14 +511,21 @@ export class Resource<
 type AddableValue = Term | Exclude<Primitive, Date>;
 
 export namespace Resource {
-  export type Identifier = _Identifier;
   export const Identifier = _Identifier;
-  export type ListStructureError = _ListStructureError;
+  export type Identifier = _Identifier;
+
   export const ListStructureError = _ListStructureError;
-  export type MistypedTermValueError = _MistypedTermValueError;
+  export type ListStructureError = _ListStructureError;
+
   export const MistypedTermValueError = _MistypedTermValueError;
-  export type ValueError = _ValueError;
+  export type MistypedTermValueError = _MistypedTermValueError;
+
   export const ValueError = _ValueError;
-  export type Values<T> = _Values<T>;
+  export type ValueError = _ValueError;
+
+  export const Value = _Value;
+  export type Value<TermT extends Term = Term> = _Value<TermT>;
+
   export const Values = _Values;
+  export type Values<T = Value> = _Values<T>;
 }
