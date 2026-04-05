@@ -15,6 +15,11 @@ describe("TermValue", () => {
       value.toBigIntValue().toMaybe().toList(),
     );
     expect(values).toHaveLength(13);
+
+    const values42: Resource.Value<42n>[] = [
+      ...testResource.values(predicate),
+    ].flatMap((value) => value.toBigIntValue([42n]).toMaybe().toList());
+    expect(values42).toHaveLength(1);
   });
 
   it("toBlankNodeValue", ({ expect }) => {
@@ -31,6 +36,16 @@ describe("TermValue", () => {
     );
     expect(values).toHaveLength(1);
     expect(values[0].value).toStrictEqual(true);
+
+    const falseValues: Resource.Value<false>[] = [
+      ...testResource.values(predicate),
+    ].flatMap((value) => value.toBooleanValue([false]).toMaybe().toList());
+    expect(falseValues).toHaveLength(0);
+
+    const trueValues: Resource.Value<true>[] = [
+      ...testResource.values(predicate),
+    ].flatMap((value) => value.toBooleanValue([true]).toMaybe().toList());
+    expect(trueValues).toHaveLength(1);
   });
 
   it("toDateValue", ({ expect }) => {

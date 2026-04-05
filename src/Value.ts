@@ -44,20 +44,6 @@ export abstract class Value<T> {
     this.value = value;
   }
 
-  /**
-   * Try to convert this value to a bigint.
-   */
-  toBigIntValue(): Either<Error, Value<bigint>> {
-    return this.toBigInt().map((value) => this.newPrimitiveValue(value));
-  }
-
-  /**
-   * Try to convert this value to a blank node.
-   */
-  toBlankNodeValue(): Either<Error, Value<BlankNode>> {
-    return this.toBlankNode().map((value) => this.newTermValue(value));
-  }
-
   static fromTerm<TermT extends Term>(parameters: {
     dataFactory: DataFactory;
     focusResource: Resource;
@@ -68,10 +54,60 @@ export abstract class Value<T> {
   }
 
   /**
+   * Try to convert this value to a bigint.
+   */
+  toBigIntValue(): Either<Error, Value<bigint>>;
+  toBigIntValue<T extends bigint>(in_: readonly T[]): Either<Error, Value<T>>;
+  toBigIntValue<T extends bigint>(
+    in_?: readonly T[],
+  ): Either<Error, Value<T | bigint>> {
+    return this.toBigInt()
+      .chain((value) => {
+        if (in_ && !in_.some((check) => value === check)) {
+          return Left(
+            new MistypedPrimitiveValueError({
+              actualValue: value,
+              expectedValueType: JSON.stringify(in_.map((_) => _.toString())),
+              focusResource: this.focusResource,
+              propertyPath: this.propertyPath,
+            }),
+          );
+        }
+        return Either.of<Error, bigint>(value as T);
+      })
+      .map((value) => this.newPrimitiveValue(value));
+  }
+
+  /**
+   * Try to convert this value to a blank node.
+   */
+  toBlankNodeValue(): Either<Error, Value<BlankNode>> {
+    return this.toBlankNode().map((value) => this.newTermValue(value));
+  }
+
+  /**
    * Try to convert this value to a boolean.
    */
-  toBooleanValue(): Either<Error, Value<boolean>> {
-    return this.toBoolean().map((value) => this.newPrimitiveValue(value));
+  toBooleanValue(): Either<Error, Value<boolean>>;
+  toBooleanValue<T extends boolean>(in_: readonly T[]): Either<Error, Value<T>>;
+  toBooleanValue<T extends boolean>(
+    in_?: readonly T[],
+  ): Either<Error, Value<T | boolean>> {
+    return this.toBoolean()
+      .chain((value) => {
+        if (in_ && !in_.some((check) => value === check)) {
+          return Left(
+            new MistypedPrimitiveValueError({
+              actualValue: value,
+              expectedValueType: JSON.stringify(in_),
+              focusResource: this.focusResource,
+              propertyPath: this.propertyPath,
+            }),
+          );
+        }
+        return Either.of<Error, boolean>(value as T);
+      })
+      .map((value) => this.newPrimitiveValue(value));
   }
 
   /**
