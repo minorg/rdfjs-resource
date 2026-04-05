@@ -1,4 +1,7 @@
+import dataFactory from "@rdfjs/data-model";
 import datasetFactory from "@rdfjs/dataset";
+import type { NamedNode } from "@rdfjs/types";
+import { xsd } from "@tpluscode/rdf-ns-builders";
 import { describe, it } from "vitest";
 import { Resource } from "../src/Resource.js";
 import { testData } from "./testData.js";
@@ -12,71 +15,113 @@ describe("TermValue", () => {
 
   it("toBigIntValue", ({ expect }) => {
     const values = [...testResource.values(predicate)].flatMap((value) =>
-      value.toBigIntValue().toMaybe().toList(),
+      value
+        .toBigIntValue()
+        .toMaybe()
+        .toList()
+        .map((_) => _.value),
     );
     expect(values).toHaveLength(13);
 
-    const values42: Resource.Value<42n>[] = [
-      ...testResource.values(predicate),
-    ].flatMap((value) => value.toBigIntValue([42n]).toMaybe().toList());
+    const values42: readonly 42n[] = [...testResource.values(predicate)]
+      .flatMap((value) => value.toBigIntValue([42n]).toMaybe().toList())
+      .map((_) => _.value);
     expect(values42).toHaveLength(1);
   });
 
   it("toBlankNodeValue", ({ expect }) => {
     const values = [...testResource.values(predicate)].flatMap((value) =>
-      value.toBlankNodeValue().toMaybe().toList(),
-    );
-    expect(values).toHaveLength(1);
-    expect(values[0].value.termType).toStrictEqual("BlankNode");
-  });
-
-  it("toBooleanValue", ({ expect }) => {
-    const values = [...testResource.values(predicate)].flatMap((value) =>
-      value.toBooleanValue().toMaybe().toList(),
-    );
-    expect(values).toHaveLength(1);
-    expect(values[0].value).toStrictEqual(true);
-
-    const falseValues: Resource.Value<false>[] = [
-      ...testResource.values(predicate),
-    ].flatMap((value) => value.toBooleanValue([false]).toMaybe().toList());
-    expect(falseValues).toHaveLength(0);
-
-    const trueValues: Resource.Value<true>[] = [
-      ...testResource.values(predicate),
-    ].flatMap((value) => value.toBooleanValue([true]).toMaybe().toList());
-    expect(trueValues).toHaveLength(1);
-  });
-
-  it("toDateValue", ({ expect }) => {
-    const values = [...testResource.values(predicate)].flatMap((value) =>
-      value.toDateValue().toMaybe().toList(),
-    );
-    expect(values).toHaveLength(1);
-  });
-
-  it("toDateTimeValue", ({ expect }) => {
-    const values = [...testResource.values(predicate)].flatMap((value) =>
-      value.toDateTimeValue().toMaybe().toList(),
-    );
-    expect(values).toHaveLength(2);
-  });
-
-  it("toFloatValue", ({ expect }) => {
-    const values = [...testResource.values(predicate)].flatMap((value) =>
-      value.toFloatValue().toMaybe().toList(),
-    );
-    expect(values).toHaveLength(13);
-  });
-
-  it("toIdentifierValue", ({ expect }) => {
-    const values = [...testResource.values(predicate)].flatMap((value) =>
       value
-        .toIdentifierValue()
+        .toBlankNodeValue()
         .toMaybe()
         .toList()
         .map((_) => _.value),
     );
+    expect(values).toHaveLength(1);
+    expect(values[0].termType).toStrictEqual("BlankNode");
+  });
+
+  it("toBooleanValue", ({ expect }) => {
+    const values = [...testResource.values(predicate)].flatMap((value) =>
+      value
+        .toBooleanValue()
+        .toMaybe()
+        .toList()
+        .map((_) => _.value),
+    );
+    expect(values).toHaveLength(1);
+    expect(values[0]).toStrictEqual(true);
+
+    const falseValues: readonly false[] = [...testResource.values(predicate)]
+      .flatMap((value) => value.toBooleanValue([false]).toMaybe().toList())
+      .map((_) => _.value);
+    expect(falseValues).toHaveLength(0);
+
+    const trueValues: readonly true[] = [...testResource.values(predicate)]
+      .flatMap((value) => value.toBooleanValue([true]).toMaybe().toList())
+      .map((_) => _.value);
+    expect(trueValues).toHaveLength(1);
+  });
+
+  it("toDateValue", ({ expect }) => {
+    const values = [...testResource.values(predicate)]
+      .flatMap((value) => value.toDateValue().toMaybe().toList())
+      .map((_) => _.value);
+    expect(values).toHaveLength(1);
+
+    expect(
+      [...testResource.values(predicate)]
+        .flatMap((value) => value.toDateValue([values[0]]).toMaybe().toList())
+        .map((_) => _.value),
+    ).toHaveLength(1);
+
+    expect(
+      [...testResource.values(predicate)]
+        .flatMap((value) => value.toDateValue([new Date()]).toMaybe().toList())
+        .map((_) => _.value),
+    ).toHaveLength(0);
+  });
+
+  it("toDateTimeValue", ({ expect }) => {
+    const values = [...testResource.values(predicate)]
+      .flatMap((value) => value.toDateTimeValue().toMaybe().toList())
+      .map((_) => _.value);
+    expect(values).toHaveLength(2);
+
+    expect(
+      [...testResource.values(predicate)]
+        .flatMap((value) =>
+          value.toDateTimeValue([values[0]]).toMaybe().toList(),
+        )
+        .map((_) => _.value),
+    ).toHaveLength(1);
+
+    expect(
+      [...testResource.values(predicate)]
+        .flatMap((value) =>
+          value.toDateTimeValue([new Date()]).toMaybe().toList(),
+        )
+        .map((_) => _.value),
+    ).toHaveLength(0);
+  });
+
+  it("toFloatValue", ({ expect }) => {
+    expect(
+      [...testResource.values(predicate)]
+        .flatMap((value) => value.toFloatValue().toMaybe().toList())
+        .map((_) => _.value),
+    ).toHaveLength(13);
+
+    const valuesPi: readonly 3.14[] = [...testResource.values(predicate)]
+      .flatMap((value) => value.toFloatValue([3.14]).toMaybe().toList())
+      .map((_) => _.value);
+    expect(valuesPi).toHaveLength(1);
+  });
+
+  it("toIdentifierValue", ({ expect }) => {
+    const values = [...testResource.values(predicate)]
+      .flatMap((value) => value.toIdentifierValue().toMaybe().toList())
+      .map((_) => _.value);
     expect(values).toHaveLength(2);
     expect(
       values.find((value) => value.equals(objects["blankNode"])),
@@ -84,13 +129,31 @@ describe("TermValue", () => {
     expect(
       values.find((value) => value.equals(objects["namedNode"])),
     ).toBeDefined();
+
+    const specificIdentifierValues: readonly NamedNode<"http://example.com/namedNodeObject">[] =
+      [...testResource.values(predicate)].flatMap((value) =>
+        value
+          .toIdentifierValue([
+            dataFactory.namedNode("http://example.com/namedNodeObject"),
+          ])
+          .toMaybe()
+          .toList()
+          .map((_) => _.value),
+      );
+    expect(specificIdentifierValues).toHaveLength(1);
   });
 
   it("toIntValue", ({ expect }) => {
-    const values = [...testResource.values(predicate)].flatMap((value) =>
-      value.toIntValue().toMaybe().toList(),
-    );
-    expect(values).toHaveLength(11);
+    expect(
+      [...testResource.values(predicate)]
+        .flatMap((value) => value.toIntValue().toMaybe().toList())
+        .map((_) => _.value),
+    ).toHaveLength(11);
+
+    const valuesByte: readonly 127[] = [...testResource.values(predicate)]
+      .flatMap((value) => value.toIntValue([127]).toMaybe().toList())
+      .map((_) => _.value);
+    expect(valuesByte).toHaveLength(1);
   });
 
   it("toIriValue", ({ expect }) => {
@@ -99,6 +162,18 @@ describe("TermValue", () => {
     );
     expect(values).toHaveLength(1);
     expect(values[0].value.equals(objects["namedNode"])).toStrictEqual(true);
+
+    const specificIriValues: readonly NamedNode<"http://example.com/namedNodeObject">[] =
+      [...testResource.values(predicate)].flatMap((value) =>
+        value
+          .toIriValue([
+            dataFactory.namedNode("http://example.com/namedNodeObject"),
+          ])
+          .toMaybe()
+          .toList()
+          .map((_) => _.value),
+      );
+    expect(specificIriValues).toHaveLength(1);
   });
 
   it("toLiteralValue", ({ expect }) => {
@@ -107,23 +182,34 @@ describe("TermValue", () => {
         value.toLiteralValue().toMaybe().toList(),
       ),
     ).toHaveLength(31);
+
+    expect(
+      [...testResource.values(predicate)].flatMap((value) =>
+        value
+          .toLiteralValue([dataFactory.literal("true", xsd.boolean)])
+          .toMaybe()
+          .toList(),
+      ),
+    ).toHaveLength(1);
   });
 
   it("toNumberValue", ({ expect }) => {
-    const values = [...testResource.values(predicate)].flatMap((value) =>
-      value.toNumberValue().toMaybe().toList(),
-    );
-    expect(values).toHaveLength(13);
+    expect(
+      [...testResource.values(predicate)]
+        .flatMap((value) => value.toNumberValue().toMaybe().toList())
+        .map((_) => _.value),
+    ).toHaveLength(13);
+
+    const valuesByte: readonly 127[] = [...testResource.values(predicate)]
+      .flatMap((value) => value.toNumberValue([127]).toMaybe().toList())
+      .map((_) => _.value);
+    expect(valuesByte).toHaveLength(1);
   });
 
   it("toPrimitiveValue", ({ expect }) => {
-    const primitives = [...testResource.values(predicate)].flatMap((value) =>
-      value
-        .toPrimitiveValue()
-        .toMaybe()
-        .toList()
-        .map((_) => _.value),
-    );
+    const primitives = [...testResource.values(predicate)]
+      .flatMap((value) => value.toPrimitiveValue().toMaybe().toList())
+      .map((_) => _.value);
     expect(primitives).toHaveLength(31);
     expect(
       primitives.filter((primitive) => typeof primitive === "bigint"),
@@ -140,6 +226,15 @@ describe("TermValue", () => {
     expect(
       primitives.filter((primitive) => typeof primitive === "string"),
     ).toHaveLength(12);
+
+    const specificPrimitives: readonly "stringLiteralObject"[] = [
+      ...testResource.values(predicate),
+    ]
+      .flatMap((value) =>
+        value.toPrimitiveValue(["stringLiteralObject"]).toMaybe().toList(),
+      )
+      .map((_) => _.value);
+    expect(specificPrimitives).toHaveLength(1);
   });
 
   it("toResourceValue", ({ expect }) => {
@@ -160,24 +255,44 @@ describe("TermValue", () => {
   });
 
   it("toStringValue", ({ expect }) => {
+    const values = [...testResource.values(predicate)]
+      .flatMap((value) => value.toStringValue().toMaybe().toList())
+      .map((_) => _.value);
+    expect(values).toHaveLength(12);
     expect(
-      testResource
-        .values(predicate)
-        .find((value) => value.toStringValue().isRight())
-        .chain((value) => value.toStringValue())
-        .map((_) => _.value)
-        .orDefault("test"),
-    ).toStrictEqual(objects["stringLiteral"].value);
+      values.some((value) => value === objects["stringLiteral"].value),
+    ).toStrictEqual(true);
+
+    const specificStrings: readonly "stringLiteralObject"[] = [
+      ...testResource.values(predicate),
+    ]
+      .flatMap((value) =>
+        value.toStringValue(["stringLiteralObject"]).toMaybe().toList(),
+      )
+      .map((_) => _.value);
+    expect(specificStrings).toHaveLength(1);
   });
 
   it("toTermValue", ({ expect }) => {
     for (const object of Object.values(objects)) {
       expect(
         [...testResource.values(predicate)].some((value) =>
-          value.toTermValue().value.equals(object),
+          value.toTermValue().unsafeCoerce().value.equals(object),
         ),
       ).toStrictEqual(true);
     }
+
+    const specificTermValues: readonly NamedNode<"http://example.com/namedNodeObject">[] =
+      [...testResource.values(predicate)].flatMap((value) =>
+        value
+          .toTermValue([
+            dataFactory.namedNode("http://example.com/namedNodeObject"),
+          ])
+          .toMaybe()
+          .toList()
+          .map((_) => _.value),
+      );
+    expect(specificTermValues).toHaveLength(1);
   });
 
   it("toValues", ({ expect }) => {

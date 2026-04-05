@@ -61,21 +61,9 @@ export abstract class Value<T> {
   toBigIntValue<T extends bigint>(
     in_?: readonly T[],
   ): Either<Error, Value<T | bigint>> {
-    return this.toBigInt()
-      .chain((value) => {
-        if (in_ && !in_.some((check) => value === check)) {
-          return Left(
-            new MistypedPrimitiveValueError({
-              actualValue: value,
-              expectedValueType: JSON.stringify(in_.map((_) => _.toString())),
-              focusResource: this.focusResource,
-              propertyPath: this.propertyPath,
-            }),
-          );
-        }
-        return Either.of<Error, bigint>(value as T);
-      })
-      .map((value) => this.newPrimitiveValue(value));
+    return (in_ ? this.toBigInt<T>(in_) : this.toBigInt()).map((value) =>
+      this.newPrimitiveValue(value),
+    );
   }
 
   /**
@@ -93,63 +81,69 @@ export abstract class Value<T> {
   toBooleanValue<T extends boolean>(
     in_?: readonly T[],
   ): Either<Error, Value<T | boolean>> {
-    return this.toBoolean()
-      .chain((value) => {
-        if (in_ && !in_.some((check) => value === check)) {
-          return Left(
-            new MistypedPrimitiveValueError({
-              actualValue: value,
-              expectedValueType: JSON.stringify(in_),
-              focusResource: this.focusResource,
-              propertyPath: this.propertyPath,
-            }),
-          );
-        }
-        return Either.of<Error, boolean>(value as T);
-      })
-      .map((value) => this.newPrimitiveValue(value));
+    return (in_ ? this.toBoolean<T>(in_) : this.toBoolean()).map((value) =>
+      this.newPrimitiveValue(value),
+    );
   }
 
   /**
    * Try to convert this value to a date-time.
    */
-  toDateTimeValue(): Either<Error, Value<Date>> {
-    return this.toDateTime().map((value) => this.newPrimitiveValue(value));
+  toDateTimeValue(in_?: readonly Date[]): Either<Error, Value<Date>> {
+    return this.toDateTime(in_).map((value) => this.newPrimitiveValue(value));
   }
 
   /**
    * Try to convert this value to a date.
    */
-  toDateValue(): Either<Error, Value<Date>> {
-    return this.toDate().map((value) => this.newPrimitiveValue(value));
+  toDateValue(in_?: readonly Date[]): Either<Error, Value<Date>> {
+    return this.toDate(in_).map((value) => this.newPrimitiveValue(value));
   }
 
   /**
    * Try to convert this value to a float.
    */
-  toFloatValue(): Either<Error, Value<number>> {
-    return this.toFloat().map((value) => this.newPrimitiveValue(value));
+  toFloatValue(): Either<Error, Value<number>>;
+  toFloatValue<T extends number>(in_: readonly T[]): Either<Error, Value<T>>;
+  toFloatValue<T extends number>(
+    in_?: readonly T[],
+  ): Either<Error, Value<T | number>> {
+    return this.toFloat(in_).map((value) => this.newPrimitiveValue(value));
   }
 
   /**
    * Try to convert this value to an identifier (blank node or IRI).
    */
-  toIdentifierValue(): Either<Error, Value<Identifier>> {
-    return this.toIdentifier().map((value) => this.newTermValue(value));
+  toIdentifierValue(): Either<Error, Value<Identifier>>;
+  toIdentifierValue<T extends Identifier>(
+    in_: readonly T[],
+  ): Either<Error, Value<T>>;
+  toIdentifierValue<T extends Identifier>(
+    in_?: readonly T[],
+  ): Either<Error, Value<T | Identifier>> {
+    return this.toIdentifier(in_).map((value) => this.newTermValue(value));
   }
 
   /**
    * Try to convert this value to an int.
    */
-  toIntValue(): Either<Error, Value<number>> {
-    return this.toInt().map((value) => this.newPrimitiveValue(value));
+  toIntValue(): Either<Error, Value<number>>;
+  toIntValue<T extends number>(in_: readonly T[]): Either<Error, Value<T>>;
+  toIntValue<T extends number>(
+    in_?: readonly T[],
+  ): Either<Error, Value<T | number>> {
+    return this.toInt(in_).map((value) => this.newPrimitiveValue(value));
   }
 
   /**
    * Try to convert this value to an IRI / NamedNode.
    */
-  toIriValue(): Either<Error, Value<NamedNode>> {
-    return this.toIri().map((value) => this.newTermValue(value));
+  toIriValue(): Either<Error, Value<NamedNode>>;
+  toIriValue<T extends NamedNode>(in_: readonly T[]): Either<Error, Value<T>>;
+  toIriValue<T extends NamedNode>(
+    in_?: readonly T[],
+  ): Either<Error, Value<T | NamedNode>> {
+    return this.toIri(in_).map((value) => this.newTermValue(value));
   }
 
   /**
@@ -166,8 +160,8 @@ export abstract class Value<T> {
   /**
    * Try to convert this value to a Literal.
    */
-  toLiteralValue(): Either<Error, Value<Literal>> {
-    return this.toLiteral().map((value) => this.newTermValue(value));
+  toLiteralValue(in_?: readonly Literal[]): Either<Error, Value<Literal>> {
+    return this.toLiteral(in_).map((value) => this.newTermValue(value));
   }
 
   /**
@@ -180,15 +174,25 @@ export abstract class Value<T> {
   /**
    * Try to convert this value to a number.
    */
-  toNumberValue(): Either<Error, Value<number>> {
-    return this.toNumber().map((value) => this.newPrimitiveValue(value));
+  toNumberValue(): Either<Error, Value<number>>;
+  toNumberValue<T extends number>(in_: readonly T[]): Either<Error, Value<T>>;
+  toNumberValue<T extends number>(
+    in_?: readonly T[],
+  ): Either<Error, Value<T | number>> {
+    return this.toNumber(in_).map((value) => this.newPrimitiveValue(value));
   }
 
   /**
    * Try to convert this value to a JavaScript primitive (boolean | Date | number | string).
    */
-  toPrimitiveValue(): Either<Error, Value<Primitive>> {
-    return this.toPrimitive().map((value) => this.newPrimitiveValue(value));
+  toPrimitiveValue(): Either<Error, Value<Primitive>>;
+  toPrimitiveValue<T extends Primitive>(
+    in_: readonly T[],
+  ): Either<Error, Value<T>>;
+  toPrimitiveValue<T extends Primitive>(
+    in_?: readonly T[],
+  ): Either<Error, Value<T | Primitive>> {
+    return this.toPrimitive(in_).map((value) => this.newPrimitiveValue(value));
   }
 
   /**
@@ -201,15 +205,23 @@ export abstract class Value<T> {
   /**
    * Try to convert this value to a string.
    */
-  toStringValue(): Either<Error, Value<string>> {
-    return this.toString().map((value) => this.newPrimitiveValue(value));
+  toStringValue(): Either<Error, Value<string>>;
+  toStringValue<T extends string>(in_: readonly T[]): Either<Error, Value<T>>;
+  toStringValue<T extends string>(
+    in_?: readonly T[],
+  ): Either<Error, Value<T | string>> {
+    return this.toString(in_).map((value) => this.newPrimitiveValue(value));
   }
 
   /**
    * Try to convert this value to a term.
    */
-  toTermValue(): Value<Term> {
-    return this.newTermValue(this.toTerm());
+  toTermValue(): Either<Error, Value<Term>>;
+  toTermValue<T extends Term>(in_: readonly T[]): Either<Error, Value<T>>;
+  toTermValue<T extends Term>(
+    in_?: readonly T[],
+  ): Either<Error, Value<T | Term>> {
+    return this.toTerm(in_).map((value) => this.newTermValue(value));
   }
 
   /**
@@ -223,28 +235,133 @@ export abstract class Value<T> {
     });
   }
 
-  protected abstract toBigInt(): Either<Error, bigint>;
+  protected constrainDate(
+    value: Date,
+    in_?: readonly Date[],
+  ): Either<Error, Date> {
+    if (in_ && !in_.some((check) => value.getTime() === check.getTime())) {
+      return Left(
+        new MistypedPrimitiveValueError({
+          actualValue: value,
+          expectedValueType: JSON.stringify(in_.map((_) => _.toString())),
+          focusResource: this.focusResource,
+          propertyPath: this.propertyPath,
+        }),
+      );
+    }
+    return Either.of<Error, Date>(value);
+  }
+
+  protected constrainPrimitive<
+    ConstrainedT extends UnconstrainedT,
+    UnconstrainedT extends Primitive,
+  >(
+    value: UnconstrainedT,
+    in_?: readonly ConstrainedT[],
+  ): Either<Error, ConstrainedT | UnconstrainedT> {
+    if (in_ && !in_.some((check) => value === check)) {
+      return Left(
+        new MistypedPrimitiveValueError({
+          actualValue: value,
+          expectedValueType: JSON.stringify(in_.map((_) => _.toString())),
+          focusResource: this.focusResource,
+          propertyPath: this.propertyPath,
+        }),
+      );
+    }
+    return Either.of<Error, UnconstrainedT>(value as ConstrainedT);
+  }
+
+  protected constrainTerm<
+    ConstrainedT extends UnconstrainedT,
+    UnconstrainedT extends Term,
+  >(
+    value: UnconstrainedT,
+    in_?: readonly ConstrainedT[],
+  ): Either<Error, ConstrainedT | UnconstrainedT> {
+    if (in_ && !in_.some((check) => value.equals(check))) {
+      return Left(
+        new MistypedTermValueError({
+          actualValue: value,
+          expectedValueType: JSON.stringify(in_.map((_) => _.termType)),
+          focusResource: this.focusResource,
+          propertyPath: this.propertyPath,
+        }),
+      );
+    }
+    return Either.of<Error, UnconstrainedT>(value as ConstrainedT);
+  }
+
+  protected toBigInt<T extends bigint>(
+    in_?: readonly T[],
+  ): Either<Error, T | bigint> {
+    return this.toUnconstrainedBigInt().chain((value) =>
+      this.constrainPrimitive(value, in_),
+    );
+  }
 
   protected abstract toBlankNode(): Either<Error, BlankNode>;
 
-  protected abstract toBoolean(): Either<Error, boolean>;
+  protected toBoolean<T extends boolean>(
+    in_?: readonly T[],
+  ): Either<Error, T | boolean> {
+    return this.toUnconstrainedBoolean().chain((value) =>
+      this.constrainPrimitive(value, in_),
+    );
+  }
 
-  protected abstract toDate(): Either<Error, Date>;
+  protected toDate(in_?: readonly Date[]): Either<Error, Date> {
+    return this.toUnconstrainedDate().chain((value) =>
+      this.constrainDate(value, in_),
+    );
+  }
 
-  protected abstract toDateTime(): Either<Error, Date>;
+  protected toDateTime(in_?: readonly Date[]): Either<Error, Date> {
+    return this.toUnconstrainedDateTime().chain((value) =>
+      this.constrainDate(value, in_),
+    );
+  }
 
-  protected abstract toFloat(): Either<Error, number>;
+  protected toFloat<T extends number>(
+    in_?: readonly T[],
+  ): Either<Error, T | number> {
+    return this.toUnconstrainedFloat().chain((value) =>
+      this.constrainPrimitive(value, in_),
+    );
+  }
 
-  protected abstract toIdentifier(): Either<Error, Identifier>;
+  protected toIdentifier<T extends Identifier>(
+    in_?: readonly Identifier[],
+  ): Either<Error, T | Identifier> {
+    return this.toUnconstrainedIdentifier().chain((value) =>
+      this.constrainTerm(value, in_),
+    );
+  }
 
-  protected abstract toInt(): Either<Error, number>;
+  protected toInt<T extends number>(
+    in_?: readonly T[],
+  ): Either<Error, T | number> {
+    return this.toUnconstrainedInt().chain((value) =>
+      this.constrainPrimitive(value, in_),
+    );
+  }
 
-  protected abstract toIri(): Either<Error, NamedNode>;
+  protected toIri<T extends NamedNode>(
+    in_?: readonly NamedNode[],
+  ): Either<Error, T | NamedNode> {
+    return this.toUnconstrainedIri().chain((value) =>
+      this.constrainTerm(value, in_),
+    );
+  }
 
-  protected abstract toLiteral(): Either<Error, Literal>;
+  protected toLiteral(in_?: readonly Literal[]): Either<Error, Literal> {
+    return this.toUnconstrainedLiteral().chain((value) =>
+      this.constrainTerm(value, in_),
+    );
+  }
 
   protected toNamedResource(): Either<Error, Resource<NamedNode>> {
-    return this.toIri().map(
+    return this.toUnconstrainedIri().map(
       (iri) =>
         new Resource<NamedNode>(this.focusResource.dataset, iri, {
           dataFactory: this.dataFactory,
@@ -252,12 +369,24 @@ export abstract class Value<T> {
     );
   }
 
-  protected abstract toNumber(): Either<Error, number>;
+  protected toNumber<T extends number>(
+    in_?: readonly T[],
+  ): Either<Error, T | number> {
+    return this.toUnconstrainedNumber().chain((value) =>
+      this.constrainPrimitive(value, in_),
+    );
+  }
 
-  protected abstract toPrimitive(): Either<Error, Primitive>;
+  protected toPrimitive<T extends Primitive>(
+    in_?: readonly T[],
+  ): Either<Error, T | Primitive> {
+    return this.toUnconstrainedPrimitive().chain((value) =>
+      this.constrainPrimitive(value, in_),
+    );
+  }
 
   protected toResource(): Either<Error, Resource> {
-    return this.toIdentifier().map(
+    return this.toUnconstrainedIdentifier().map(
       (value) =>
         new Resource(this.focusResource.dataset, value, {
           dataFactory: this.dataFactory,
@@ -265,9 +394,45 @@ export abstract class Value<T> {
     );
   }
 
-  protected abstract toString(): Either<Error, string>;
+  protected toString<T extends string>(
+    in_?: readonly T[],
+  ): Either<Error, T | string> {
+    return this.toUnconstrainedString().chain((value) =>
+      this.constrainPrimitive(value, in_),
+    );
+  }
 
-  protected abstract toTerm(): Term;
+  protected toTerm<T extends Term>(
+    in_?: readonly Term[],
+  ): Either<Error, T | Term> {
+    return this.constrainTerm(this.toUnconstrainedTerm(), in_);
+  }
+
+  protected abstract toUnconstrainedBigInt(): Either<Error, bigint>;
+
+  protected abstract toUnconstrainedBoolean(): Either<Error, boolean>;
+
+  protected abstract toUnconstrainedDate(): Either<Error, Date>;
+
+  protected abstract toUnconstrainedDateTime(): Either<Error, Date>;
+
+  protected abstract toUnconstrainedFloat(): Either<Error, number>;
+
+  protected abstract toUnconstrainedIdentifier(): Either<Error, Identifier>;
+
+  protected abstract toUnconstrainedInt(): Either<Error, number>;
+
+  protected abstract toUnconstrainedIri(): Either<Error, NamedNode>;
+
+  protected abstract toUnconstrainedLiteral(): Either<Error, Literal>;
+
+  protected abstract toUnconstrainedNumber(): Either<Error, number>;
+
+  protected abstract toUnconstrainedPrimitive(): Either<Error, Primitive>;
+
+  protected abstract toUnconstrainedString(): Either<Error, string>;
+
+  protected abstract toUnconstrainedTerm(): Term;
 
   private newPrimitiveValue<PrimitiveT extends Primitive>(
     value: PrimitiveT,
@@ -304,7 +469,7 @@ export abstract class Value<T> {
 export class PrimitiveValue<
   PrimitiveT extends Primitive = Primitive,
 > extends Value<PrimitiveT> {
-  protected override toBigInt(): Either<Error, bigint> {
+  protected override toUnconstrainedBigInt(): Either<Error, bigint> {
     return typeof this.value === "bigint"
       ? Either.of(this.value)
       : Left(this.newMistypedPrimitiveValueError("bigint"));
@@ -314,23 +479,23 @@ export class PrimitiveValue<
     return Left(this.newMistypedPrimitiveValueError("BlankNode"));
   }
 
-  protected override toBoolean(): Either<Error, boolean> {
+  protected override toUnconstrainedBoolean(): Either<Error, boolean> {
     return typeof this.value === "boolean"
       ? Either.of(this.value)
       : Left(this.newMistypedPrimitiveValueError("boolean"));
   }
 
-  protected override toDate(): Either<Error, Date> {
-    return this.toDateTime();
+  protected override toUnconstrainedDate(): Either<Error, Date> {
+    return this.toUnconstrainedDateTime();
   }
 
-  protected override toDateTime(): Either<Error, Date> {
+  protected override toUnconstrainedDateTime(): Either<Error, Date> {
     return typeof this.value === "object" && this.value instanceof Date
       ? Either.of(this.value)
       : Left(this.newMistypedPrimitiveValueError("Date"));
   }
 
-  protected override toFloat(): Either<Error, number> {
+  protected override toUnconstrainedFloat(): Either<Error, number> {
     return typeof this.value === "number" &&
       Number.isFinite(this.value) &&
       !Number.isInteger(this.value)
@@ -338,11 +503,11 @@ export class PrimitiveValue<
       : Left(this.newMistypedPrimitiveValueError("float"));
   }
 
-  protected override toIdentifier(): Either<Error, Identifier> {
+  protected override toUnconstrainedIdentifier(): Either<Error, Identifier> {
     return Left(this.newMistypedPrimitiveValueError("Identifier"));
   }
 
-  protected override toInt(): Either<Error, number> {
+  protected override toUnconstrainedInt(): Either<Error, number> {
     return typeof this.value === "number" &&
       Number.isFinite(this.value) &&
       Number.isInteger(this.value)
@@ -350,31 +515,31 @@ export class PrimitiveValue<
       : Left(this.newMistypedPrimitiveValueError("float"));
   }
 
-  protected override toIri(): Either<Error, NamedNode> {
+  protected override toUnconstrainedIri(): Either<Error, NamedNode> {
     return Left(this.newMistypedPrimitiveValueError("Iri"));
   }
 
-  protected override toLiteral(): Either<Error, Literal> {
+  protected override toUnconstrainedLiteral(): Either<Error, Literal> {
     return Either.of(this.literalFactory.primitive(this.value));
   }
 
-  protected override toNumber(): Either<Error, number> {
+  protected override toUnconstrainedNumber(): Either<Error, number> {
     return typeof this.value === "number"
       ? Either.of(this.value)
       : Left(this.newMistypedPrimitiveValueError("number"));
   }
 
-  protected override toPrimitive(): Either<Error, Primitive> {
+  protected override toUnconstrainedPrimitive(): Either<Error, Primitive> {
     return Either.of(this.value);
   }
 
-  protected override toString(): Either<Error, string> {
+  protected override toUnconstrainedString(): Either<Error, string> {
     return typeof this.value === "string"
       ? Either.of(this.value)
       : Left(this.newMistypedPrimitiveValueError("string"));
   }
 
-  protected override toTerm(): Term {
+  protected override toUnconstrainedTerm(): Term {
     return this.literalFactory.primitive(this.value);
   }
 
@@ -408,7 +573,7 @@ export class ResourceValue<
     });
   }
 
-  protected override toBigInt(): Either<Error, bigint> {
+  protected override toUnconstrainedBigInt(): Either<Error, bigint> {
     return Left(this.newMistypedTermValueError("bigint"));
   }
 
@@ -418,51 +583,51 @@ export class ResourceValue<
       : Left(this.newMistypedTermValueError("BlankNode"));
   }
 
-  protected override toBoolean(): Either<Error, boolean> {
+  protected override toUnconstrainedBoolean(): Either<Error, boolean> {
     return Left(this.newMistypedTermValueError("boolean"));
   }
 
-  protected override toDate(): Either<Error, Date> {
+  protected override toUnconstrainedDate(): Either<Error, Date> {
     return Left(this.newMistypedTermValueError("Date"));
   }
 
-  protected override toDateTime(): Either<Error, Date> {
+  protected override toUnconstrainedDateTime(): Either<Error, Date> {
     return Left(this.newMistypedTermValueError("DateTime"));
   }
 
-  protected override toFloat(): Either<Error, number> {
+  protected override toUnconstrainedFloat(): Either<Error, number> {
     return Left(this.newMistypedTermValueError("float"));
   }
 
-  protected override toIdentifier(): Either<Error, Identifier> {
+  protected override toUnconstrainedIdentifier(): Either<Error, Identifier> {
     return Either.of(this.value.identifier);
   }
 
-  protected override toInt(): Either<Error, number> {
+  protected override toUnconstrainedInt(): Either<Error, number> {
     return Left(this.newMistypedTermValueError("int"));
   }
 
-  protected override toIri(): Either<Error, NamedNode> {
+  protected override toUnconstrainedIri(): Either<Error, NamedNode> {
     throw new Error("Method not implemented.");
   }
 
-  protected override toLiteral(): Either<Error, Literal> {
+  protected override toUnconstrainedLiteral(): Either<Error, Literal> {
     return Left(this.newMistypedTermValueError("Literal"));
   }
 
-  protected override toNumber(): Either<Error, number> {
+  protected override toUnconstrainedNumber(): Either<Error, number> {
     return Left(this.newMistypedTermValueError("number"));
   }
 
-  protected override toPrimitive(): Either<Error, Primitive> {
+  protected override toUnconstrainedPrimitive(): Either<Error, Primitive> {
     return Left(this.newMistypedTermValueError("Primitive"));
   }
 
-  protected override toString(): Either<Error, string> {
+  protected override toUnconstrainedString(): Either<Error, string> {
     return Left(this.newMistypedTermValueError("string"));
   }
 
-  protected override toTerm(): Term {
+  protected override toUnconstrainedTerm(): Term {
     return this.value.identifier;
   }
 }
@@ -483,8 +648,8 @@ class TermValue<TermT extends Term = Term> extends Value<TermT> {
     });
   }
 
-  protected override toBigInt(): Either<Error, bigint> {
-    return this.toLiteral()
+  protected override toUnconstrainedBigInt(): Either<Error, bigint> {
+    return this.toUnconstrainedLiteral()
       .chain(LiteralDecoder.decodeBigIntLiteral)
       .mapLeft(() => this.newMistypedTermValueError("bigint"));
   }
@@ -495,31 +660,31 @@ class TermValue<TermT extends Term = Term> extends Value<TermT> {
       : Left(this.newMistypedTermValueError("BlankNode"));
   }
 
-  protected override toBoolean(): Either<Error, boolean> {
-    return this.toLiteral()
+  protected override toUnconstrainedBoolean(): Either<Error, boolean> {
+    return this.toUnconstrainedLiteral()
       .chain(LiteralDecoder.decodeBooleanLiteral)
       .mapLeft(() => this.newMistypedTermValueError("boolean"));
   }
 
-  protected override toDate(): Either<Error, Date> {
-    return this.toLiteral()
+  protected override toUnconstrainedDate(): Either<Error, Date> {
+    return this.toUnconstrainedLiteral()
       .chain(LiteralDecoder.decodeDateLiteral)
       .mapLeft(() => this.newMistypedTermValueError("date"));
   }
 
-  protected override toDateTime(): Either<Error, Date> {
-    return this.toLiteral()
+  protected override toUnconstrainedDateTime(): Either<Error, Date> {
+    return this.toUnconstrainedLiteral()
       .chain(LiteralDecoder.decodeDateTimeLiteral)
       .mapLeft(() => this.newMistypedTermValueError("date-time"));
   }
 
-  protected override toFloat(): Either<Error, number> {
-    return this.toLiteral()
+  protected override toUnconstrainedFloat(): Either<Error, number> {
+    return this.toUnconstrainedLiteral()
       .chain(LiteralDecoder.decodeFloatLiteral)
       .mapLeft(() => this.newMistypedTermValueError("float"));
   }
 
-  protected override toIdentifier(): Either<Error, Identifier> {
+  protected override toUnconstrainedIdentifier(): Either<Error, Identifier> {
     switch (this.term.termType) {
       case "BlankNode":
       case "NamedNode":
@@ -529,43 +694,43 @@ class TermValue<TermT extends Term = Term> extends Value<TermT> {
     }
   }
 
-  protected override toInt(): Either<Error, number> {
-    return this.toLiteral()
+  protected override toUnconstrainedInt(): Either<Error, number> {
+    return this.toUnconstrainedLiteral()
       .chain(LiteralDecoder.decodeIntLiteral)
       .mapLeft(() => this.newMistypedTermValueError("int"));
   }
 
-  protected override toIri(): Either<Error, NamedNode> {
+  protected override toUnconstrainedIri(): Either<Error, NamedNode> {
     return this.term.termType === "NamedNode"
       ? Either.of(this.term as NamedNode)
       : Left(this.newMistypedTermValueError("IRI"));
   }
 
-  protected override toLiteral(): Either<Error, Literal> {
+  protected override toUnconstrainedLiteral(): Either<Error, Literal> {
     return this.term.termType === "Literal"
       ? Either.of(this.term satisfies Literal)
       : Left(this.newMistypedTermValueError("Literal"));
   }
 
-  protected override toNumber(): Either<Error, number> {
-    return this.toLiteral()
+  protected override toUnconstrainedNumber(): Either<Error, number> {
+    return this.toUnconstrainedLiteral()
       .chain(LiteralDecoder.decodeNumberLiteral)
       .mapLeft(() => this.newMistypedTermValueError("number"));
   }
 
-  protected override toPrimitive(): Either<Error, Primitive> {
-    return this.toLiteral()
+  protected override toUnconstrainedPrimitive(): Either<Error, Primitive> {
+    return this.toUnconstrainedLiteral()
       .chain(LiteralDecoder.decodePrimitiveLiteral)
       .mapLeft(() => this.newMistypedTermValueError("primitive"));
   }
 
-  protected override toString(): Either<Error, string> {
-    return this.toLiteral()
+  protected override toUnconstrainedString(): Either<Error, string> {
+    return this.toUnconstrainedLiteral()
       .chain(LiteralDecoder.decodeStringLiteral)
       .mapLeft(() => this.newMistypedTermValueError("string"));
   }
 
-  protected override toTerm(): Term {
+  protected override toUnconstrainedTerm(): Term {
     return this.value;
   }
 }

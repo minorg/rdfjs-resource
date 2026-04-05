@@ -18,7 +18,7 @@ describe("ResourceSet", () => {
           (address) =>
             address
               .value(schema.addressLocality)
-              .chain((value) => value.toString())
+              .chain((value) => value.toUnconstrainedString())
               .orDefault("") === "Plainsboro Township",
         ),
       ).toStrictEqual(true);
@@ -44,7 +44,7 @@ describe("ResourceSet", () => {
           (address) =>
             address
               .value(schema.addressLocality)
-              .chain((value) => value.toString())
+              .chain((value) => value.toUnconstrainedString())
               .orDefault("") === "Plainsboro Township",
         ),
       ).toStrictEqual(true);
@@ -92,7 +92,7 @@ describe("ResourceSet", () => {
     expect(
       person
         .value(schema.familyName)
-        .chain((value) => value.toString())
+        .chain((value) => value.toUnconstrainedString())
         .orDefault(""),
     ).toStrictEqual("Cameron");
   });
