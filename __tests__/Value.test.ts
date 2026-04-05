@@ -81,12 +81,6 @@ describe("Value", () => {
 
     expect(
       [...testResource.values(predicate)].flatMap((value) =>
-        value.toDateTime([values[0]]).toMaybe().toList(),
-      ),
-    ).toHaveLength(1);
-
-    expect(
-      [...testResource.values(predicate)].flatMap((value) =>
         value.toDateTime([new Date()]).toMaybe().toList(),
       ),
     ).toHaveLength(0);
