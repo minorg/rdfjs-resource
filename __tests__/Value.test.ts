@@ -65,7 +65,10 @@ describe("Value", () => {
 
     expect(
       [...testResource.values(predicate)].flatMap((value) =>
-        value.toDate([new Date()]).toMaybe().toList(),
+        value
+          .toDate([new Date(2026, 4, 5)])
+          .toMaybe()
+          .toList(),
       ),
     ).toHaveLength(0);
   });
