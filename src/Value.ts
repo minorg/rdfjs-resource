@@ -22,10 +22,9 @@ import { Values } from "./Values.js";
 
 export abstract class Value<T> {
   protected readonly dataFactory: DataFactory;
-
-  readonly focusResource: Resource;
-  readonly propertyPath: PropertyPath;
-  readonly value: T;
+  protected readonly focusResource: Resource;
+  protected readonly propertyPath: PropertyPath;
+  protected readonly value: T;
 
   constructor({
     dataFactory,
@@ -233,6 +232,10 @@ export abstract class Value<T> {
       propertyPath: this.propertyPath,
       value: this,
     });
+  }
+
+  unwrap(): T {
+    return this.value;
   }
 
   protected constrainDate(

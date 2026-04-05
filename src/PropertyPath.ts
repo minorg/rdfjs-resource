@@ -78,7 +78,7 @@ export namespace PropertyPath {
             return Left(new Error("non-identifier in property path list"));
           }
           const member = PropertyPath.$fromRdf(
-            memberResourceValue.unsafeCoerce().value,
+            memberResourceValue.unsafeCoerce().unwrap(),
           );
           if (member.isLeft()) {
             return member;

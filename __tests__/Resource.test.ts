@@ -55,12 +55,8 @@ describe("Resource", () => {
       expect([...resource.values(predicate)]).toHaveLength(1);
       const list = resource
         .value(predicate)
-        .chain((value) => value.toList())
-        .map((values) =>
-          values.flatMap((value) =>
-            value.toUnconstrainedLiteral().toMaybe().toList(),
-          ),
-        )
+        .chain((_) => _.toList())
+        .map((_) => _.toUnwrappedArray())
         .orDefault([]);
       expect(list).toHaveLength(2);
       expect(
@@ -112,12 +108,12 @@ describe("Resource", () => {
                 quad.object.termType === "Literal"),
           ),
         );
-        const deserializedTerms = [
-          ...listResource
-            .toList()
-            .unsafeCoerce()
-            .map((value) => value.toUnconstrainedTerm()),
-        ];
+        const deserializedTerms = listResource
+          .toList()
+          .unsafeCoerce()
+          .chainMap((value) => value.toTermValue())
+          .unsafeCoerce()
+          .toUnwrappedArray();
         expect(deserializedTerms).toHaveLength(terms.length);
         terms.forEach((term, termI) => {
           expect(term.equals(deserializedTerms[termI])).toStrictEqual(true);

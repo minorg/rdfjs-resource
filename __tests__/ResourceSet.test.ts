@@ -18,7 +18,7 @@ describe("ResourceSet", () => {
           (address) =>
             address
               .value(schema.addressLocality)
-              .chain((value) => value.toUnconstrainedString())
+              .chain((value) => value.toString())
               .orDefault("") === "Plainsboro Township",
         ),
       ).toStrictEqual(true);

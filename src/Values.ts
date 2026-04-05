@@ -226,6 +226,10 @@ export abstract class Values<T> implements Iterable<Value<T>> {
    * Convert this values to an array of the values.
    */
   abstract toArray(): readonly Value<T>[];
+
+  toUnwrappedArray(): readonly T[] {
+    return this.toArray().map((_) => _.unwrap());
+  }
 }
 
 /**
