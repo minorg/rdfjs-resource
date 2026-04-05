@@ -3,21 +3,20 @@ import { Either, Left } from "purify-ts";
 import { MissingValueError } from "./MissingValueError.js";
 import type { PropertyPath } from "./PropertyPath.js";
 import type { Resource } from "./Resource.js";
-import type { Value } from "./Value.js";
 import type { ValueError } from "./ValueError.js";
 
 /**
  * Iterable sequence of values of a given type.
  *
- * Resource.values and .valuesOf return instances of this class instead of a simple array of values in order to
- * (1) preserve the focus resource that .values/.valuesOf was invoked on, in case of errors
- * (2) preserve the propertyPath that .values/.valuesOf was invoked with, in case of errors
+ * Resource.values returns instances of this class instead of a simple array of values in order to
+ * (1) preserve the focus resource that .values was invoked on, in case of errors
+ * (2) preserve the propertyPath that .values was invoked with, in case of errors
  * (3) return purify types from methods like .find instead of null or undefined
  * (4) add some methods that aren't on arrays, like .chainMap and .head
  *
  * The class doesn't try to implement the entire Array interface. Methods are added as needed by downstream code.
  */
-export abstract class Values<T> implements Iterable<Value<T>> {
+export abstract class Values<T> implements Iterable<T> {
   readonly focusResource: Resource;
   readonly propertyPath: PropertyPath;
 
@@ -50,7 +49,7 @@ export abstract class Values<T> implements Iterable<Value<T>> {
   static fromArray<T>(parameters: {
     focusResource: Resource;
     propertyPath: PropertyPath;
-    values: readonly Value<T>[];
+    values: readonly T[];
   }): Values<T> {
     if (Values.length === 0) {
       return Values.empty(parameters);
@@ -65,12 +64,12 @@ export abstract class Values<T> implements Iterable<Value<T>> {
   static fromValue<T>(parameters: {
     focusResource: Resource;
     propertyPath: PropertyPath;
-    value: Value<T>;
+    value: T;
   }) {
     return new SingletonValues(parameters);
   }
 
-  abstract [Symbol.iterator](): Iterator<Value<T>>;
+  abstract [Symbol.iterator](): Iterator<T>;
 
   /**
    * For each value in the sequence, try to convert it to a new type / transform it using the provided callback.
@@ -82,16 +81,16 @@ export abstract class Values<T> implements Iterable<Value<T>> {
    * This is a combination of Either.chain and Either.map.
    */
   chainMap<NewT>(
-    callback: (value: Value<T>, index: number) => Either<Error, Value<NewT>>,
+    callback: (value: T, index: number) => Either<Error, NewT>,
   ): Either<Error, Values<NewT>> {
-    const newValues: Value<NewT>[] = [];
+    const newValues: NewT[] = [];
     let valueI = 0;
     for (const value of this) {
       const callbackResult = callback(value, valueI);
       if (callbackResult.isLeft()) {
         return callbackResult;
       }
-      newValues.push(callbackResult.extract() as Value<NewT>);
+      newValues.push(callbackResult.extract() as NewT);
       valueI++;
     }
     return Either.of(
@@ -106,7 +105,7 @@ export abstract class Values<T> implements Iterable<Value<T>> {
   /**
    * Concatenate another values of the same type to this Values, returning a new Values instance.
    */
-  concat(...values: readonly Value<T>[]): Values<T> {
+  concat(...values: readonly T[]): Values<T> {
     return Values.fromArray({
       focusResource: this.focusResource,
       propertyPath: this.propertyPath,
@@ -117,8 +116,8 @@ export abstract class Values<T> implements Iterable<Value<T>> {
   /**
    * Filter the values, returning a new Values instance.
    */
-  filter(propertyPath: (value: Value<T>, index: number) => boolean): Values<T> {
-    const filteredValues: Value<T>[] = [];
+  filter(propertyPath: (value: T, index: number) => boolean): Values<T> {
+    const filteredValues: T[] = [];
     let valueI = 0;
     for (const value of this) {
       if (propertyPath(value, valueI)) {
@@ -139,8 +138,8 @@ export abstract class Values<T> implements Iterable<Value<T>> {
    * Return Right if a value satisfies the propertyPath, otherwise Left.
    */
   find(
-    propertyPath: (value: Value<T>, index: number) => boolean,
-  ): Either<MissingValueError, Value<T>> {
+    propertyPath: (value: T, index: number) => boolean,
+  ): Either<MissingValueError, T> {
     let valueI = 0;
     for (const value of this) {
       if (propertyPath(value, valueI)) {
@@ -165,7 +164,7 @@ export abstract class Values<T> implements Iterable<Value<T>> {
     return Values.fromArray<NewT>({
       focusResource: this.focusResource,
       propertyPath: this.propertyPath,
-      values: this.toArray().flat() as unknown as readonly Value<NewT>[],
+      values: this.toArray().flat() as unknown as readonly NewT[],
     });
   }
 
@@ -173,9 +172,9 @@ export abstract class Values<T> implements Iterable<Value<T>> {
    * Map each value to an array of values of a new type. Flatten those arrays and return the result as a new Values.
    */
   flatMap<NewT>(
-    callback: (value: Value<T>, index: number) => ReadonlyArray<Value<NewT>>,
+    callback: (value: T, index: number) => ReadonlyArray<NewT>,
   ): Values<NewT> {
-    const newValues: Value<NewT>[] = [];
+    const newValues: NewT[] = [];
     let valueI = 0;
     for (const value of this) {
       newValues.push(...callback(value, valueI));
@@ -191,7 +190,7 @@ export abstract class Values<T> implements Iterable<Value<T>> {
   /**
    * Get the head of this sequence of values if the sequence is non-empty. Otherwise return Left.
    */
-  head(): Either<ValueError, Value<T>> {
+  head(): Either<ValueError, T> {
     for (const value of this) {
       return Either.of(value);
     }
@@ -206,10 +205,8 @@ export abstract class Values<T> implements Iterable<Value<T>> {
   /**
    * Map each value to a value of a new type and return a new Values with the mapped results.
    */
-  map<NewT>(
-    callback: (value: Value<T>, index: number) => Value<NewT>,
-  ): Values<NewT> {
-    const newValues: Value<NewT>[] = [];
+  map<NewT>(callback: (value: T, index: number) => NewT): Values<NewT> {
+    const newValues: NewT[] = [];
     let valueI = 0;
     for (const value of this) {
       newValues.push(callback(value, valueI));
@@ -225,11 +222,7 @@ export abstract class Values<T> implements Iterable<Value<T>> {
   /**
    * Convert this values to an array of the values.
    */
-  abstract toArray(): readonly Value<T>[];
-
-  toUnwrappedArray(): readonly T[] {
-    return this.toArray().map((_) => _.unwrap());
-  }
+  abstract toArray(): readonly T[];
 }
 
 /**
@@ -238,7 +231,7 @@ export abstract class Values<T> implements Iterable<Value<T>> {
  * Must be in the same file to avoid circular dependencies.
  */
 class ArrayValues<T> extends Values<T> {
-  private readonly values: readonly Value<T>[];
+  private readonly values: readonly T[];
 
   constructor({
     values,
@@ -246,7 +239,7 @@ class ArrayValues<T> extends Values<T> {
   }: {
     focusResource: Resource;
     propertyPath: PropertyPath;
-    values: readonly Value<T>[];
+    values: readonly T[];
   }) {
     super(superParameters);
     this.values = values;
@@ -256,11 +249,11 @@ class ArrayValues<T> extends Values<T> {
     return this.values.length;
   }
 
-  override [Symbol.iterator](): Iterator<Value<T>> {
+  override [Symbol.iterator](): Iterator<T> {
     return this.values[Symbol.iterator]();
   }
 
-  override toArray(): readonly Value<T>[] {
+  override toArray(): readonly T[] {
     return this.values;
   }
 }
@@ -273,11 +266,11 @@ class EmptyValues<T> extends Values<T> {
     return 0;
   }
 
-  override [Symbol.iterator](): Iterator<Value<T>> {
+  override [Symbol.iterator](): Iterator<T> {
     return this.toArray()[Symbol.iterator]();
   }
 
-  override toArray(): readonly Value<T>[] {
+  override toArray(): readonly T[] {
     return [];
   }
 }
@@ -288,23 +281,27 @@ class EmptyValues<T> extends Values<T> {
  * Must be in the same file to avoid circular dependencies.
  */
 class SingletonValues<T> extends Values<T> {
-  private readonly value: Value<T>;
+  private readonly value: T;
 
   override readonly length = 1;
 
   constructor({
     value,
     ...superParameters
-  }: { focusResource: Resource; propertyPath: PropertyPath; value: Value<T> }) {
+  }: {
+    focusResource: Resource;
+    propertyPath: PropertyPath;
+    value: T;
+  }) {
     super(superParameters);
     this.value = value;
   }
 
-  override *[Symbol.iterator](): Iterator<Value<T>> {
+  override *[Symbol.iterator](): Iterator<T> {
     yield this.value;
   }
 
-  override toArray(): readonly Value<T>[] {
+  override toArray(): readonly T[] {
     return [this.value];
   }
 }

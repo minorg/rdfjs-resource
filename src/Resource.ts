@@ -17,7 +17,7 @@ import { MistypedTermValueError as _MistypedTermValueError } from "./MistypedTer
 import type { Primitive } from "./Primitive.js";
 import type { PropertyPath } from "./PropertyPath.js";
 import type { Term } from "./Term.js";
-import { Value as _Value } from "./Value.js";
+import { TermWrapper } from "./TermWrapper.js";
 import { ValueError as _ValueError } from "./ValueError.js";
 import { Values as _Values } from "./Values.js";
 import { rdf, rdfs } from "./vocabularies.js";
@@ -345,7 +345,7 @@ export class Resource<
    */
   toList(options?: {
     graph?: Exclude<Quad_Graph, Variable>;
-  }): Either<Resource.ValueError, Resource.Values<Term>> {
+  }): Either<Resource.ValueError, Resource.Values<TermWrapper>> {
     if (this.identifier.equals(rdf.nil)) {
       return Either.of(
         Resource.Values.fromArray({
@@ -441,12 +441,12 @@ export class Resource<
         );
     }
 
-    return Either.of<Resource.ValueError, Resource.Values<Term>>(
-      Resource.Value.fromTerm({
+    return Either.of<Resource.ValueError, Resource.Values<TermWrapper<Term>>>(
+      new TermWrapper({
         dataFactory: this.dataFactory,
         focusResource: this,
         propertyPath: rdf.first,
-        value: firstObject,
+        term: firstObject,
       }).toValues(),
     ).chain((items) =>
       new Resource(this.dataset, restObject, {
@@ -463,7 +463,7 @@ export class Resource<
   value(
     propertyPath: PropertyPath,
     options?: { graph?: Exclude<Quad_Graph, Variable> },
-  ): Either<Resource.ValueError, Resource.Value<Term>> {
+  ): Either<Resource.ValueError, TermWrapper> {
     return this.values(propertyPath, options).head();
   }
 
@@ -473,7 +473,7 @@ export class Resource<
   values(
     propertyPath: PropertyPath,
     options?: { graph?: Exclude<Quad_Graph, Variable>; unique?: boolean },
-  ): Resource.Values<Term> {
+  ): Resource.Values<TermWrapper> {
     return new DatasetValues({
       dataFactory: this.dataFactory,
       focusResource: this,
@@ -517,8 +517,6 @@ export namespace Resource {
   export const ListStructureError = _ListStructureError;
   export type MistypedTermValueError = _MistypedTermValueError;
   export const MistypedTermValueError = _MistypedTermValueError;
-  export const Value = _Value;
-  export type Value<T> = _Value<T>;
   export type ValueError = _ValueError;
   export const ValueError = _ValueError;
   export type Values<T> = _Values<T>;

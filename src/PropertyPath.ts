@@ -5,7 +5,7 @@ import type { NamedNode, Quad_Graph, Variable } from "@rdfjs/types";
 import { Either, Left } from "purify-ts";
 import { Resource } from "./Resource.js";
 import { ResourceSet } from "./ResourceSet.js";
-import type { Term } from "./Term.js";
+import type { TermWrapper } from "./TermWrapper.js";
 import { sh } from "./vocabularies.js";
 
 interface AlternativePath {
@@ -68,18 +68,16 @@ export namespace PropertyPath {
     // The other property path types are BlankNodes
 
     const getPropertyPathList = (
-      list: Either<Error, Resource.Values<Term>>,
+      list: Either<Error, Resource.Values<TermWrapper>>,
     ): Either<Error, readonly PropertyPath[]> => {
       return list.chain((values) => {
         const members: PropertyPath[] = [];
         for (const value of values) {
-          const memberResourceValue = value.toResourceValue().toMaybe();
-          if (memberResourceValue.isNothing()) {
+          const resource = value.toResource().toMaybe();
+          if (resource.isNothing()) {
             return Left(new Error("non-identifier in property path list"));
           }
-          const member = PropertyPath.$fromRdf(
-            memberResourceValue.unsafeCoerce().unwrap(),
-          );
+          const member = PropertyPath.$fromRdf(resource.unsafeCoerce());
           if (member.isLeft()) {
             return member;
           }

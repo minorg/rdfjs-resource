@@ -11,10 +11,10 @@ import type {
 import type { PropertyPath } from "./PropertyPath.js";
 import type { Resource } from "./Resource.js";
 import type { Term } from "./Term.js";
-import { Value } from "./Value.js";
+import { TermWrapper } from "./TermWrapper.js";
 import { Values } from "./Values.js";
 
-export class DatasetValues extends Values<Term> {
+export class DatasetValues extends Values<TermWrapper> {
   private readonly dataFactory: DataFactory;
   private readonly graph: Exclude<Quad_Graph, Variable> | null;
   private readonly unique: boolean;
@@ -50,7 +50,7 @@ export class DatasetValues extends Values<Term> {
     return this.focusResource.dataset;
   }
 
-  override *[Symbol.iterator](): Iterator<Value<Term>> {
+  override *[Symbol.iterator](): Iterator<TermWrapper<Term>> {
     if (this.unique) {
       const uniqueTerms = new TermSet<Term>();
       for (const term of this.terms({
@@ -60,11 +60,11 @@ export class DatasetValues extends Values<Term> {
         if (uniqueTerms.has(term)) {
           continue;
         }
-        yield Value.fromTerm({
+        yield new TermWrapper({
           dataFactory: this.dataFactory,
           focusResource: this.focusResource,
           propertyPath: this.propertyPath,
-          value: term,
+          term,
         });
         uniqueTerms.add(term);
       }
@@ -73,17 +73,17 @@ export class DatasetValues extends Values<Term> {
         focusIdentifier: this.focusResource.identifier,
         propertyPath: this.propertyPath,
       })) {
-        yield Value.fromTerm({
+        yield new TermWrapper({
           dataFactory: this.dataFactory,
           focusResource: this.focusResource,
           propertyPath: this.propertyPath,
-          value: term,
+          term,
         });
       }
     }
   }
 
-  override toArray(): readonly Value<Term>[] {
+  override toArray(): readonly TermWrapper<Term>[] {
     return [...this];
   }
 
