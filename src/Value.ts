@@ -21,9 +21,9 @@ import { Values } from "./Values.js";
 
 export class Value<TermT extends Term = Term> {
   private readonly dataFactory: DataFactory;
-  private readonly focusResource: Resource;
-  private readonly propertyPath: PropertyPath;
 
+  readonly focusResource: Resource;
+  readonly propertyPath: PropertyPath;
   readonly term: TermT;
 
   constructor({
@@ -47,7 +47,9 @@ export class Value<TermT extends Term = Term> {
    * Try to convert this term to a bigint.
    */
   toBigInt(): Either<Error, bigint>;
+
   toBigInt<T extends bigint>(in_: readonly T[]): Either<Error, T>;
+
   toBigInt<T extends bigint>(in_?: readonly T[]): Either<Error, T | bigint> {
     return this.toLiteral()
       .chain(LiteralDecoder.decodeBigIntLiteral)
@@ -72,7 +74,9 @@ export class Value<TermT extends Term = Term> {
    * Try to convert this term to a boolean.
    */
   toBoolean(): Either<Error, boolean>;
+
   toBoolean<T extends boolean>(in_: readonly T[]): Either<Error, T>;
+
   toBoolean<T extends boolean>(in_?: readonly T[]): Either<Error, T | boolean> {
     return this.toLiteral()
       .chain(LiteralDecoder.decodeBooleanLiteral)
@@ -82,20 +86,6 @@ export class Value<TermT extends Term = Term> {
         ),
       )
       .chain((value) => this.constrainPrimitive(value, in_));
-  }
-
-  /**
-   * Try to convert this term to a date-time.
-   */
-  toDateTime(in_?: readonly Date[]): Either<Error, Date> {
-    return this.toLiteral()
-      .chain(LiteralDecoder.decodeDateTimeLiteral)
-      .mapLeft(() =>
-        this.newMistypedTermValueError(
-          in_ ? in_.map((_) => _.toISOString()).join(" |") : "boolean",
-        ),
-      )
-      .chain((value) => this.constrainDate(value, in_));
   }
 
   /**
@@ -113,10 +103,26 @@ export class Value<TermT extends Term = Term> {
   }
 
   /**
+   * Try to convert this term to a date-time.
+   */
+  toDateTime(in_?: readonly Date[]): Either<Error, Date> {
+    return this.toLiteral()
+      .chain(LiteralDecoder.decodeDateTimeLiteral)
+      .mapLeft(() =>
+        this.newMistypedTermValueError(
+          in_ ? in_.map((_) => _.toISOString()).join(" |") : "boolean",
+        ),
+      )
+      .chain((value) => this.constrainDate(value, in_));
+  }
+
+  /**
    * Try to convert this term to a float.
    */
   toFloat(): Either<Error, number>;
+
   toFloat<T extends number>(in_: readonly T[]): Either<Error, T>;
+
   toFloat<T extends number>(in_?: readonly T[]): Either<Error, T | number> {
     return this.toLiteral()
       .chain(LiteralDecoder.decodeFloatLiteral)
@@ -132,7 +138,9 @@ export class Value<TermT extends Term = Term> {
    * Try to convert this term to an identifier (blank node or IRI).
    */
   toIdentifier(): Either<Error, Identifier>;
+
   toIdentifier<T extends Identifier>(in_: readonly T[]): Either<Error, T>;
+
   toIdentifier<T extends Identifier>(
     in_?: readonly T[],
   ): Either<Error, T | Identifier> {
@@ -146,7 +154,9 @@ export class Value<TermT extends Term = Term> {
    * Try to convert this term to an int.
    */
   toInt(): Either<Error, number>;
+
   toInt<T extends number>(in_: readonly T[]): Either<Error, T>;
+
   toInt<T extends number>(in_?: readonly T[]): Either<Error, T | number> {
     return this.toLiteral()
       .chain(LiteralDecoder.decodeIntLiteral)
@@ -162,7 +172,9 @@ export class Value<TermT extends Term = Term> {
    * Try to convert this term to an IRI / NamedNode.
    */
   toIri(): Either<Error, NamedNode>;
+
   toIri<T extends NamedNode>(in_: readonly T[]): Either<Error, T>;
+
   toIri<T extends NamedNode>(in_?: readonly T[]): Either<Error, T | NamedNode> {
     if (this.term.termType !== "NamedNode") {
       return Left(this.newMistypedTermValueError("IRI"));
@@ -208,7 +220,9 @@ export class Value<TermT extends Term = Term> {
    * Try to convert this term to a number.
    */
   toNumber(): Either<Error, number>;
+
   toNumber<T extends number>(in_: readonly T[]): Either<Error, T>;
+
   toNumber<T extends number>(in_?: readonly T[]): Either<Error, T | number> {
     return this.toLiteral()
       .chain(LiteralDecoder.decodeNumberLiteral)
@@ -224,7 +238,9 @@ export class Value<TermT extends Term = Term> {
    * Try to convert this term to a JavaScript primitive (boolean | Date | number | string).
    */
   toPrimitive(): Either<Error, Primitive>;
+
   toPrimitive<T extends Primitive>(in_: readonly T[]): Either<Error, T>;
+
   toPrimitive<T extends Primitive>(
     in_?: readonly T[],
   ): Either<Error, T | Primitive> {
@@ -242,7 +258,9 @@ export class Value<TermT extends Term = Term> {
    * Try to convert this term to a resource (identified by a blank node or IRI).
    */
   toResource(): Either<Error, Resource>;
+
   toResource<T extends Identifier>(in_: readonly T[]): Either<Error, T>;
+
   toResource<T extends Identifier>(
     in_?: readonly T[],
   ): Either<Error, T | Resource> {
@@ -258,7 +276,9 @@ export class Value<TermT extends Term = Term> {
    * Try to convert this term to a string.
    */
   toString(): Either<Error, string>;
+
   toString<T extends string>(in_: readonly T[]): Either<Error, T>;
+
   toString<T extends string>(in_?: readonly T[]): Either<Error, T | string> {
     return this.toLiteral()
       .chain(LiteralDecoder.decodeStringLiteral)
@@ -271,7 +291,9 @@ export class Value<TermT extends Term = Term> {
   }
 
   toTerm(): Either<Error, TermT>;
+
   toTerm<T extends TermT>(in_: readonly T[]): Either<Error, T>;
+
   toTerm<T extends TermT>(in_?: readonly T[]): Either<Error, T | TermT> {
     return this.constrainTerm(this.term, in_);
   }
@@ -284,17 +306,6 @@ export class Value<TermT extends Term = Term> {
       focusResource: this.focusResource,
       propertyPath: this.propertyPath,
       value: this,
-    });
-  }
-
-  private newMistypedTermValueError(
-    expectedValueType: string,
-  ): MistypedTermValueError {
-    return new MistypedTermValueError({
-      actualValue: this.term,
-      expectedValueType,
-      focusResource: this.focusResource,
-      propertyPath: this.propertyPath,
     });
   }
 
@@ -353,5 +364,16 @@ export class Value<TermT extends Term = Term> {
       );
     }
     return Either.of<Error, UnconstrainedT>(value as ConstrainedT);
+  }
+
+  private newMistypedTermValueError(
+    expectedValueType: string,
+  ): MistypedTermValueError {
+    return new MistypedTermValueError({
+      actualValue: this.term,
+      expectedValueType,
+      focusResource: this.focusResource,
+      propertyPath: this.propertyPath,
+    });
   }
 }
