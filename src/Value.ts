@@ -7,16 +7,16 @@ import type {
   Variable,
 } from "@rdfjs/types";
 
-import type { Either } from "purify-ts";
+import { Either, Left } from "purify-ts";
 
 import type { Identifier } from "./Identifier.js";
+import { LiteralDecoder } from "./LiteralDecoder.js";
+import { MistypedPrimitiveValueError } from "./MistypedPrimitiveValueError.js";
+import { MistypedTermValueError } from "./MistypedTermValueError.js";
 import type { Primitive } from "./Primitive.js";
-import { PrimitiveValue } from "./PrimitiveValue.js";
 import type { PropertyPath } from "./PropertyPath.js";
 import { Resource } from "./Resource.js";
-import { ResourceValue } from "./ResourceValue.js";
 import type { Term } from "./Term.js";
-import { TermValue } from "./TermValue.js";
 import { Values } from "./Values.js";
 
 export abstract class Value<T> {
@@ -55,6 +55,15 @@ export abstract class Value<T> {
    */
   toBlankNodeValue(): Either<Error, Value<BlankNode>> {
     return this.toBlankNode().map((value) => this.newTermValue(value));
+  }
+
+  static fromTerm<TermT extends Term>(parameters: {
+    dataFactory: DataFactory;
+    focusResource: Resource;
+    propertyPath: PropertyPath;
+    value: TermT;
+  }) {
+    return new TermValue(parameters);
   }
 
   /**
@@ -252,5 +261,270 @@ export abstract class Value<T> {
       propertyPath: this.propertyPath,
       value,
     });
+  }
+}
+
+export class PrimitiveValue<
+  PrimitiveT extends Primitive = Primitive,
+> extends Value<PrimitiveT> {
+  protected override toBigInt(): Either<Error, bigint> {
+    return typeof this.value === "bigint"
+      ? Either.of(this.value)
+      : Left(this.newMistypedPrimitiveValueError("bigint"));
+  }
+
+  protected override toBlankNode(): Either<Error, BlankNode> {
+    return Left(this.newMistypedPrimitiveValueError("BlankNode"));
+  }
+
+  protected override toBoolean(): Either<Error, boolean> {
+    return typeof this.value === "boolean"
+      ? Either.of(this.value)
+      : Left(this.newMistypedPrimitiveValueError("boolean"));
+  }
+
+  protected override toDate(): Either<Error, Date> {
+    return this.toDateTime();
+  }
+
+  protected override toDateTime(): Either<Error, Date> {
+    return typeof this.value === "object" && this.value instanceof Date
+      ? Either.of(this.value)
+      : Left(this.newMistypedPrimitiveValueError("Date"));
+  }
+
+  protected override toFloat(): Either<Error, number> {
+    return typeof this.value === "number" &&
+      Number.isFinite(this.value) &&
+      !Number.isInteger(this.value)
+      ? Either.of(this.value)
+      : Left(this.newMistypedPrimitiveValueError("float"));
+  }
+
+  protected override toIdentifier(): Either<Error, Identifier> {
+    return Left(this.newMistypedPrimitiveValueError("Identifier"));
+  }
+
+  protected override toInt(): Either<Error, number> {
+    return typeof this.value === "number" &&
+      Number.isFinite(this.value) &&
+      Number.isInteger(this.value)
+      ? Either.of(this.value)
+      : Left(this.newMistypedPrimitiveValueError("float"));
+  }
+
+  protected override toIri(): Either<Error, NamedNode> {
+    return Left(this.newMistypedPrimitiveValueError("Iri"));
+  }
+
+  protected override toLiteral(): Either<Error, Literal> {
+    return Left(this.newMistypedPrimitiveValueError("Literal"));
+  }
+
+  protected override toNumber(): Either<Error, number> {
+    return typeof this.value === "number"
+      ? Either.of(this.value)
+      : Left(this.newMistypedPrimitiveValueError("number"));
+  }
+
+  protected override toPrimitive(): Either<Error, Primitive> {
+    return Either.of(this.value);
+  }
+
+  protected override toString(): Either<Error, string> {
+    return typeof this.value === "string"
+      ? Either.of(this.value)
+      : Left(this.newMistypedPrimitiveValueError("string"));
+  }
+
+  protected override toTerm(): Either<Error, Term> {
+    return Left(this.newMistypedPrimitiveValueError("Term"));
+  }
+
+  private newMistypedPrimitiveValueError(
+    expectedValueType: string,
+  ): MistypedPrimitiveValueError {
+    return new MistypedPrimitiveValueError({
+      actualValue: this.value,
+      expectedValueType,
+      focusResource: this.focusResource,
+      propertyPath: this.propertyPath,
+    });
+  }
+}
+
+export class ResourceValue<
+  ResourceT extends Resource,
+> extends Value<ResourceT> {
+  protected newMistypedTermValueError(
+    expectedValueType: string,
+  ): MistypedTermValueError {
+    return new MistypedTermValueError({
+      actualValue: this.value.identifier,
+      expectedValueType,
+      focusResource: this.focusResource,
+      propertyPath: this.propertyPath,
+    });
+  }
+
+  protected override toBigInt(): Either<Error, bigint> {
+    return Left(this.newMistypedTermValueError("bigint"));
+  }
+
+  protected override toBlankNode(): Either<Error, BlankNode> {
+    return this.value.identifier.termType === "BlankNode"
+      ? Either.of(this.value.identifier)
+      : Left(this.newMistypedTermValueError("BlankNode"));
+  }
+
+  protected override toBoolean(): Either<Error, boolean> {
+    return Left(this.newMistypedTermValueError("boolean"));
+  }
+
+  protected override toDate(): Either<Error, Date> {
+    return Left(this.newMistypedTermValueError("Date"));
+  }
+
+  protected override toDateTime(): Either<Error, Date> {
+    return Left(this.newMistypedTermValueError("DateTime"));
+  }
+
+  protected override toFloat(): Either<Error, number> {
+    return Left(this.newMistypedTermValueError("float"));
+  }
+
+  protected override toIdentifier(): Either<Error, Identifier> {
+    return Either.of(this.value.identifier);
+  }
+
+  protected override toInt(): Either<Error, number> {
+    return Left(this.newMistypedTermValueError("int"));
+  }
+
+  protected override toIri(): Either<Error, NamedNode> {
+    throw new Error("Method not implemented.");
+  }
+
+  protected override toLiteral(): Either<Error, Literal> {
+    return Left(this.newMistypedTermValueError("Literal"));
+  }
+
+  protected override toNumber(): Either<Error, number> {
+    return Left(this.newMistypedTermValueError("number"));
+  }
+
+  protected override toPrimitive(): Either<Error, Primitive> {
+    return Left(this.newMistypedTermValueError("Primitive"));
+  }
+
+  protected override toString(): Either<Error, string> {
+    return Left(this.newMistypedTermValueError("string"));
+  }
+
+  protected override toTerm(): Either<Error, Term> {
+    return Either.of(this.value.identifier);
+  }
+}
+
+class TermValue<TermT extends Term = Term> extends Value<TermT> {
+  private get term(): TermT {
+    return this.value;
+  }
+
+  protected newMistypedTermValueError(
+    expectedValueType: string,
+  ): MistypedTermValueError {
+    return new MistypedTermValueError({
+      actualValue: this.term,
+      expectedValueType,
+      focusResource: this.focusResource,
+      propertyPath: this.propertyPath,
+    });
+  }
+
+  protected override toBigInt(): Either<Error, bigint> {
+    return this.toLiteral()
+      .chain(LiteralDecoder.decodeBigIntLiteral)
+      .mapLeft(() => this.newMistypedTermValueError("bigint"));
+  }
+
+  protected override toBlankNode(): Either<Error, BlankNode> {
+    return this.term.termType === "BlankNode"
+      ? Either.of(this.term as BlankNode)
+      : Left(this.newMistypedTermValueError("BlankNode"));
+  }
+
+  protected override toBoolean(): Either<Error, boolean> {
+    return this.toLiteral()
+      .chain(LiteralDecoder.decodeBooleanLiteral)
+      .mapLeft(() => this.newMistypedTermValueError("boolean"));
+  }
+
+  protected override toDate(): Either<Error, Date> {
+    return this.toLiteral()
+      .chain(LiteralDecoder.decodeDateLiteral)
+      .mapLeft(() => this.newMistypedTermValueError("date"));
+  }
+
+  protected override toDateTime(): Either<Error, Date> {
+    return this.toLiteral()
+      .chain(LiteralDecoder.decodeDateTimeLiteral)
+      .mapLeft(() => this.newMistypedTermValueError("date-time"));
+  }
+
+  protected override toFloat(): Either<Error, number> {
+    return this.toLiteral()
+      .chain(LiteralDecoder.decodeFloatLiteral)
+      .mapLeft(() => this.newMistypedTermValueError("float"));
+  }
+
+  protected override toIdentifier(): Either<Error, Identifier> {
+    switch (this.term.termType) {
+      case "BlankNode":
+      case "NamedNode":
+        return Either.of(this.term as Identifier);
+      default:
+        return Left(this.newMistypedTermValueError("BlankNode|NamedNode"));
+    }
+  }
+
+  protected override toInt(): Either<Error, number> {
+    return this.toLiteral()
+      .chain(LiteralDecoder.decodeIntLiteral)
+      .mapLeft(() => this.newMistypedTermValueError("int"));
+  }
+
+  protected override toIri(): Either<Error, NamedNode> {
+    return this.term.termType === "NamedNode"
+      ? Either.of(this.term as NamedNode)
+      : Left(this.newMistypedTermValueError("IRI"));
+  }
+
+  protected override toLiteral(): Either<Error, Literal> {
+    return this.term.termType === "Literal"
+      ? Either.of(this.term satisfies Literal)
+      : Left(this.newMistypedTermValueError("Literal"));
+  }
+
+  protected override toNumber(): Either<Error, number> {
+    return this.toLiteral()
+      .chain(LiteralDecoder.decodeNumberLiteral)
+      .mapLeft(() => this.newMistypedTermValueError("number"));
+  }
+
+  protected override toPrimitive(): Either<Error, Primitive> {
+    return this.toLiteral()
+      .chain(LiteralDecoder.decodePrimitiveLiteral)
+      .mapLeft(() => this.newMistypedTermValueError("primitive"));
+  }
+
+  protected override toString(): Either<Error, string> {
+    return this.toLiteral()
+      .chain(LiteralDecoder.decodeStringLiteral)
+      .mapLeft(() => this.newMistypedTermValueError("string"));
+  }
+
+  protected override toTerm(): Either<Error, Term> {
+    return Either.of(this.value);
   }
 }

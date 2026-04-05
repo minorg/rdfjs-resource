@@ -17,7 +17,6 @@ import { MistypedTermValueError as _MistypedTermValueError } from "./MistypedTer
 import type { Primitive } from "./Primitive.js";
 import type { PropertyPath } from "./PropertyPath.js";
 import type { Term } from "./Term.js";
-import { TermValue } from "./TermValue.js";
 import { Value as _Value } from "./Value.js";
 import { ValueError as _ValueError } from "./ValueError.js";
 import { Values as _Values } from "./Values.js";
@@ -443,7 +442,7 @@ export class Resource<
     }
 
     return Either.of<Resource.ValueError, Resource.Values<Term>>(
-      new TermValue({
+      Resource.Value.fromTerm({
         dataFactory: this.dataFactory,
         focusResource: this,
         propertyPath: rdf.first,

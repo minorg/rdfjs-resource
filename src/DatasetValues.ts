@@ -11,7 +11,7 @@ import type {
 import type { PropertyPath } from "./PropertyPath.js";
 import type { Resource } from "./Resource.js";
 import type { Term } from "./Term.js";
-import { TermValue } from "./TermValue.js";
+import { Value } from "./Value.js";
 import { Values } from "./Values.js";
 
 export class DatasetValues extends Values<Term> {
@@ -50,7 +50,7 @@ export class DatasetValues extends Values<Term> {
     return this.focusResource.dataset;
   }
 
-  override *[Symbol.iterator](): Iterator<TermValue> {
+  override *[Symbol.iterator](): Iterator<Value<Term>> {
     if (this.unique) {
       const uniqueTerms = new TermSet<Term>();
       for (const term of this.terms({
@@ -60,7 +60,7 @@ export class DatasetValues extends Values<Term> {
         if (uniqueTerms.has(term)) {
           continue;
         }
-        yield new TermValue({
+        yield Value.fromTerm({
           dataFactory: this.dataFactory,
           focusResource: this.focusResource,
           propertyPath: this.propertyPath,
@@ -73,7 +73,7 @@ export class DatasetValues extends Values<Term> {
         focusIdentifier: this.focusResource.identifier,
         propertyPath: this.propertyPath,
       })) {
-        yield new TermValue({
+        yield Value.fromTerm({
           dataFactory: this.dataFactory,
           focusResource: this.focusResource,
           propertyPath: this.propertyPath,
@@ -83,7 +83,7 @@ export class DatasetValues extends Values<Term> {
     }
   }
 
-  override toArray(): readonly TermValue[] {
+  override toArray(): readonly Value<Term>[] {
     return [...this];
   }
 
