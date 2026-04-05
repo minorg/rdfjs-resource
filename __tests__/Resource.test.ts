@@ -25,11 +25,11 @@ describe("Resource", () => {
       ).toStrictEqual(true);
       const values = resource
         .values(predicate)
-        .chainMap((value) => value.toTermValue())
+        .chainMap((value) => value.toTerm())
         .unsafeCoerce()
         .toArray();
       expect(values).toHaveLength(1);
-      expect(values[0].value.equals(literals.string)).toBe(true);
+      expect(values[0].equals(literals.string)).toBe(true);
     });
 
     it("named graph", ({ expect }) => {
@@ -38,8 +38,8 @@ describe("Resource", () => {
       resource.add(predicate, literals.string, graph);
       expect(dataset.size).toStrictEqual(1);
       expect([...dataset][0].graph.equals(graph)).toStrictEqual(true);
-      const values = [...resource.values(predicate, { graph })].map((value) =>
-        value.toUnconstrainedTerm(),
+      const values = [...resource.values(predicate, { graph })].map(
+        (value) => value.term,
       );
       expect(values).toHaveLength(1);
       expect(values[0].equals(literals.string)).toBe(true);
@@ -56,7 +56,8 @@ describe("Resource", () => {
       const list = resource
         .value(predicate)
         .chain((_) => _.toList())
-        .map((_) => _.toUnwrappedArray())
+        .map((_) => _.toArray())
+        .map((_) => _.map((_) => _.term))
         .orDefault([]);
       expect(list).toHaveLength(2);
       expect(
@@ -111,9 +112,9 @@ describe("Resource", () => {
         const deserializedTerms = listResource
           .toList()
           .unsafeCoerce()
-          .chainMap((value) => value.toTermValue())
+          .chainMap((value) => value.toTerm())
           .unsafeCoerce()
-          .toUnwrappedArray();
+          .toArray();
         expect(deserializedTerms).toHaveLength(terms.length);
         terms.forEach((term, termI) => {
           expect(term.equals(deserializedTerms[termI])).toStrictEqual(true);
@@ -143,9 +144,7 @@ describe("Resource", () => {
       resource.add(predicate, literals.int);
       expect([...resource.values(predicate)]).toHaveLength(2);
       resource.delete(predicate, literals.int);
-      const values = [...resource.values(predicate)].map((value) =>
-        value.toUnconstrainedTerm(),
-      );
+      const values = [...resource.values(predicate)].map((value) => value.term);
       expect(values).toHaveLength(1);
       expect(values[0].equals(literals.string)).toBe(true);
     });
@@ -178,7 +177,7 @@ describe("Resource", () => {
         testResource
           .values(predicate)
           .toArray()
-          .map((_) => _.toUnconstrainedTerm())
+          .map((_) => _.term)
           .some((_) => _.equals(literals.string)),
       ).toStrictEqual(true);
     });
@@ -266,9 +265,7 @@ describe("Resource", () => {
     expect(resource.dataset.size).toStrictEqual(1);
     resource.set(predicate, literals.int);
     expect(resource.dataset.size).toStrictEqual(1);
-    const values = [...resource.values(predicate)].map((value) =>
-      value.toUnconstrainedTerm(),
-    );
+    const values = [...resource.values(predicate)].map((value) => value.term);
     expect(values).toHaveLength(1);
     expect(values[0].equals(literals.int)).toBe(true);
   });
@@ -280,8 +277,14 @@ describe("Resource", () => {
         dataFactory.blankNode(),
       );
       resource.add(predicate, rdf.nil);
-      expect(resource.value(predicate).unsafeCoerce().toList().unsafeCoerce())
-        .to.be.empty;
+      expect(
+        resource
+          .value(predicate)
+          .unsafeCoerce()
+          .toList()
+          .unsafeCoerce()
+          .toArray(),
+      ).to.be.empty;
     });
 
     it("should read a list with one literal", ({ expect }) => {
@@ -294,7 +297,9 @@ describe("Resource", () => {
         .value(predicate)
         .chain((_) => _.toList())
         .unsafeCoerce()
-        .map((_) => _.toUnconstrainedString().unsafeCoerce());
+        .chainMap((_) => _.toString())
+        .unsafeCoerce()
+        .toArray();
       expect(list).to.have.length(1);
       expect(list[0]).to.eq("test");
     });
@@ -309,7 +314,9 @@ describe("Resource", () => {
         .value(predicate)
         .chain((_) => _.toList())
         .unsafeCoerce()
-        .map((_) => _.toUnconstrainedString().unsafeCoerce());
+        .chainMap((_) => _.toString())
+        .unsafeCoerce()
+        .toArray();
       expect(list).to.have.length(2);
       expect(list[0]).to.eq("test1");
       expect(list[1]).to.eq("test2");
@@ -330,9 +337,9 @@ describe("Resource", () => {
       expect(
         testResource
           .values(predicate)
-          .find((value) => value.toUnconstrainedTerm().termType === "NamedNode")
+          .find((value) => value.term.termType === "NamedNode")
           .unsafeCoerce()
-          .toUnconstrainedIri()
+          .toIri()
           .toMaybe()
           .extract()?.value,
       ).toStrictEqual(objects["namedNode"].value);
@@ -341,7 +348,7 @@ describe("Resource", () => {
     it("filtered", ({ expect }) => {
       const value = testResource
         .values(predicate)
-        .find((value) => value.toUnconstrainedTerm().termType === "NamedNode")
+        .find((value) => value.term.termType === "NamedNode")
         .toMaybe()
         .extract();
       expect(value).toBeDefined();
@@ -357,7 +364,7 @@ describe("Resource", () => {
           resourceValue
             .value({ path: predicate, termType: "InversePath" })
             .unsafeCoerce()
-            .toUnconstrainedIdentifier()
+            .toIdentifier()
             .unsafeCoerce()
             .equals(testResource.identifier),
         ).toBe(true);
@@ -370,9 +377,7 @@ describe("Resource", () => {
       const values = [...testResource.values(predicate)];
       expect(values).toHaveLength(Object.keys(objects).length);
       for (const object of Object.values(objects)) {
-        expect(
-          values.find((value) => value.toUnconstrainedTerm().equals(object)),
-        ).toBeDefined();
+        expect(values.find((value) => value.term.equals(object))).toBeDefined();
       }
     });
 
@@ -392,9 +397,7 @@ describe("Resource", () => {
       // Values in a specific graph
       const actualValues = testResource.values(predicate, { graph }).toArray();
       expect(actualValues).toHaveLength(1);
-      expect(
-        actualValues[0].toUnconstrainedTerm().equals(literals.string),
-      ).toStrictEqual(true);
+      expect(actualValues[0].term.equals(literals.string)).toStrictEqual(true);
     });
 
     it("unique (default graph)", ({ expect }) => {
@@ -426,7 +429,7 @@ describe("Resource", () => {
         expect(valuesOf).toHaveLength(1);
         expect(
           valuesOf[0]
-            .toUnconstrainedIdentifier()
+            .toIdentifier()
             .unsafeCoerce()
             .equals(testResource.identifier),
         ).toBe(true);
