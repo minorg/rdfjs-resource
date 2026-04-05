@@ -155,6 +155,16 @@ describe("TermValue", () => {
     ).toStrictEqual(objects["stringLiteral"].value);
   });
 
+  it("toTermValue", ({ expect }) => {
+    for (const object of Object.values(objects)) {
+      expect(
+        [...testResource.values(predicate)].some((value) =>
+          value.toTermValue().value.equals(object),
+        ),
+      ).toStrictEqual(true);
+    }
+  });
+
   it("toValues", ({ expect }) => {
     const value = testResource.value(predicate).unsafeCoerce();
     const values = value.toValues();

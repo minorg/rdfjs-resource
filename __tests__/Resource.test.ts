@@ -23,11 +23,13 @@ describe("Resource", () => {
       expect(
         [...dataset][0].graph.equals(dataFactory.defaultGraph()),
       ).toStrictEqual(true);
-      const values = [...resource.values(predicate)].map((value) =>
-        value.toTerm(),
-      );
+      const values = resource
+        .values(predicate)
+        .chainMap((value) => value.toTermValue())
+        .unsafeCoerce()
+        .toArray();
       expect(values).toHaveLength(1);
-      expect(values[0].equals(literals.string)).toBe(true);
+      expect(values[0].value.equals(literals.string)).toBe(true);
     });
 
     it("named graph", ({ expect }) => {

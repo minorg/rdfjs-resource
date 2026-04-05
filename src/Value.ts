@@ -11,6 +11,7 @@ import { Either, Left } from "purify-ts";
 
 import type { Identifier } from "./Identifier.js";
 import { LiteralDecoder } from "./LiteralDecoder.js";
+import { LiteralFactory } from "./LiteralFactory.js";
 import { MistypedPrimitiveValueError } from "./MistypedPrimitiveValueError.js";
 import { MistypedTermValueError } from "./MistypedTermValueError.js";
 import type { Primitive } from "./Primitive.js";
@@ -171,8 +172,8 @@ export abstract class Value<T> {
   /**
    * Try to convert this value to a term.
    */
-  toTermValue(): Either<Error, Value<Term>> {
-    return this.toTerm().map((value) => this.newTermValue(value));
+  toTermValue(): Value<Term> {
+    return this.newTermValue(this.toTerm());
   }
 
   /**
@@ -230,7 +231,7 @@ export abstract class Value<T> {
 
   protected abstract toString(): Either<Error, string>;
 
-  protected abstract toTerm(): Either<Error, Term>;
+  protected abstract toTerm(): Term;
 
   private newPrimitiveValue<PrimitiveT extends Primitive>(
     value: PrimitiveT,
@@ -318,7 +319,7 @@ export class PrimitiveValue<
   }
 
   protected override toLiteral(): Either<Error, Literal> {
-    return Left(this.newMistypedPrimitiveValueError("Literal"));
+    return Either.of(this.literalFactory.primitive(this.value));
   }
 
   protected override toNumber(): Either<Error, number> {
@@ -337,8 +338,12 @@ export class PrimitiveValue<
       : Left(this.newMistypedPrimitiveValueError("string"));
   }
 
-  protected override toTerm(): Either<Error, Term> {
-    return Left(this.newMistypedPrimitiveValueError("Term"));
+  protected override toTerm(): Term {
+    return this.literalFactory.primitive(this.value);
+  }
+
+  private get literalFactory(): LiteralFactory {
+    return new LiteralFactory({ dataFactory: this.dataFactory });
   }
 
   private newMistypedPrimitiveValueError(
@@ -421,8 +426,8 @@ export class ResourceValue<
     return Left(this.newMistypedTermValueError("string"));
   }
 
-  protected override toTerm(): Either<Error, Term> {
-    return Either.of(this.value.identifier);
+  protected override toTerm(): Term {
+    return this.value.identifier;
   }
 }
 
@@ -524,7 +529,7 @@ class TermValue<TermT extends Term = Term> extends Value<TermT> {
       .mapLeft(() => this.newMistypedTermValueError("string"));
   }
 
-  protected override toTerm(): Either<Error, Term> {
-    return Either.of(this.value);
+  protected override toTerm(): Term {
+    return this.value;
   }
 }
