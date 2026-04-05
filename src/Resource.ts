@@ -1,25 +1,23 @@
 import DefaultDataFactory from "@rdfjs/data-model";
 import TermSet from "@rdfjs/term-set";
 import type {
-  BlankNode,
   DataFactory,
   DatasetCore,
-  Literal,
   NamedNode,
   Quad_Graph,
   Variable,
 } from "@rdfjs/types";
 
 import { Either, Left } from "purify-ts";
-import { DatasetObjectValues } from "./DatasetObjectValues.js";
-import { DatasetSubjectValues } from "./DatasetSubjectValues.js";
-import { Identifier as _Identifier } from "./Identifier.js";
-import { IdentifierValue as _IdentifierValue } from "./IdentifierValue.js";
+import { DatasetValues } from "./DatasetValues.js";
+import { Identifier as _Identifier, type Identifier } from "./Identifier.js";
 import { ListStructureError as _ListStructureError } from "./ListStructureError.js";
 import { LiteralFactory } from "./LiteralFactory.js";
 import { MistypedTermValueError as _MistypedTermValueError } from "./MistypedTermValueError.js";
 import type { Primitive } from "./Primitive.js";
-import { TermValue as _TermValue } from "./TermValue.js";
+import type { PropertyPath } from "./PropertyPath.js";
+import type { Term } from "./Term.js";
+import { Value as _Value } from "./Value.js";
 import { ValueError as _ValueError } from "./ValueError.js";
 import { Values as _Values } from "./Values.js";
 import { rdf, rdfs } from "./vocabularies.js";
@@ -113,7 +111,7 @@ export class Resource<
       mintSubListIdentifier?: (
         item: AddableValue,
         itemIndex: number,
-      ) => BlankNode | NamedNode;
+      ) => Identifier;
     },
   ): this {
     const addSubListResourceValues =
@@ -213,7 +211,7 @@ export class Resource<
       class_: NamedNode;
       dataset: DatasetCore;
       graph: Exclude<Quad_Graph, Variable> | undefined;
-      instance: BlankNode | NamedNode;
+      instance: Identifier;
       visitedClasses: TermSet<NamedNode>;
     }): boolean {
       for (const _ of dataset.match(
@@ -286,7 +284,7 @@ export class Resource<
       class_: NamedNode;
       dataset: DatasetCore;
       graph: Exclude<Quad_Graph, Variable> | undefined;
-      thisIdentifier: BlankNode | NamedNode;
+      thisIdentifier: Identifier;
       visitedClasses: TermSet<NamedNode>;
     }): boolean {
       for (const _ of dataset.match(
@@ -347,9 +345,15 @@ export class Resource<
    */
   toList(options?: {
     graph?: Exclude<Quad_Graph, Variable>;
-  }): Either<Resource.ValueError, readonly Resource.TermValue[]> {
+  }): Either<Resource.ValueError, Resource.Values> {
     if (this.identifier.equals(rdf.nil)) {
-      return Either.of([]);
+      return Either.of(
+        Resource.Values.fromArray({
+          focusResource: this,
+          propertyPath: rdf.nil,
+          values: [],
+        }),
+      );
     }
 
     const graph = options?.graph ?? this.graph;
@@ -366,7 +370,7 @@ export class Resource<
         new Resource.ListStructureError({
           focusResource: this,
           message: "list has no rdf:first statements",
-          predicate: rdf.first,
+          propertyPath: rdf.first,
         }),
       );
     }
@@ -375,7 +379,7 @@ export class Resource<
         new Resource.ListStructureError({
           focusResource: this,
           message: "list has multiple rdf:first statements",
-          predicate: rdf.first,
+          propertyPath: rdf.first,
         }),
       );
     }
@@ -391,7 +395,7 @@ export class Resource<
             actualValue: firstObject,
             expectedValueType: "BlankNode | Literal | NamedNode",
             focusResource: this,
-            predicate: rdf.first,
+            propertyPath: rdf.first,
           }),
         );
     }
@@ -408,7 +412,7 @@ export class Resource<
         new Resource.ListStructureError({
           focusResource: this,
           message: "list has no rdf:rest statements",
-          predicate: rdf.rest,
+          propertyPath: rdf.rest,
         }),
       );
     }
@@ -417,7 +421,7 @@ export class Resource<
         new Resource.ListStructureError({
           focusResource: this,
           message: "list has multiple rdf:rest statements",
-          predicate: rdf.rest,
+          propertyPath: rdf.rest,
         }),
       );
     }
@@ -432,82 +436,54 @@ export class Resource<
             actualValue: restObject,
             expectedValueType: "BlankNode | NamedNode",
             focusResource: this,
-            predicate: rdf.rest,
+            propertyPath: rdf.rest,
           }),
         );
     }
 
-    return Either.of<Resource.ValueError, readonly Resource.TermValue[]>([
-      new Resource.TermValue({
+    return Either.of<Resource.ValueError, Resource.Values<Resource.Value>>(
+      new Resource.Value({
         dataFactory: this.dataFactory,
         focusResource: this,
-        predicate: rdf.first,
+        propertyPath: rdf.first,
         term: firstObject,
-      }),
-    ]).chain((items) =>
+      }).toValues(),
+    ).chain((items) =>
       new Resource(this.dataset, restObject, {
         dataFactory: this.dataFactory,
       })
         .toList({ graph })
-        .map((restItems) => items.concat(restItems)),
+        .map((restItems) => items.concat(...restItems)),
     );
   }
 
   /**
-   * Get the first matching value of dataset statements (this.identifier, predicate, value).
+   * Get the first matching value for the property path.
    */
   value(
-    predicate: NamedNode,
+    propertyPath: PropertyPath,
     options?: { graph?: Exclude<Quad_Graph, Variable> },
-  ): Either<Resource.ValueError, Resource.TermValue> {
-    return this.values(predicate, options).head();
+  ): Either<Resource.ValueError, Resource.Value> {
+    return this.values(propertyPath, options).head();
   }
 
   /**
-   * Get the first matching subject of dataset statements (subject, predicate, this.identifier).
-   */
-  valueOf(
-    predicate: NamedNode,
-    options?: { graph?: Exclude<Quad_Graph, Variable> },
-  ): Either<Resource.ValueError, Resource.IdentifierValue> {
-    return this.valuesOf(predicate, options).head();
-  }
-
-  /**
-   * Get all values of dataset statements (this.identifier, predicate, value).
+   * Get all values for the property path.
    */
   values(
-    predicate: NamedNode,
+    propertyPath: PropertyPath,
     options?: { graph?: Exclude<Quad_Graph, Variable>; unique?: boolean },
-  ): Resource.Values<Resource.TermValue> {
-    return new DatasetObjectValues({
+  ): Resource.Values {
+    return new DatasetValues({
       dataFactory: this.dataFactory,
       focusResource: this,
       graph: options?.graph ?? this.graph ?? null,
-      predicate,
+      propertyPath,
       unique: !!options?.unique,
     });
   }
 
-  /**
-   * Get the subject of dataset statements (subject, predicate, this.identifier).
-   */
-  valuesOf(
-    predicate: NamedNode,
-    options?: { graph?: Exclude<Quad_Graph, Variable>; unique?: boolean },
-  ): Resource.Values<Resource.IdentifierValue> {
-    return new DatasetSubjectValues({
-      dataFactory: this.dataFactory,
-      focusResource: this,
-      graph: options?.graph ?? this.graph ?? null,
-      predicate,
-      unique: !!options?.unique,
-    });
-  }
-
-  private addableValueToTerm(
-    value: AddableValue,
-  ): BlankNode | Literal | NamedNode {
+  private addableValueToTerm(value: AddableValue): Term {
     switch (typeof value) {
       case "bigint":
         return this.literalFactory.bigint(value);
@@ -524,7 +500,7 @@ export class Resource<
 
   private addableValuesToTerms(
     values: AddableValue | readonly AddableValue[],
-  ): readonly (BlankNode | Literal | NamedNode)[] {
+  ): readonly Term[] {
     if (Array.isArray(values)) {
       return values.map((value) => this.addableValueToTerm(value));
     }
@@ -532,21 +508,24 @@ export class Resource<
   }
 }
 
-type AddableValue = BlankNode | Literal | NamedNode | Exclude<Primitive, Date>;
+type AddableValue = Term | Exclude<Primitive, Date>;
 
 export namespace Resource {
-  export type Identifier = _Identifier;
   export const Identifier = _Identifier;
-  export type IdentifierValue = _IdentifierValue;
-  export const IdentifierValue = _IdentifierValue;
-  export type ListStructureError = _ListStructureError;
+  export type Identifier = _Identifier;
+
   export const ListStructureError = _ListStructureError;
-  export type MistypedTermValueError = _MistypedTermValueError;
+  export type ListStructureError = _ListStructureError;
+
   export const MistypedTermValueError = _MistypedTermValueError;
-  export type TermValue = _TermValue;
-  export const TermValue = _TermValue;
-  export type ValueError = _ValueError;
+  export type MistypedTermValueError = _MistypedTermValueError;
+
   export const ValueError = _ValueError;
-  export type Values<ValueT> = _Values<ValueT>;
+  export type ValueError = _ValueError;
+
+  export const Value = _Value;
+  export type Value<TermT extends Term = Term> = _Value<TermT>;
+
   export const Values = _Values;
+  export type Values<T = Value> = _Values<T>;
 }

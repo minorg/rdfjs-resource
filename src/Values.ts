@@ -1,62 +1,76 @@
-import type { NamedNode } from "@rdfjs/types";
-
 import { Either, Left } from "purify-ts";
 
 import { MissingValueError } from "./MissingValueError.js";
+import type { PropertyPath } from "./PropertyPath.js";
 import type { Resource } from "./Resource.js";
+import type { Value } from "./Value.js";
 import type { ValueError } from "./ValueError.js";
 
 /**
  * Iterable sequence of values of a given type.
  *
- * Resource.values and .valuesOf return instances of this class instead of a simple array of values in order to
- * (1) preserve the focus resource that .values/.valuesOf was invoked on, in case of errors
- * (2) preserve the predicate that .values/.valuesOf was invoked with, in case of errors
+ * Resource.values returns instances of this class instead of a simple array of values in order to
+ * (1) preserve the focus resource that .values was invoked on, in case of errors
+ * (2) preserve the propertyPath that .values was invoked with, in case of errors
  * (3) return purify types from methods like .find instead of null or undefined
  * (4) add some methods that aren't on arrays, like .chainMap and .head
  *
  * The class doesn't try to implement the entire Array interface. Methods are added as needed by downstream code.
  */
-export abstract class Values<ValueT> implements Iterable<ValueT> {
-  protected readonly focusResource: Resource;
-  protected readonly predicate: NamedNode;
+export abstract class Values<T = Value> implements Iterable<T> {
+  readonly focusResource: Resource;
+  readonly propertyPath: PropertyPath;
 
   abstract readonly length: number;
 
   protected constructor({
     focusResource,
-    predicate,
+    propertyPath,
   }: {
     focusResource: Resource;
-    predicate: NamedNode;
+    propertyPath: PropertyPath;
   }) {
     this.focusResource = focusResource;
-    this.predicate = predicate;
+    this.propertyPath = propertyPath;
+  }
+
+  /**
+   * Create a Values instance that is empty.
+   */
+  static empty<T>(parameters: {
+    focusResource: Resource;
+    propertyPath: PropertyPath;
+  }): Values<T> {
+    return new EmptyValues(parameters);
   }
 
   /**
    * Create a Values instance from an array of values.
    */
-  static fromArray<ValueT>(parameters: {
+  static fromArray<T>(parameters: {
     focusResource: Resource;
-    predicate: NamedNode;
-    values: readonly ValueT[];
-  }): Values<ValueT> {
+    propertyPath: PropertyPath;
+    values: readonly T[];
+  }): Values<T> {
+    if (Values.length === 0) {
+      return Values.empty(parameters);
+    }
+
     return new ArrayValues(parameters);
   }
 
   /**
    * Create a Values instance from a single value.
    */
-  static fromValue<ValueT>(parameters: {
+  static fromValue<T>(parameters: {
     focusResource: Resource;
-    predicate: NamedNode;
-    value: ValueT;
+    propertyPath: PropertyPath;
+    value: T;
   }) {
     return new SingletonValues(parameters);
   }
 
-  abstract [Symbol.iterator](): Iterator<ValueT>;
+  abstract [Symbol.iterator](): Iterator<T>;
 
   /**
    * For each value in the sequence, try to convert it to a new type / transform it using the provided callback.
@@ -67,24 +81,24 @@ export abstract class Values<ValueT> implements Iterable<ValueT> {
    *
    * This is a combination of Either.chain and Either.map.
    */
-  chainMap<NewValueT>(
-    callback: (value: ValueT, index: number) => Either<Error, NewValueT>,
-  ): Either<Error, Values<NewValueT>> {
-    const newValues: NewValueT[] = [];
+  chainMap<NewT>(
+    callback: (value: T, index: number) => Either<Error, NewT>,
+  ): Either<Error, Values<NewT>> {
+    const newValues: NewT[] = [];
     let valueI = 0;
     for (const value of this) {
       const callbackResult = callback(value, valueI);
       if (callbackResult.isLeft()) {
         return callbackResult;
       }
-      newValues.push(callbackResult.extract() as NewValueT);
+      newValues.push(callbackResult.extract() as NewT);
       valueI++;
     }
     return Either.of(
       Values.fromArray({
         focusResource: this.focusResource,
+        propertyPath: this.propertyPath,
         values: newValues,
-        predicate: this.predicate,
       }),
     );
   }
@@ -92,10 +106,10 @@ export abstract class Values<ValueT> implements Iterable<ValueT> {
   /**
    * Concatenate another values of the same type to this Values, returning a new Values instance.
    */
-  concat(...values: readonly ValueT[]): Values<ValueT> {
+  concat(...values: readonly T[]): Values<T> {
     return Values.fromArray({
       focusResource: this.focusResource,
-      predicate: this.predicate,
+      propertyPath: this.propertyPath,
       values: this.toArray().concat(...values),
     });
   }
@@ -103,33 +117,33 @@ export abstract class Values<ValueT> implements Iterable<ValueT> {
   /**
    * Filter the values, returning a new Values instance.
    */
-  filter(predicate: (value: ValueT, index: number) => boolean): Values<ValueT> {
-    const filteredValues: ValueT[] = [];
+  filter(propertyPath: (value: T, index: number) => boolean): Values<T> {
+    const filteredValues: T[] = [];
     let valueI = 0;
     for (const value of this) {
-      if (predicate(value, valueI)) {
+      if (propertyPath(value, valueI)) {
         filteredValues.push(value);
       }
       valueI++;
     }
     return Values.fromArray({
       focusResource: this.focusResource,
-      predicate: this.predicate,
+      propertyPath: this.propertyPath,
       values: filteredValues,
     });
   }
 
   /**
-   * Find a value that satisfies the given predicate.
+   * Find a value that satisfies the given propertyPath.
    *
-   * Return Right if a value satisfies the predicate, otherwise Left.
+   * Return Right if a value satisfies the propertyPath, otherwise Left.
    */
   find(
-    predicate: (value: ValueT, index: number) => boolean,
-  ): Either<MissingValueError, ValueT> {
+    propertyPath: (value: T, index: number) => boolean,
+  ): Either<MissingValueError, T> {
     let valueI = 0;
     for (const value of this) {
-      if (predicate(value, valueI)) {
+      if (propertyPath(value, valueI)) {
         return Either.of(value);
       }
       valueI++;
@@ -137,7 +151,7 @@ export abstract class Values<ValueT> implements Iterable<ValueT> {
     return Left(
       new MissingValueError({
         focusResource: this.focusResource,
-        predicate: this.predicate,
+        propertyPath: this.propertyPath,
       }),
     );
   }
@@ -147,21 +161,21 @@ export abstract class Values<ValueT> implements Iterable<ValueT> {
    *
    * Equivalent of Array.flat.
    */
-  flat<NewValueT>(): Values<NewValueT> {
-    return Values.fromArray<NewValueT>({
+  flat<NewT>(): Values<NewT> {
+    return Values.fromArray<NewT>({
       focusResource: this.focusResource,
-      predicate: this.predicate,
-      values: this.toArray().flat() as readonly NewValueT[],
+      propertyPath: this.propertyPath,
+      values: this.toArray().flat() as unknown as readonly NewT[],
     });
   }
 
   /**
    * Map each value to an array of values of a new type. Flatten those arrays and return the result as a new Values.
    */
-  flatMap<NewValueT>(
-    callback: (value: ValueT, index: number) => ReadonlyArray<NewValueT>,
-  ): Values<NewValueT> {
-    const newValues: NewValueT[] = [];
+  flatMap<NewT>(
+    callback: (value: T, index: number) => ReadonlyArray<NewT>,
+  ): Values<NewT> {
+    const newValues: NewT[] = [];
     let valueI = 0;
     for (const value of this) {
       newValues.push(...callback(value, valueI));
@@ -169,7 +183,7 @@ export abstract class Values<ValueT> implements Iterable<ValueT> {
     }
     return Values.fromArray({
       focusResource: this.focusResource,
-      predicate: this.predicate,
+      propertyPath: this.propertyPath,
       values: newValues,
     });
   }
@@ -177,14 +191,14 @@ export abstract class Values<ValueT> implements Iterable<ValueT> {
   /**
    * Get the head of this sequence of values if the sequence is non-empty. Otherwise return Left.
    */
-  head(): Either<ValueError, ValueT> {
+  head(): Either<ValueError, T> {
     for (const value of this) {
       return Either.of(value);
     }
     return Left(
       new MissingValueError({
         focusResource: this.focusResource,
-        predicate: this.predicate,
+        propertyPath: this.propertyPath,
       }),
     );
   }
@@ -192,10 +206,8 @@ export abstract class Values<ValueT> implements Iterable<ValueT> {
   /**
    * Map each value to a value of a new type and return a new Values with the mapped results.
    */
-  map<NewValueT>(
-    callback: (value: ValueT, index: number) => NewValueT,
-  ): Values<NewValueT> {
-    const newValues: NewValueT[] = [];
+  map<NewT>(callback: (value: T, index: number) => NewT): Values<NewT> {
+    const newValues: NewT[] = [];
     let valueI = 0;
     for (const value of this) {
       newValues.push(callback(value, valueI));
@@ -203,7 +215,7 @@ export abstract class Values<ValueT> implements Iterable<ValueT> {
     }
     return Values.fromArray({
       focusResource: this.focusResource,
-      predicate: this.predicate,
+      propertyPath: this.propertyPath,
       values: newValues,
     });
   }
@@ -211,7 +223,7 @@ export abstract class Values<ValueT> implements Iterable<ValueT> {
   /**
    * Convert this values to an array of the values.
    */
-  abstract toArray(): readonly ValueT[];
+  abstract toArray(): readonly T[];
 }
 
 /**
@@ -219,16 +231,16 @@ export abstract class Values<ValueT> implements Iterable<ValueT> {
  *
  * Must be in the same file to avoid circular dependencies.
  */
-class ArrayValues<ValueT> extends Values<ValueT> {
-  private readonly values: readonly ValueT[];
+class ArrayValues<T> extends Values<T> {
+  private readonly values: readonly T[];
 
   constructor({
     values,
     ...superParameters
   }: {
     focusResource: Resource;
-    predicate: NamedNode;
-    values: readonly ValueT[];
+    propertyPath: PropertyPath;
+    values: readonly T[];
   }) {
     super(superParameters);
     this.values = values;
@@ -238,12 +250,29 @@ class ArrayValues<ValueT> extends Values<ValueT> {
     return this.values.length;
   }
 
-  override [Symbol.iterator](): Iterator<ValueT> {
+  override [Symbol.iterator](): Iterator<T> {
     return this.values[Symbol.iterator]();
   }
 
-  override toArray(): readonly ValueT[] {
+  override toArray(): readonly T[] {
     return this.values;
+  }
+}
+
+/**
+ * Private implementation of Resource.Values that is empty.
+ */
+class EmptyValues<T> extends Values<T> {
+  override get length(): number {
+    return 0;
+  }
+
+  override [Symbol.iterator](): Iterator<T> {
+    return this.toArray()[Symbol.iterator]();
+  }
+
+  override toArray(): readonly T[] {
+    return [];
   }
 }
 
@@ -252,24 +281,28 @@ class ArrayValues<ValueT> extends Values<ValueT> {
  *
  * Must be in the same file to avoid circular dependencies.
  */
-class SingletonValues<ValueT> extends Values<ValueT> {
-  private readonly value: ValueT;
+class SingletonValues<T> extends Values<T> {
+  private readonly value: T;
 
   override readonly length = 1;
 
   constructor({
     value,
     ...superParameters
-  }: { focusResource: Resource; value: ValueT; predicate: NamedNode }) {
+  }: {
+    focusResource: Resource;
+    propertyPath: PropertyPath;
+    value: T;
+  }) {
     super(superParameters);
     this.value = value;
   }
 
-  override *[Symbol.iterator](): Iterator<ValueT> {
+  override *[Symbol.iterator](): Iterator<T> {
     yield this.value;
   }
 
-  override toArray(): readonly ValueT[] {
+  override toArray(): readonly T[] {
     return [this.value];
   }
 }

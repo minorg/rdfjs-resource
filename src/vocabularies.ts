@@ -21,6 +21,24 @@ export namespace rdfs {
   );
 }
 
+export namespace sh {
+  export const alternativePath = DataFactory.namedNode(
+    "http://www.w3.org/ns/shacl#alternativePath",
+  );
+  export const inversePath = DataFactory.namedNode(
+    "http://www.w3.org/ns/shacl#inversePath",
+  );
+  export const oneOrMorePath = DataFactory.namedNode(
+    "http://www.w3.org/ns/shacl#oneOrMorePath",
+  );
+  export const zeroOrMorePath = DataFactory.namedNode(
+    "http://www.w3.org/ns/shacl#zeroOrMorePath",
+  );
+  export const zeroOrOnePath = DataFactory.namedNode(
+    "http://www.w3.org/ns/shacl#zeroOrOnePath",
+  );
+}
+
 export namespace xsd {
   export const boolean = DataFactory.namedNode(
     "http://www.w3.org/2001/XMLSchema#boolean",
