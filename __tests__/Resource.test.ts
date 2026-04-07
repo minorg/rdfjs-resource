@@ -1,5 +1,6 @@
 import dataFactory from "@rdfjs/data-model";
 import datasetFactory from "@rdfjs/dataset";
+import type { NamedNode } from "@rdfjs/types";
 import { rdf, rdfs, schema, skos } from "@tpluscode/rdf-ns-builders";
 import { describe, expect, it } from "vitest";
 import { Resource } from "../src/Resource.js";
@@ -43,6 +44,17 @@ describe("Resource", () => {
       );
       expect(values).toHaveLength(1);
       expect(values[0].equals(literals.string)).toBe(true);
+    });
+
+    it("inverse path", ({ expect }) => {
+      const dataset = datasetFactory.dataset();
+      const object = objects["namedNode"] as NamedNode;
+      const objectResource = new Resource(dataset, object);
+      objectResource.add({ path: predicate, termType: "InversePath" }, subject);
+      expect(dataset.size).toStrictEqual(1);
+      expect(
+        [...dataset][0].equals(dataFactory.quad(subject, predicate, object)),
+      ).toStrictEqual(true);
     });
   });
 
@@ -180,6 +192,37 @@ describe("Resource", () => {
           .map((_) => _.term)
           .some((_) => _.equals(literals.string)),
       ).toStrictEqual(true);
+    });
+
+    it("inverse path (no value)", ({ expect }) => {
+      const dataset = datasetFactory.dataset();
+      const object = objects["namedNode"] as NamedNode;
+      const subjectResource = new Resource(dataset, subject);
+      subjectResource.add(predicate, object);
+      expect(dataset.size).toStrictEqual(1);
+      expect(
+        [...dataset][0].equals(dataFactory.quad(subject, predicate, object)),
+      ).toStrictEqual(true);
+      const objectResource = new Resource(dataset, object);
+      objectResource.delete({ path: predicate, termType: "InversePath" });
+      expect(dataset.size).toStrictEqual(0);
+    });
+
+    it("inverse path (with value)", ({ expect }) => {
+      const dataset = datasetFactory.dataset();
+      const object = objects["namedNode"] as NamedNode;
+      const subjectResource = new Resource(dataset, subject);
+      subjectResource.add(predicate, object);
+      expect(dataset.size).toStrictEqual(1);
+      expect(
+        [...dataset][0].equals(dataFactory.quad(subject, predicate, object)),
+      ).toStrictEqual(true);
+      const objectResource = new Resource(dataset, object);
+      objectResource.delete(
+        { path: predicate, termType: "InversePath" },
+        subject,
+      );
+      expect(dataset.size).toStrictEqual(0);
     });
   });
 
