@@ -53,6 +53,46 @@ export type PropertyPath =
   | ZeroOrOnePath;
 
 export namespace PropertyPath {
+  export function equals(left: PropertyPath, right: PropertyPath): boolean {
+    if (left.termType !== right.termType) {
+      return false;
+    }
+
+    switch (left.termType) {
+      case "AlternativePath":
+      case "SequencePath": {
+        const right_ = right as AlternativePath | SequencePath;
+        if (left.members.length !== right_.members.length) {
+          return false;
+        }
+        for (let memberI = 0; memberI < left.members.length; memberI++) {
+          if (
+            !PropertyPath.equals(left.members[memberI], right_.members[memberI])
+          ) {
+            return false;
+          }
+        }
+        return true;
+      }
+      case "NamedNode":
+        return left.equals(right as NamedNode);
+      case "InversePath":
+      case "OneOrMorePath":
+      case "ZeroOrMorePath":
+      case "ZeroOrOnePath":
+        return PropertyPath.equals(
+          left.path,
+          (
+            right as
+              | InversePath
+              | OneOrMorePath
+              | ZeroOrMorePath
+              | ZeroOrOnePath
+          ).path,
+        );
+    }
+  }
+
   export function $fromRdf(
     resource: Resource,
     options?: {

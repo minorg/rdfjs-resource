@@ -1,7 +1,7 @@
 import DataFactory from "@rdfjs/data-model";
 import { sh } from "@tpluscode/rdf-ns-builders";
 import { invariant } from "ts-invariant";
-import { describe, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { PropertyPath } from "../src/PropertyPath.js";
 import { ResourceSet } from "../src/ResourceSet.js";
 import { propertyPathsDataset } from "./propertyPathsDataset.js";
@@ -33,6 +33,13 @@ describe("PropertyPath", () => {
     ).unsafeCoerce();
 
     expectPropertyPath(propertyPathFromRoundTripRdf);
+
+    expect(
+      PropertyPath.equals(
+        propertyPathFromTestRdf,
+        propertyPathFromRoundTripRdf,
+      ),
+    ).toStrictEqual(true);
   }
 
   it("alternative path", ({ expect }) => {
