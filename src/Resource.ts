@@ -1,8 +1,10 @@
 import DefaultDataFactory from "@rdfjs/data-model";
 import TermSet from "@rdfjs/term-set";
 import type {
+  BlankNode,
   DataFactory,
   DatasetCore,
+  Literal,
   NamedNode,
   Quad_Graph,
   Variable,
@@ -29,7 +31,7 @@ export class Resource<
   IdentifierT extends Resource.Identifier = Resource.Identifier,
 > {
   private readonly dataFactory: DataFactory;
-  private readonly graph?: Exclude<Quad_Graph, Variable>;
+  private readonly graph?: Graph;
   private readonly literalFactory: LiteralFactory;
 
   constructor(
@@ -46,21 +48,54 @@ export class Resource<
   /**
    * Add zero or more values to this resource.
    */
+
   add(
-    predicate: NamedNode,
-    object: AddableValue | readonly AddableValue[],
-    graph?: Exclude<Quad_Graph, Variable>,
+    propertyPath: InversePath,
+    value: AddableSubject | readonly AddableSubject[],
+    graph?: Graph,
+  ): this;
+  add(
+    propertyPath: NamedNode,
+    value: AddableObject | readonly AddableObject[],
+    graph?: Graph,
+  ): this;
+  add(
+    propertyPath: InversePath | NamedNode,
+    value:
+      | AddableObject
+      | readonly AddableObject[]
+      | AddableSubject
+      | readonly AddableSubject[],
+    graph?: Graph,
   ): this {
-    for (const term of this.addableValuesToTerms(object)) {
-      this.dataset.add(
-        this.dataFactory.quad(
-          this.identifier,
-          predicate,
-          term,
-          graph ?? this.graph,
-        ),
-      );
+    if (!graph) {
+      graph = this.graph;
     }
+
+    switch (propertyPath.termType) {
+      case "InversePath":
+        for (const subject of this.addableSubjectsToTerms(
+          value as AddableSubject | readonly AddableSubject[],
+        )) {
+          this.dataset.add(
+            this.dataFactory.quad(
+              subject,
+              propertyPath.path,
+              this.identifier,
+              graph,
+            ),
+          );
+        }
+        break;
+      case "NamedNode":
+        for (const object of this.addableObjectsToTerms(value)) {
+          this.dataset.add(
+            this.dataFactory.quad(this.identifier, propertyPath, object, graph),
+          );
+        }
+        break;
+    }
+
     return this;
   }
 
@@ -72,7 +107,7 @@ export class Resource<
    */
   addList(
     predicate: NamedNode,
-    items: Iterable<AddableValue>,
+    items: Iterable<AddableObject>,
     options?: Parameters<Resource["addListItems"]>[1],
   ): Resource {
     const itemsArray = [...items];
@@ -104,12 +139,12 @@ export class Resource<
    * Add rdf:first and rdf:rest predicates to the current Resource.
    */
   addListItems(
-    items: Iterable<AddableValue>,
+    items: Iterable<AddableObject>,
     options?: {
       addSubListResourceValues?: (subListResource: Resource) => void;
-      graph?: Exclude<Quad_Graph, Variable>;
+      graph?: Graph;
       mintSubListIdentifier?: (
-        item: AddableValue,
+        item: AddableObject,
         itemIndex: number,
       ) => Identifier;
     },
@@ -152,35 +187,86 @@ export class Resource<
    * Else delete (p, arrayValue) for each value in the array.
    */
   delete(
-    predicate: NamedNode,
-    object?: AddableValue | readonly AddableValue[],
-    graph?: Exclude<Quad_Graph, Variable>,
+    propertyPath: InversePath,
+    value?: AddableSubject | readonly AddableSubject[],
+    graph?: Graph,
+  ): this;
+  delete(
+    propertyPath: NamedNode,
+    value?: AddableObject | readonly AddableObject[],
+    graph?: Graph,
+  ): this;
+  delete(
+    propertyPath: InversePath | NamedNode,
+    value?:
+      | AddableObject
+      | readonly AddableObject[]
+      | AddableSubject
+      | readonly AddableSubject[],
+    graph?: Graph,
   ): this {
-    if (!object) {
-      for (const quad of [
-        ...this.dataset.match(
-          this.identifier,
-          predicate,
-          null,
-          graph ?? this.graph,
-        ),
-      ]) {
-        this.dataset.delete(quad);
-      }
-    } else {
-      for (const term of this.addableValuesToTerms(object)) {
-        for (const quad of [
-          ...this.dataset.match(
-            this.identifier,
-            predicate,
-            term,
-            graph ?? this.graph,
-          ),
-        ]) {
-          this.dataset.delete(quad);
+    if (!graph) {
+      graph = this.graph;
+    }
+
+    switch (propertyPath.termType) {
+      case "InversePath": {
+        if (value) {
+          for (const subject of this.addableSubjectsToTerms(
+            value as AddableSubject | readonly AddableSubject[],
+          )) {
+            for (const quad of [
+              ...this.dataset.match(
+                subject,
+                propertyPath.path,
+                this.identifier,
+                graph,
+              ),
+            ]) {
+              this.dataset.delete(quad);
+            }
+          }
+        } else {
+          for (const quad of [
+            ...this.dataset.match(
+              null,
+              propertyPath.path,
+              this.identifier,
+              graph,
+            ),
+          ]) {
+            this.dataset.delete(quad);
+          }
         }
+
+        break;
+      }
+      case "NamedNode": {
+        if (value) {
+          for (const object of this.addableObjectsToTerms(value)) {
+            for (const quad of [
+              ...this.dataset.match(
+                this.identifier,
+                propertyPath,
+                object,
+                graph,
+              ),
+            ]) {
+              this.dataset.delete(quad);
+            }
+          }
+        } else {
+          for (const quad of [
+            ...this.dataset.match(this.identifier, propertyPath, null, graph),
+          ]) {
+            this.dataset.delete(quad);
+          }
+        }
+
+        break;
       }
     }
+
     return this;
   }
 
@@ -188,7 +274,7 @@ export class Resource<
     class_: NamedNode,
     options?: {
       excludeSubclasses?: boolean;
-      graph?: Exclude<Quad_Graph, Variable>;
+      graph?: Graph;
       instanceOfPredicate?: NamedNode;
       subClassOfPredicate?: NamedNode;
     },
@@ -210,7 +296,7 @@ export class Resource<
     }: {
       class_: NamedNode;
       dataset: DatasetCore;
-      graph: Exclude<Quad_Graph, Variable> | undefined;
+      graph: Graph | undefined;
       instance: Identifier;
       visitedClasses: TermSet<NamedNode>;
     }): boolean {
@@ -262,7 +348,7 @@ export class Resource<
   isSubClassOf(
     class_: NamedNode,
     options?: {
-      graph?: Exclude<Quad_Graph, Variable>;
+      graph?: Graph;
       subClassOfPredicate?: NamedNode;
     },
   ): boolean {
@@ -283,7 +369,7 @@ export class Resource<
     }: {
       class_: NamedNode;
       dataset: DatasetCore;
-      graph: Exclude<Quad_Graph, Variable> | undefined;
+      graph: Graph | undefined;
       thisIdentifier: Identifier;
       visitedClasses: TermSet<NamedNode>;
     }): boolean {
@@ -332,19 +418,47 @@ export class Resource<
    * Delete all existing values of p and then add the specified values.
    */
   set(
-    predicate: NamedNode,
-    object: AddableValue | readonly AddableValue[],
-    graph?: Exclude<Quad_Graph, Variable>,
+    propertyPath: InversePath,
+    value: AddableSubject | readonly AddableSubject[],
+    graph?: Graph,
+  ): this;
+  set(
+    propertyPath: NamedNode,
+    value: AddableObject | readonly AddableObject[],
+    graph?: Graph,
+  ): this;
+  set(
+    propertyPath: InversePath | NamedNode,
+    value:
+      | AddableObject
+      | readonly AddableObject[]
+      | AddableSubject
+      | readonly AddableSubject[],
+    graph?: Graph,
   ): this {
-    this.delete(predicate, undefined, graph);
-    return this.add(predicate, object, graph);
+    switch (propertyPath.termType) {
+      case "InversePath":
+        this.delete(propertyPath, undefined, graph);
+        return this.add(
+          propertyPath,
+          value as AddableSubject | readonly AddableSubject[],
+          graph,
+        );
+      case "NamedNode":
+        this.delete(propertyPath, undefined, graph);
+        return this.add(
+          propertyPath,
+          value as AddableObject | readonly AddableObject[],
+          graph,
+        );
+    }
   }
 
   /**
    * Consider the resource itself as an RDF list.
    */
   toList(options?: {
-    graph?: Exclude<Quad_Graph, Variable>;
+    graph?: Graph;
   }): Either<Resource.ValueError, Resource.Values> {
     if (this.identifier.equals(rdf.nil)) {
       return Either.of(
@@ -462,7 +576,7 @@ export class Resource<
    */
   value(
     propertyPath: PropertyPath,
-    options?: { graph?: Exclude<Quad_Graph, Variable> },
+    options?: { graph?: Graph },
   ): Either<Resource.ValueError, Resource.Value> {
     return this.values(propertyPath, options).head();
   }
@@ -472,7 +586,7 @@ export class Resource<
    */
   values(
     propertyPath: PropertyPath,
-    options?: { graph?: Exclude<Quad_Graph, Variable>; unique?: boolean },
+    options?: { graph?: Graph; unique?: boolean },
   ): Resource.Values {
     return new DatasetValues({
       dataFactory: this.dataFactory,
@@ -483,32 +597,47 @@ export class Resource<
     });
   }
 
-  private addableValueToTerm(value: AddableValue): Term {
-    switch (typeof value) {
+  private addableObjectToTerm(object: AddableObject): Term {
+    switch (typeof object) {
       case "bigint":
-        return this.literalFactory.bigint(value);
+        return this.literalFactory.bigint(object);
       case "boolean":
-        return this.literalFactory.boolean(value);
+        return this.literalFactory.boolean(object);
       case "number":
-        return this.literalFactory.number(value);
+        return this.literalFactory.number(object);
       case "string":
-        return this.literalFactory.string(value);
+        return this.literalFactory.string(object);
       case "object":
-        return value;
+        return object;
     }
   }
 
-  private addableValuesToTerms(
-    values: AddableValue | readonly AddableValue[],
+  private addableObjectsToTerms(
+    objects: AddableObject | readonly AddableObject[],
   ): readonly Term[] {
-    if (Array.isArray(values)) {
-      return values.map((value) => this.addableValueToTerm(value));
+    if (Array.isArray(objects)) {
+      return objects.map((value) => this.addableObjectToTerm(value));
     }
-    return [this.addableValueToTerm(values as AddableValue)];
+    return [this.addableObjectToTerm(objects as AddableObject)];
+  }
+
+  private addableSubjectsToTerms(
+    subjects: AddableSubject | readonly AddableSubject[],
+  ): readonly AddableSubject[] {
+    if (Array.isArray(subjects)) {
+      return subjects;
+    }
+    return [subjects as AddableSubject];
   }
 }
 
-type AddableValue = Term | Exclude<Primitive, Date>;
+type AddableSubject = BlankNode | NamedNode;
+type AddableObject = BlankNode | Literal | NamedNode | Exclude<Primitive, Date>;
+type Graph = Exclude<Quad_Graph, Variable>;
+type InversePath = {
+  readonly path: NamedNode;
+  readonly termType: "InversePath";
+};
 
 export namespace Resource {
   export const Identifier = _Identifier;
