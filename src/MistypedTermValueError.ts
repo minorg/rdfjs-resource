@@ -28,7 +28,7 @@ export class MistypedTermValueError extends MistypedValueError<
       actualValue,
       expectedValueType,
       focusResource,
-      message: `expected ${Identifier.toString(focusResource.identifier)} ${PropertyPath.$toString(propertyPath)} to be a ${expectedValueType}, was ${actualValue.termType}`,
+      message: `expected ${Identifier.toString(focusResource.identifier)} ${PropertyPath.toString(propertyPath)} to be a ${expectedValueType}, was ${actualValue.termType}`,
       propertyPath,
     });
   }

@@ -13,7 +13,7 @@ export class MissingValueError extends ValueError {
   }) {
     super({
       focusResource,
-      message: `${Identifier.toString(focusResource.identifier)} missing ${PropertyPath.$toString(propertyPath)}`,
+      message: `${Identifier.toString(focusResource.identifier)} missing ${PropertyPath.toString(propertyPath)}`,
       propertyPath,
     });
   }

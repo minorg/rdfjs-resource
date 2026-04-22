@@ -20,7 +20,7 @@ export class MistypedPrimitiveValueError extends MistypedValueError<Primitive> {
       actualValue,
       expectedValueType,
       focusResource,
-      message: `expected ${Identifier.toString(focusResource.identifier)} ${PropertyPath.$toString(propertyPath)} to be a ${expectedValueType}, was ${typeof actualValue}`,
+      message: `expected ${Identifier.toString(focusResource.identifier)} ${PropertyPath.toString(propertyPath)} to be a ${expectedValueType}, was ${typeof actualValue}`,
       propertyPath,
     });
   }

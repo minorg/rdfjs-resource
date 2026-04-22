@@ -17,7 +17,7 @@ describe("PropertyPath", () => {
       `http://example.com/${name}PropertyShape`,
     );
 
-    const propertyPathFromTestRdf = PropertyPath.$fromRdf(
+    const propertyPathFromTestRdf = PropertyPath.fromResource(
       resourceSet
         .resource(identifier)
         .value(sh.path)
@@ -28,8 +28,8 @@ describe("PropertyPath", () => {
 
     expectPropertyPath(propertyPathFromTestRdf);
 
-    const propertyPathFromRoundTripRdf = PropertyPath.$fromRdf(
-      PropertyPath.$toRdf(propertyPathFromTestRdf),
+    const propertyPathFromRoundTripRdf = PropertyPath.fromResource(
+      PropertyPath.toResource(propertyPathFromTestRdf),
     ).unsafeCoerce();
 
     expectPropertyPath(propertyPathFromRoundTripRdf);

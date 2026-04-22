@@ -93,10 +93,9 @@ export namespace PropertyPath {
     }
   }
 
-  export function $fromRdf(
+  export function fromResource(
     resource: Resource,
     options?: {
-      [index: string]: unknown;
       graph?: Exclude<Quad_Graph, Variable>;
     },
   ): Either<Error, PropertyPath> {
@@ -118,7 +117,10 @@ export namespace PropertyPath {
           if (resource.isNothing()) {
             return Left(new Error("non-identifier in property path list"));
           }
-          const member = PropertyPath.$fromRdf(resource.unsafeCoerce());
+          const member = PropertyPath.fromResource(
+            resource.unsafeCoerce(),
+            options,
+          );
           if (member.isLeft()) {
             return member;
           }
@@ -171,30 +173,34 @@ export namespace PropertyPath {
       // Inverse path
       // sh:path: [ sh:inversePath ex:parent ]
       if (quad.predicate.equals(sh.inversePath)) {
-        return PropertyPath.$fromRdf(objectResource).map((path) => ({
-          termType: "InversePath",
-          path,
-        }));
+        return PropertyPath.fromResource(objectResource, options).map(
+          (path) => ({
+            termType: "InversePath",
+            path,
+          }),
+        );
       }
 
       // One or more path
       if (quad.predicate.equals(sh.oneOrMorePath)) {
-        return PropertyPath.$fromRdf(objectResource).map((path) => ({
-          termType: "OneOrMorePath",
-          path,
-        }));
+        return PropertyPath.fromResource(objectResource, options).map(
+          (path) => ({
+            termType: "OneOrMorePath",
+            path,
+          }),
+        );
       }
 
       // Zero or more path
       if (quad.predicate.equals(sh.zeroOrMorePath)) {
-        return PropertyPath.$fromRdf(objectResource).map((path) => ({
+        return PropertyPath.fromResource(objectResource).map((path) => ({
           termType: "ZeroOrMorePath",
           path,
         }));
       }
 
       if (quad.predicate.equals(sh.zeroOrOnePath)) {
-        return PropertyPath.$fromRdf(objectResource).map((path) => ({
+        return PropertyPath.fromResource(objectResource).map((path) => ({
           termType: "ZeroOrOnePath",
           path,
         }));
@@ -208,30 +214,7 @@ export namespace PropertyPath {
     );
   }
 
-  export type $Filter = object;
-
-  export function $filter(_filter: $Filter, _value: PropertyPath): boolean {
-    return true;
-  }
-
-  export const $schema: Readonly<object> = {};
-
-  export function $toString(propertyPath: PropertyPath): string {
-    switch (propertyPath.termType) {
-      case "AlternativePath":
-      case "SequencePath":
-        return `${propertyPath.termType}([${propertyPath.members.map(PropertyPath.toString).join(", ")}])`;
-      case "InversePath":
-      case "OneOrMorePath":
-      case "ZeroOrMorePath":
-      case "ZeroOrOnePath":
-        return `${propertyPath.termType}(${PropertyPath.$toString(propertyPath.path)})`;
-      case "NamedNode":
-        return `PredicatePath(${propertyPath.value})`;
-    }
-  }
-
-  export function $toRdf(
+  export function toResource(
     propertyPath: PropertyPath,
     options?: {
       graph?: Exclude<Quad_Graph, Variable>;
@@ -254,7 +237,7 @@ export namespace PropertyPath {
       case "SequencePath": {
         const members = propertyPath.members.map(
           (member) =>
-            PropertyPath.$toRdf(member, { graph, resourceSet }).identifier,
+            PropertyPath.toResource(member, { graph, resourceSet }).identifier,
         );
         if (propertyPath.termType === "AlternativePath") {
           resource.addList(sh.alternativePath, members, { graph });
@@ -283,10 +266,27 @@ export namespace PropertyPath {
 
     resource.add(
       predicate,
-      PropertyPath.$toRdf(propertyPath.path, { graph, resourceSet }).identifier,
+      PropertyPath.toResource(propertyPath.path, { graph, resourceSet })
+        .identifier,
       graph,
     );
 
     return resource;
+  }
+
+  // biome-ignore lint/suspicious/noShadowRestrictedNames: intentional
+  export function toString(propertyPath: PropertyPath): string {
+    switch (propertyPath.termType) {
+      case "AlternativePath":
+      case "SequencePath":
+        return `${propertyPath.termType}([${propertyPath.members.map(PropertyPath.toString).join(", ")}])`;
+      case "InversePath":
+      case "OneOrMorePath":
+      case "ZeroOrMorePath":
+      case "ZeroOrOnePath":
+        return `${propertyPath.termType}(${PropertyPath.toString(propertyPath.path)})`;
+      case "NamedNode":
+        return `PredicatePath(${propertyPath.value})`;
+    }
   }
 }
