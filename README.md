@@ -1,3 +1,5 @@
+> ⚠️ **Deprecated.** This project has been merged into [rdfx](github.com/minorg/rdfx) as `@rdfx/resource`.
+
 # rdfjs-resource
 
 Resource abstraction over [RDF/JS Datasets](https://rdf.js.org/dataset-spec/), inspired by similar abstractions in 
